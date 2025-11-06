@@ -1,0 +1,154 @@
+/* Reset (簡易) */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html,body,#root { height: 100%; }
+
+/* 主題變數 */
+:root{
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --text: #0b1220;
+  --muted: #506076;
+  --card-shadow: rgba(11,17,32,0.06);
+  --accent: #2563eb; /* 可修改為你想要的主色 */
+  --radius: 14px;
+}
+
+.dark {
+  --bg: #071024;
+  --surface: #081427;
+  --text: #e6eef8;
+  --muted: #9fb1c8;
+  --card-shadow: rgba(0,0,0,0.6);
+  --accent: #60a5fa;
+}
+
+/* 全站基礎 */
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background-color: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Container */
+.container {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: stretch;
+}
+
+/* 卡片 */
+.profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6));
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px var(--card-shadow);
+  /* 為 Safari / iOS 補上 -webkit- 前綴 */
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.dark .profile {
+  background: linear-gradient(180deg, rgba(10,18,30,0.6), rgba(8,18,35,0.5));
+}
+
+/* avatar */
+.avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.08);
+}
+
+/* headings */
+.h-title { font-size: 20px; font-weight: 700; }
+.h-sub { font-size: 13px; color: var(--muted); }
+
+/* links list */
+.links {
+  display: grid;
+  gap: 12px;
+}
+
+.link-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 6px 18px var(--card-shadow);
+  transition: transform .12s ease, box-shadow .12s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.link-left {
+  display:flex; align-items:center; gap:12px;
+  text-decoration: none;
+}
+
+.icon {
+  width:40px; height:40px; flex: 0 0 40px; display:flex;align-items:center; justify-content:center; border-radius:8px;
+  background: rgba(0,0,0,0.04);
+}
+
+.dark .icon { background: rgba(255,255,255,0.03); }
+
+.link-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px var(--card-shadow); }
+
+/* small text */
+.small { font-size: 13px; color: var(--muted); }
+
+/* footer controls */
+.controls {
+  display:flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  border: 1px solid rgba(0,0,0,0.06);
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.dark .btn { border-color: rgba(255,255,255,0.06); }
+
+/* select */
+.lang-select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.06);
+  background: transparent;
+}
+
+/* tiny tooltip / copied feedback */
+.copied {
+  font-size: 12px;
+  color: var(--accent);
+  margin-left: 8px;
+}
+
+/* responsive tweak */
+@media (max-width:420px){
+  .container { padding: 6px; }
+  .profile { padding: 16px; }
+}
