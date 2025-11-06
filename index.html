@@ -5,22 +5,20 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Link Page</title>
 
-    <!-- 先執行：先套用 .dark 或不套用，避免 FOUC -->
+    <!-- 只初始化主題（避免 FOUC） -->
     <script>
-      (function() {
+      (function () {
         try {
-          const saved = localStorage.getItem('theme'); // 'light' | 'dark' | null
-          if (saved === 'dark') document.documentElement.classList.add('dark');
-          else if (saved === 'light') document.documentElement.classList.remove('dark');
+          const savedTheme = localStorage.getItem('theme'); // 'light' | 'dark' | null
+          if (savedTheme === 'dark') document.documentElement.classList.add('dark');
+          else if (savedTheme === 'light') document.documentElement.classList.remove('dark');
           else {
-            // 無儲存 -> 跟系統偏好
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             if (prefersDark) document.documentElement.classList.add('dark');
           }
         } catch (err) {
-          // 印出錯誤以避免 empty-block ESLint 警告
           /* eslint-disable-next-line no-console */
-          console.warn('Theme init error:', err);
+          console.warn('Init theme error:', err);
         }
       })();
     </script>

@@ -1,25 +1,46 @@
+/* src/styles.css (overwrite with this file) */
+
 /* Reset (簡易) */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html,body,#root { height: 100%; }
+
+/* 強制水平書寫，避免 vertical-writing */
+html, body, #root, .container, .profile, * {
+  writing-mode: horizontal-tb !important;
+}
 
 /* 主題變數 */
 :root{
   --bg: #ffffff;
   --surface: #ffffff;
   --text: #0b1220;
-  --muted: #506076;
+  --muted: #506076;          /* 次要文字（淺色模式） */
+  --muted-strong: #334155;   /* 次要文字強對比（淺色模式） */
   --card-shadow: rgba(11,17,32,0.06);
-  --accent: #2563eb; /* 可修改為你想要的主色 */
+  --accent: #2563eb;
+  --accent-rgba: rgba(37,99,235,0.72);
+  --accent-dark: rgb(29,78,216);
+  --accent-glow: rgba(37,99,235,0.18);
   --radius: 14px;
+  --transition-fast: 180ms;
+  --transition-mid: 300ms;
+  --scale-factor: 1.5;
+  --focus-ring: 3px rgba(37,99,235,0.18);
 }
 
+/* 暗色（主要改動集中在這裡） */
 .dark {
   --bg: #071024;
   --surface: #081427;
-  --text: #e6eef8;
-  --muted: #9fb1c8;
+  --text: #e6eef8;            /* 主要文字（亮白） */
+  --muted: #9fb1c8;           /* 先前的次要文字 */
+  --muted-strong: #cfe6ff;    /* **更亮的次要文字**（提高對比） */
   --card-shadow: rgba(0,0,0,0.6);
   --accent: #60a5fa;
+  --accent-rgba: rgba(96,165,250,0.72);
+  --accent-dark: rgb(37,99,235);
+  --accent-glow: rgba(96,165,250,0.18);
+  --focus-ring: 3px rgba(96,165,250,0.18);
 }
 
 /* 全站基礎 */
@@ -29,13 +50,20 @@ body {
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding: 24px;
+  padding: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color var(--transition-mid), color var(--transition-mid);
+  overflow-y: auto;
 }
 
-/* Container */
+/* universal transitions for smoother color changes */
+* {
+  transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease, transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+
+/* Container (放大 150%) */
 .container {
   width: 100%;
   max-width: 420px;
@@ -43,6 +71,12 @@ body {
   flex-direction: column;
   gap: 18px;
   align-items: stretch;
+  will-change: transform;
+}
+
+.zoom {
+  transform-origin: top center;
+  transform: scale(var(--scale-factor));
 }
 
 /* 卡片 */
@@ -51,104 +85,163 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 20px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6));
+  padding: 22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.75));
   border-radius: var(--radius);
-  box-shadow: 0 6px 20px var(--card-shadow);
-  /* 為 Safari / iOS 補上 -webkit- 前綴 */
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 30px var(--card-shadow);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transform-origin: center;
+  animation: popIn 420ms cubic-bezier(.2,.9,.2,1) both;
+}
+@keyframes popIn {
+  from { transform: translateY(10px) scale(.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
+/* darker background for profile in dark mode (keeps contrast) */
 .dark .profile {
-  background: linear-gradient(180deg, rgba(10,18,30,0.6), rgba(8,18,35,0.5));
+  background: linear-gradient(180deg, rgba(8,14,24,0.72), rgba(9,18,33,0.6));
 }
 
 /* avatar */
-.avatar {
-  width: 96px;
-  height: 96px;
-  border-radius: 999px;
-  object-fit: cover;
-  border: 2px solid rgba(255,255,255,0.08);
-}
+.avatar { width: 96px; height: 96px; border-radius: 999px; object-fit: cover; border: 2px solid rgba(255,255,255,0.08); box-shadow: 0 6px 18px rgba(0,0,0,0.08); transition: transform 420ms cubic-bezier(.22,.9,.18,1); }
+.avatar:hover { transform: rotate(-6deg) scale(1.02); }
 
 /* headings */
-.h-title { font-size: 20px; font-weight: 700; }
+.h-title { font-size: 20px; font-weight: 700; letter-spacing: 0.2px; color: var(--text); }
 .h-sub { font-size: 13px; color: var(--muted); }
 
 /* links list */
-.links {
-  display: grid;
-  gap: 12px;
-}
+.links { display: grid; gap: 14px; width: 100%; }
 
+/* link card: in dark mode, use slightly lighter surface to increase contrast */
 .link-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px;
-  background: var(--surface);
-  border-radius: 12px;
-  box-shadow: 0 6px 18px var(--card-shadow);
-  transition: transform .12s ease, box-shadow .12s ease;
-  text-decoration: none;
-  color: inherit;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px; background: var(--surface); border-radius: 12px;
+  box-shadow: 0 8px 24px var(--card-shadow);
+  transition: transform var(--transition-mid) cubic-bezier(.2,.9,.2,1), box-shadow var(--transition-mid);
+  text-decoration: none; color: inherit; overflow: hidden; position: relative;
 }
 
-.link-left {
-  display:flex; align-items:center; gap:12px;
-  text-decoration: none;
+/* dark mode tweak for link cards */
+.dark .link-card {
+  background: linear-gradient(180deg, rgba(6,18,28,0.62), rgba(6,16,26,0.55));
+  border: 1px solid rgba(255,255,255,0.03);
 }
+
+/* accent hover bar */
+.link-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  background: linear-gradient(180deg, var(--accent-rgba), var(--accent));
+  transform: translateX(-110%);
+  transition: transform var(--transition-mid) cubic-bezier(.2,.9,.2,1);
+}
+.link-card:hover::before { transform: translateX(0%); }
+
+.link-left { display:flex; align-items:center; gap:12px; text-decoration: none; }
 
 .icon {
   width:40px; height:40px; flex: 0 0 40px; display:flex;align-items:center; justify-content:center; border-radius:8px;
   background: rgba(0,0,0,0.04);
+  color: var(--accent);
+  transition: background-color var(--transition-fast), transform 320ms;
 }
+.dark .icon { background: rgba(255,255,255,0.02); color: var(--accent); }
 
-.dark .icon { background: rgba(255,255,255,0.03); }
+/* hover effects */
+.link-card:hover .icon { transform: scale(1.08) rotate(-6deg); }
+.link-card:hover { transform: translateY(-6px); box-shadow: 0 18px 40px var(--card-shadow); }
 
-.link-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px var(--card-shadow); }
-
-/* small text */
+/* small text: use stronger muted color in dark mode for readability */
 .small { font-size: 13px; color: var(--muted); }
+.dark .small { color: var(--muted-strong); }
+
+/* card main text (label) - ensure high contrast in dark mode */
+.link-left div > div:first-child { color: var(--text); font-weight: 600; }
 
 /* footer controls */
-.controls {
-  display:flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
+.controls { display:flex; justify-content: space-between; align-items: center; gap: 8px; }
 
+/* 基本按鈕樣式（保留 .btn 舊有行為）*/
 .btn {
   border: 1px solid rgba(0,0,0,0.06);
-  background: transparent;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
+  background: transparent; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-size: 13px;
+  display: inline-flex; align-items: center; gap: 8px; transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  color: var(--text);
+}
+.btn:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+
+/* dark mode button visuals: slightly translucent background and stronger border for clarity */
+.dark .btn {
+  border-color: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
 }
 
-.dark .btn { border-color: rgba(255,255,255,0.06); }
-
-/* select */
-.lang-select {
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.06);
-  background: transparent;
+/* focus ring for keyboard users (visible in both modes) */
+.btn:focus, .lang-item:focus, .control-ui:focus {
+  outline: none;
+  box-shadow: 0 0 0 var(--focus-ring);
+  border-radius: 10px;
 }
 
-/* tiny tooltip / copied feedback */
-.copied {
-  font-size: 12px;
-  color: var(--accent);
+/* 統一的控制元件外觀（Theme & Language） */
+.control-ui {
+  min-width: 110px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.6));
+  box-shadow: 0 8px 24px rgba(2,6,23,0.06);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  justify-content: center;
+  color: var(--text);
+}
+
+/* dark mode for .control-ui: stronger border + subtle bg so text is crisp */
+.dark .control-ui {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  box-shadow: 0 8px 24px rgba(2,6,23,0.25);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: var(--text);
+}
+
+/* language button arrow (chev) */
+.lang-btn .chev, .control-ui .chev {
   margin-left: 8px;
+  transition: transform var(--transition-fast) ease;
+  font-size: 12px;
 }
+.lang-btn .chev.open { transform: rotate(-180deg); }
+
+/* menu (unchanged behaviour) */
+.lang-wrap { position: relative; display: inline-block; }
+.lang-menu {
+  position: absolute; left: 0; top: calc(100% + 10px); min-width: 140px;
+  background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 90%, black 2%));
+  border-radius: 12px; box-shadow: 0 14px 40px rgba(2,6,23,0.2);
+  overflow: hidden; transform-origin: top center; opacity: 0; visibility: hidden; transform: translateY(6px) scale(.96);
+  transition: transform var(--transition-mid) cubic-bezier(.2,.9,.2,1), opacity var(--transition-mid), visibility var(--transition-mid);
+  z-index: 60; padding: 8px;
+}
+.lang-menu.open { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
+
+/* language items: increase contrast on dark mode by using var(--muted-strong) for muted text */
+.lang-item {
+  display: block; width: 100%; padding: 10px 12px; text-align: left; border-radius: 8px; background: transparent; border: none; cursor: pointer; font-size: 14px; color: var(--text);
+  transition: background-color var(--transition-fast), transform var(--transition-fast), color var(--transition-fast);
+}
+.lang-item:hover { background: linear-gradient(90deg, rgba(0,0,0,0.03), rgba(0,0,0,0.02)); transform: translateX(6px); color: var(--accent); }
+.lang-item:focus { background: rgba(0,0,0,0.04); color: var(--accent); }
+
+/* copied */
+.copied { font-size: 12px; color: var(--accent); margin-left: 8px; animation: fadeUp 900ms ease; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 /* responsive tweak */
-@media (max-width:420px){
-  .container { padding: 6px; }
-  .profile { padding: 16px; }
-}
+@media (max-width: 780px) { :root { --scale-factor: 1.3; } .container { max-width: 360px; } }
+@media (max-width: 420px){ :root { --scale-factor: 1.15; } .container { padding: 6px; } .profile { padding: 14px; } }

@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const socials = [
@@ -13,31 +13,53 @@ const socials = [
       </svg>
     )
   },
-  {
-    id: 'twitter',
-    label: 'X',
-    url: 'https://x.com/wang_hanzhe',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path d="M23 4.56c-.8.36-1.66.6-2.56.71a4.48 4.48 0 001.96-2.47 8.99 8.99 0 01-2.85 1.09 4.48 4.48 0 00-7.64 4.08 12.72 12.72 0 01-9.24-4.69 4.48 4.48 0 001.39 5.98 4.42 4.42 0 01-2.03-.56v.06a4.48 4.48 0 003.59 4.39c-.5.14-1.04.17-1.58.06a4.5 4.5 0 004.2 3.12A8.99 8.99 0 012 19.54a12.7 12.7 0 006.88 2.01c8.26 0 12.78-6.84 12.78-12.78 0-.19-.01-.39-.02-.58A9.13 9.13 0 0023 4.56z" fill="currentColor"/>
-      </svg>
-    )
-  }
+//  {
+//    id: 'twitter',
+//    label: 'Twitter',
+//    url: 'https://twitter.com/wang_hanzhe',
+//    icon: (
+//      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+//        <path d="M23 4.56c-.8.36-1.66.6-2.56.71a4.48 4.48 0 001.96-2.47 8.99 8.99 0 01-2.85 1.09 4.48 4.48 0 00-7.64 4.08 12.72 12.72 0 01-9.24-4.69 4.48 4.48 0 001.39 5.98 4.42 4.42 0 01-2.03-.56v.06a4.48 4.48 0 003.59 4.39c-.5.14-1.04.17-1.58.06a4.5 4.5 0 004.2 3.12A8.99 8.99 0 012 19.54a12.7 12.7 0 006.88 2.01c8.26 0 12.78-6.84 12.78-12.78 0-.19-.01-.39-.02-.58A9.13 9.13 0 0023 4.56z" fill="currentColor"/>
+//      </svg>
+//    )
+//  }
 ]
 
-export default function App(){
+export default function App() {
   const { t, i18n } = useTranslation()
   const [copiedId, setCopiedId] = useState(null)
+  const [langOpen, setLangOpen] = useState(false)
+  const langRef = useRef(null)
 
-  const changeLang = (event) => {
-    const lng = event.target.value
+  useEffect(() => {
+    // 點擊外部關閉語言選單
+    const onDoc = (ev) => {
+      if (langRef.current && !langRef.current.contains(ev.target)) {
+        setLangOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', onDoc)
+    return () => document.removeEventListener('pointerdown', onDoc)
+  }, [])
+
+  const changeLang = (lng) => {
     i18n.changeLanguage(lng)
     try {
       localStorage.setItem('i18nextLng', lng)
     } catch (err) {
       /* eslint-disable-next-line no-console */
-      console.warn('Unable to save language preference:', err)
+      console.warn('Unable to save language pref:', err)
     }
+
+    // 設定 html 的 lang 屬性，避免 some browsers mis-handling writing mode
+    try {
+      document.documentElement.lang = lng
+    } catch (err) {
+      /* eslint-disable-next-line no-console */
+      console.warn('Failed to set document.lang:', err)
+    }
+
+    setLangOpen(false)
   }
 
   const toggleTheme = () => {
@@ -46,38 +68,27 @@ export default function App(){
       localStorage.setItem('theme', isDark ? 'dark' : 'light')
     } catch (err) {
       /* eslint-disable-next-line no-console */
-      console.warn('Unable to save theme preference:', err)
+      console.warn('Unable to save theme pref:', err)
     }
   }
 
-  async function copyLink(url, id){
+  async function copyLink(url, id) {
     try {
       await navigator.clipboard.writeText(url)
       setCopiedId(id)
-      setTimeout(()=> setCopiedId(null), 1500)
+      setTimeout(() => setCopiedId(null), 1500)
     } catch (err) {
-      /* 顯示錯誤以避免 ESLint 的 "defined but never used" */
       /* eslint-disable-next-line no-console */
       console.error('Clipboard failed:', err)
-      // fallback: prompt
-      // window.prompt 會在某些環境被視為阻斷式，但作為 fallback 是合理的
-      // 這裡直接顯示原始連結給使用者
-      // 注意：t('copy') 是按鈕文字，我們也可以改提示文字
-      // 由於 window.prompt 回傳使用者輸入，因此不用其回傳值
-      try {
-        window.prompt(t('copy'), url)
-      } catch (promptErr) {
-        /* eslint-disable-next-line no-console */
-        console.warn('Prompt fallback failed:', promptErr)
-      }
+      try { window.prompt(t('copy'), url) } catch (promptErr) { /* eslint-disable-next-line no-console */ console.warn('prompt fallback failed', promptErr) }
     }
   }
 
   return (
-    <div className="container">
+    <div className="container zoom" aria-live="polite">
       <main className="profile" role="main" aria-labelledby="profile-title">
         <img src="/avatar.jpg" alt="Avatar" className="avatar" />
-        <div style={{textAlign:'center'}}>
+        <div style={{ textAlign: 'center' }}>
           <div id="profile-title" className="h-title">{t('title')}</div>
           <div className="h-sub">{t('subtitle')}</div>
         </div>
@@ -95,22 +106,16 @@ export default function App(){
               >
                 <div className="icon" aria-hidden>{s.icon}</div>
                 <div>
-                  <div style={{fontWeight:600}}>{s.label}</div>
+                  <div style={{ fontWeight: 600 }}>{s.label}</div>
                   <div className="small">{s.url}</div>
                 </div>
               </a>
 
-              <div style={{display:'flex', alignItems:'center', gap:8, marginLeft: 12}}>
-                {/* button type="button" 保證不會當成 form submit，也方便 ESLint 檢查 event */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 12 }}>
                 <button
                   type="button"
                   className="btn"
-                  onClick={(event) => {
-                    // 停止 link 的冒泡與預設行為，並執行複製
-                    event.preventDefault()
-                    event.stopPropagation()
-                    copyLink(s.url, s.id)
-                  }}
+                  onClick={(event) => { event.preventDefault(); event.stopPropagation(); copyLink(s.url, s.id) }}
                   aria-label={`${t('copy')} ${s.label}`}
                 >
                   {t('copy')}
@@ -122,10 +127,11 @@ export default function App(){
           ))}
         </section>
 
-        <footer style={{width:'100%'}} className="controls" aria-label="controls">
-          <div style={{display:'flex', gap:8, alignItems:'center'}}>
+        <footer style={{ width: '100%' }} className="controls" aria-label="controls">
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            {/* Theme button uses unified control UI classes */}
             <button
-              className="btn"
+              className="btn control-ui theme-btn"
               onClick={toggleTheme}
               aria-pressed={document.documentElement.classList.contains('dark')}
               type="button"
@@ -133,19 +139,32 @@ export default function App(){
               {t('theme')}
             </button>
 
-            <select className="lang-select" value={i18n.language} onChange={changeLang} aria-label="Select language">
-              <option value="en">English</option>
-              <option value="ru">Русский</option>
-              <option value="zh-TW">正體中文</option>
-            </select>
+            {/* Language dropdown button uses same control-ui class */}
+            <div className="lang-wrap" ref={langRef}>
+              <button
+                className="btn control-ui lang-btn"
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={langOpen}
+                onClick={() => setLangOpen(prev => !prev)}
+              >
+                {i18n.language === 'zh-TW' ? '正體中文' : i18n.language === 'ru' ? 'Русский' : 'English'}
+                <span className={`chev ${langOpen ? 'open' : ''}`} aria-hidden>▾</span>
+              </button>
+
+              <div className={`lang-menu ${langOpen ? 'open' : ''}`} role="menu" aria-hidden={!langOpen}>
+                <button role="menuitem" className="lang-item" onClick={() => changeLang('en')} type="button">English</button>
+                <button role="menuitem" className="lang-item" onClick={() => changeLang('ru')} type="button">Русский</button>
+                <button role="menuitem" className="lang-item" onClick={() => changeLang('zh-TW')} type="button">正體中文</button>
+              </div>
+            </div>
           </div>
 
           <div className="small">{t('builtWith')}</div>
         </footer>
       </main>
 
-      {/* 複製提示（簡易） */}
-      <div style={{textAlign:'center', marginTop: 6}}>
+      <div style={{ textAlign: 'center', marginTop: 6 }}>
         {copiedId && <span className="copied">Copied!</span>}
       </div>
     </div>
