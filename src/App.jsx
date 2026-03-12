@@ -174,9 +174,54 @@ export default function App() {
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.3),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(125,211,252,0.22),_transparent_30%)]" />
             <div className="relative flex h-full flex-col justify-between gap-8 sm:gap-10">
               <div className="space-y-5 sm:space-y-6">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white/75">
-                  <span className="size-2 rounded-full bg-emerald-300" />
-                  Link Page
+                <div className="grid w-full gap-3 sm:grid-cols-3">
+                  <div className="inline-flex h-[46px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/75 shadow-sm">
+                    <span className="size-2.5 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_0_3px_rgba(110,231,183,0.14)]" />
+                    Link Page
+                  </div>
+
+                  <Listbox value={activeLanguage.code} onChange={changeLanguage}>
+                    <div className="relative min-w-0">
+                        <ListboxButton className="relative inline-flex h-[46px] w-full min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/75 shadow-sm transition hover:border-amber-300 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 dark:hover:border-cyan-300 dark:focus-visible:ring-cyan-300">
+                          <span className="truncate text-center">{activeLanguage.label}</span>
+                          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+                            <ChevronIcon />
+                          </span>
+                        </ListboxButton>
+
+                        <ListboxOptions className="absolute right-0 z-10 mt-3 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/10 focus:outline-none dark:border-slate-700 dark:bg-slate-950">
+                          {LANGUAGES.map(({ code, label }) => (
+                            <ListboxOption
+                              key={code}
+                              value={code}
+                              className={({ focus }) =>
+                                `flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition ${focus ? 'bg-slate-100 text-slate-950 dark:bg-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`
+                              }
+                            >
+                              {({ selected }) => (
+                                <>
+                                  <span>{label}</span>
+                                  {selected ? <CheckIcon /> : null}
+                                </>
+                              )}
+                            </ListboxOption>
+                          ))}
+                        </ListboxOptions>
+                    </div>
+                  </Listbox>
+
+                  <div className="inline-flex h-[46px] w-full min-w-0 items-center justify-center rounded-full border border-white/15 bg-white/10 px-3 text-sm font-medium text-white shadow-sm">
+                    <Switch
+                      checked={isDark}
+                      onChange={setIsDark}
+                      className="group inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-white/15 bg-white/10 px-0.5 transition data-[checked]:border-amber-300 data-[checked]:bg-amber-300/90 dark:data-[checked]:border-cyan-300 dark:data-[checked]:bg-cyan-300/85"
+                    >
+                      <span className="sr-only">{t('theme')}</span>
+                      <span className="flex size-6 translate-x-0 items-center justify-center rounded-full bg-white text-slate-900 shadow-lg transition group-data-[checked]:translate-x-5 group-data-[checked]:bg-slate-950 group-data-[checked]:text-amber-300 dark:group-data-[checked]:text-cyan-300">
+                        {isDark ? <MoonIcon /> : <SunIcon />}
+                      </span>
+                    </Switch>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -193,77 +238,31 @@ export default function App() {
                     >
                       {t('title')}
                     </p>
-                    <p className="max-w-md text-sm leading-6 text-slate-300 sm:text-base">
-                      {t('subtitle')}
-                    </p>
                   </div>
                 </div>
-              </div>
 
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm sm:p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/55">
-                      {t('theme')}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-300">
-                      {isDark ? t('darkMode') : t('lightMode')}
-                    </p>
-                  </div>
-
-                  <Switch
-                    checked={isDark}
-                    onChange={setIsDark}
-                    className="group inline-flex h-11 w-20 shrink-0 items-center rounded-full border border-white/10 bg-white/10 px-1 transition data-[checked]:bg-amber-300/90"
-                  >
-                    <span className="sr-only">{t('theme')}</span>
-                    <span className="flex size-9 translate-x-0 items-center justify-center rounded-full bg-white text-slate-900 shadow-lg transition group-data-[checked]:translate-x-9 group-data-[checked]:bg-slate-950 group-data-[checked]:text-amber-300">
-                      {isDark ? <MoonIcon /> : <SunIcon />}
-                    </span>
-                  </Switch>
+                <div className="max-w-lg rounded-[1.75rem] border border-white/10 bg-white/5 p-5 backdrop-blur-sm sm:p-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/55">
+                    {t('aboutMe')}
+                  </p>
+                  <p className="mt-3 text-sm leading-7 text-slate-200 sm:text-[0.95rem]">
+                    {t('intro')}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="flex flex-col justify-between gap-6 rounded-[1.75rem] bg-white/65 p-4 dark:bg-slate-900/60 sm:p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-4">
+              <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
                   Social
                 </p>
-                <h2 className="mt-3 break-words font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
+                <h2 className="mt-3 overflow-hidden text-ellipsis whitespace-nowrap font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
                   {t('subtitle')}
                 </h2>
               </div>
-
-              <Listbox value={activeLanguage.code} onChange={changeLanguage}>
-                <div className="relative self-start md:shrink-0">
-                  <ListboxButton className="inline-flex w-full max-w-full items-center justify-between gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-amber-300 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400 dark:hover:text-white dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-900 md:w-auto">
-                    {activeLanguage.label}
-                    <ChevronIcon />
-                  </ListboxButton>
-
-                  <ListboxOptions className="absolute right-0 z-10 mt-3 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/10 focus:outline-none dark:border-slate-700 dark:bg-slate-950">
-                    {LANGUAGES.map(({ code, label }) => (
-                      <ListboxOption
-                        key={code}
-                        value={code}
-                        className={({ focus }) =>
-                          `flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition ${focus ? 'bg-slate-100 text-slate-950 dark:bg-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`
-                        }
-                      >
-                        {({ selected }) => (
-                          <>
-                            <span>{label}</span>
-                            {selected ? <CheckIcon /> : null}
-                          </>
-                        )}
-                      </ListboxOption>
-                    ))}
-                  </ListboxOptions>
-                </div>
-              </Listbox>
             </div>
 
             <section className="grid gap-4" aria-label="links">
