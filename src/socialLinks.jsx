@@ -25,6 +25,33 @@ const xIcon = (
   </svg>
 )
 
+const lineIcon = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <path
+      d="M20.16 10.09c0-4.34-4.35-7.87-9.7-7.87S.76 5.75.76 10.09c0 3.9 3.45 7.16 8.1 7.78.32.07.76.22.87.51.1.26.07.66.03.93l-.15.89c-.05.26-.23 1.01.89.55 1.12-.47 6.04-3.56 8.24-6.1 1.52-1.67 2.42-3.36 2.42-5.56ZM8.27 12.18a.3.3 0 0 1-.3.3H5.25a.3.3 0 0 1-.3-.3V7.89a.3.3 0 0 1 .3-.3h.74a.3.3 0 0 1 .3.3v3.68h1.68a.3.3 0 0 1 .3.3v.31Zm2.31 0a.3.3 0 0 1-.3.3h-.74a.3.3 0 0 1-.3-.3V7.89a.3.3 0 0 1 .3-.3h.74a.3.3 0 0 1 .3.3v4.29Zm4.9 0a.3.3 0 0 1-.3.3h-.7a.3.3 0 0 1-.25-.13l-2.03-2.77v2.6a.3.3 0 0 1-.3.3h-.74a.3.3 0 0 1-.3-.3V7.89a.3.3 0 0 1 .3-.3h.71c.1 0 .2.05.25.13l2.02 2.77V7.89a.3.3 0 0 1 .3-.3h.74a.3.3 0 0 1 .3.3v4.29Zm3.58-3.68h-1.68v.73h1.68a.3.3 0 0 1 .3.3v.31a.3.3 0 0 1-.3.3h-1.68v.73h1.68a.3.3 0 0 1 .3.3v.31a.3.3 0 0 1-.3.3h-2.72a.3.3 0 0 1-.3-.3V7.89a.3.3 0 0 1 .3-.3h2.72a.3.3 0 0 1 .3.3v.31a.3.3 0 0 1-.3.3Z"
+      fill="currentColor"
+    />
+  </svg>
+)
+
+const telegramIcon = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <path
+      d="M9.78 15.58 9.4 20.9c.54 0 .77-.23 1.04-.5l2.48-2.37 5.15 3.77c.95.52 1.62.25 1.88-.88l3.41-16c.35-1.4-.5-1.95-1.42-1.6L1.86 11.07c-1.37.54-1.35 1.3-.23 1.64l5.14 1.6L18.7 6.8c.56-.37 1.07-.16.65.21"
+      fill="currentColor"
+    />
+  </svg>
+)
+
+const linkedinIcon = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <path
+      d="M20.45 20.45h-3.56v-5.58c0-1.33-.03-3.03-1.84-3.03-1.84 0-2.12 1.44-2.12 2.94v5.67H9.37V9h3.41v1.56h.05c.47-.9 1.63-1.84 3.36-1.84 3.6 0 4.26 2.37 4.26 5.45v6.28ZM5.35 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14Zm1.78 13.02H3.57V9h3.56v11.45ZM22.23 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.46c.98 0 1.77-.77 1.77-1.72V1.72C24 .77 23.21 0 22.23 0Z"
+      fill="currentColor"
+    />
+  </svg>
+)
+
 export const SOCIALS = [
   {
     id: 'github',
@@ -43,5 +70,23 @@ export const SOCIALS = [
     label: 'X',
     url: 'https://x.com/wang_hanzhe',
     icon: xIcon,
+  },
+  {
+    id: 'line',
+    label: 'Line',
+    url: 'https://line.me/ti/p/Oc10OLyIM0',
+    icon: lineIcon,
+  },
+  {
+    id: 'telegram',
+    label: 'Telegram',
+    url: 'https://t.me/WHZ1999',
+    icon: telegramIcon,
+  },
+  {
+    id: 'linkedin',
+    label: 'LinkedIn',
+    url: 'https://www.linkedin.com/in/hanzhe-wang/',
+    icon: linkedinIcon,
   },
 ]
