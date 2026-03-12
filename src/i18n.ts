@@ -15,6 +15,37 @@ export const resources = {
 
 export type AppLanguageCode = keyof typeof resources
 
+function normalizeDetectedLanguage(language: string | undefined): AppLanguageCode {
+  if (!language) {
+    return 'en'
+  }
+
+  const normalizedLanguage = language.toLowerCase()
+
+  if (
+    normalizedLanguage === 'zh' ||
+    normalizedLanguage.startsWith('zh-cn') ||
+    normalizedLanguage.startsWith('zh-sg') ||
+    normalizedLanguage.includes('hans') ||
+    normalizedLanguage.startsWith('zh-tw') ||
+    normalizedLanguage.startsWith('zh-hk') ||
+    normalizedLanguage.startsWith('zh-mo') ||
+    normalizedLanguage.includes('hant')
+  ) {
+    return 'zh-TW'
+  }
+
+  if (normalizedLanguage.startsWith('ru')) {
+    return 'ru'
+  }
+
+  if (normalizedLanguage.startsWith('en')) {
+    return 'en'
+  }
+
+  return 'en'
+}
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -26,6 +57,8 @@ i18n
     detection: {
       order: ['localStorage', 'navigator', 'path', 'querystring'],
       caches: ['localStorage'],
+      convertDetectedLanguage: (language) =>
+        normalizeDetectedLanguage(language),
     },
     interpolation: { escapeValue: false },
   })
