@@ -1,11 +1,12 @@
 # my-linkpage
 
-A personal multilingual link page built with React, Vite, TypeScript, Tailwind CSS, and Headless UI.
+An example multilingual link page built with React, Vite, TypeScript, Tailwind CSS, and Headless UI.
 
-It is designed as a lightweight personal landing page for social links, with automatic language detection, automatic theme detection on first visit, and a simple data file for maintaining social profiles.
+This repository is intended as a sample project for building a lightweight social link landing page with automatic language detection, automatic theme detection on first visit, and a simple data file for maintaining profile links.
 
 ## Features
 
+- Example implementation for a personal or portfolio-style link page
 - Multilingual UI with English, Russian, and Traditional Chinese
 - First-visit language detection based on the browser language
 - Simplified Chinese browser locales automatically mapped to Traditional Chinese
@@ -108,7 +109,7 @@ Update:
 
 - `src/socialLinks.tsx`
 
-This file contains the social list and icon definitions. Add, remove, or reorder items there.
+This file contains the example social list and icon definitions. Add, remove, or reorder items there.
 
 ### Edit translations
 
