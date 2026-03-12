@@ -172,7 +172,7 @@ export default function App() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden px-4 py-10 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-1/2 top-0 size-72 translate-x-[-135%] rounded-full bg-amber-300/45 blur-3xl dark:bg-cyan-400/20" />
         <div className="absolute right-0 top-24 size-80 translate-x-1/3 rounded-full bg-rose-300/35 blur-3xl dark:bg-fuchsia-500/15" />
@@ -180,15 +180,15 @@ export default function App() {
       </div>
 
       <main
-        className="relative mx-auto flex min-h-[calc(100vh-5rem)] max-w-5xl items-center justify-center"
+        className="relative mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl items-center justify-center sm:min-h-[calc(100vh-5rem)]"
         role="main"
         aria-labelledby="profile-title"
       >
-        <section className="grid w-full max-w-4xl gap-6 rounded-[2rem] border border-white/50 bg-white/70 p-4 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/65 dark:shadow-black/30 md:grid-cols-[1.1fr_0.9fr] md:p-6">
-          <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-8 text-white shadow-xl shadow-slate-950/30">
+        <section className="grid w-full max-w-5xl gap-4 rounded-[2rem] border border-white/50 bg-white/70 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/65 dark:shadow-black/30 sm:gap-6 sm:p-4 lg:grid-cols-[minmax(20rem,1.02fr)_minmax(22rem,0.98fr)] lg:p-6">
+          <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-xl shadow-slate-950/30 sm:p-8">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.3),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(125,211,252,0.22),_transparent_30%)]" />
-            <div className="relative flex h-full flex-col justify-between gap-10">
-              <div className="space-y-6">
+            <div className="relative flex h-full flex-col justify-between gap-8 sm:gap-10">
+              <div className="space-y-5 sm:space-y-6">
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white/75">
                   <span className="size-2 rounded-full bg-emerald-300" />
                   Link Page
@@ -198,26 +198,26 @@ export default function App() {
                   <img
                     src="/avatar.jpg"
                     alt="Avatar"
-                    className="size-24 rounded-[1.6rem] border border-white/10 object-cover shadow-lg shadow-black/20 ring-4 ring-white/10"
+                    className="size-20 rounded-[1.35rem] border border-white/10 object-cover shadow-lg shadow-black/20 ring-4 ring-white/10 sm:size-24 sm:rounded-[1.6rem]"
                   />
 
                   <div className="space-y-3">
                     <p
-                      className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl"
+                      className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-[2.6rem]"
                       id="profile-title"
                     >
                       {t('title')}
                     </p>
-                    <p className="max-w-sm text-sm leading-6 text-slate-300">
+                    <p className="max-w-md text-sm leading-6 text-slate-300 sm:text-base">
                       {t('subtitle')}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm sm:p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                  <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/55">
                       {t('theme')}
                     </p>
@@ -229,7 +229,7 @@ export default function App() {
                   <Switch
                     checked={isDark}
                     onChange={setIsDark}
-                    className="group inline-flex h-11 w-20 items-center rounded-full border border-white/10 bg-white/10 px-1 transition data-[checked]:bg-amber-300/90"
+                    className="group inline-flex h-11 w-20 shrink-0 items-center rounded-full border border-white/10 bg-white/10 px-1 transition data-[checked]:bg-amber-300/90"
                   >
                     <span className="sr-only">{t('theme')}</span>
                     <span className="flex size-9 translate-x-0 items-center justify-center rounded-full bg-white text-slate-900 shadow-lg transition group-data-[checked]:translate-x-9 group-data-[checked]:bg-slate-950 group-data-[checked]:text-amber-300">
@@ -241,20 +241,20 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex flex-col justify-between gap-6 rounded-[1.75rem] bg-white/65 p-5 dark:bg-slate-900/60 sm:p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col justify-between gap-6 rounded-[1.75rem] bg-white/65 p-4 dark:bg-slate-900/60 sm:p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
                   Social
                 </p>
-                <h2 className="mt-3 break-words font-display text-3xl font-bold tracking-tight text-slate-950 dark:text-white">
+                <h2 className="mt-3 break-words font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
                   {t('subtitle')}
                 </h2>
               </div>
 
               <Listbox value={activeLanguage.code} onChange={changeLanguage}>
-                <div className="relative self-start sm:shrink-0">
-                  <ListboxButton className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-amber-300 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400 dark:hover:text-white dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-900">
+                <div className="relative self-start md:shrink-0">
+                  <ListboxButton className="inline-flex w-full max-w-full items-center justify-between gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-amber-300 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400 dark:hover:text-white dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-900 md:w-auto">
                     {activeLanguage.label}
                     <ChevronIcon />
                   </ListboxButton>
@@ -285,15 +285,15 @@ export default function App() {
               {SOCIALS.map((social) => (
                 <article
                   key={social.id}
-                  className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-lg shadow-slate-900/5 transition hover:-translate-y-1 hover:border-amber-300 hover:shadow-xl hover:shadow-amber-500/10 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10 dark:hover:border-cyan-400 dark:hover:shadow-cyan-500/10"
+                  className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5 transition hover:-translate-y-1 hover:border-amber-300 hover:shadow-xl hover:shadow-amber-500/10 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10 dark:hover:border-cyan-400 dark:hover:shadow-cyan-500/10 sm:p-5"
                 >
                   <div className="absolute inset-y-0 left-0 w-1 -translate-x-full bg-gradient-to-b from-amber-300 via-orange-400 to-rose-400 transition duration-300 group-hover:translate-x-0 dark:from-cyan-300 dark:via-sky-400 dark:to-indigo-500" />
-                  <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center xl:gap-5">
                     <a
                       href={social.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex min-w-0 items-center gap-4"
+                      className="flex min-w-0 items-center gap-3 sm:gap-4"
                       aria-label={`${social.label} link`}
                     >
                       <span className="flex size-14 shrink-0 items-center justify-center rounded-[1.25rem] bg-slate-950 text-white shadow-lg shadow-slate-900/20 transition group-hover:rotate-3 group-hover:scale-105 dark:bg-white dark:text-slate-950">
@@ -303,13 +303,13 @@ export default function App() {
                         <span className="block text-lg font-semibold text-slate-950 dark:text-white">
                           {social.label}
                         </span>
-                        <span className="block whitespace-normal break-words text-sm leading-6 text-slate-500 dark:text-slate-400">
+                        <span className="block truncate whitespace-nowrap text-sm leading-6 text-slate-500 dark:text-slate-400">
                           {social.url}
                         </span>
                       </span>
                     </a>
 
-                    <div className="flex flex-wrap items-center gap-3 pl-[4.5rem]">
+                    <div className="flex flex-wrap items-center gap-3 pl-[4.25rem] sm:pl-[4.5rem] xl:justify-self-end xl:pl-0">
                       <button
                         type="button"
                         className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-950 hover:bg-slate-950 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:border-slate-700 dark:text-slate-200 dark:hover:border-white dark:hover:bg-white dark:hover:text-slate-950 dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-950"
@@ -327,7 +327,7 @@ export default function App() {
               ))}
             </section>
 
-            <div className="flex min-h-7 items-center justify-between gap-4 px-1">
+            <div className="flex min-h-7 flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {t('builtWith')}
               </p>
