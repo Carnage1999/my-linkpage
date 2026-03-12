@@ -7,15 +7,23 @@ import {
 } from '@headlessui/react'
 import { startTransition, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SOCIALS } from './socialLinks.jsx'
+import type { AppLanguageCode } from './i18n'
+import { SOCIALS } from './socialLinks'
+import type { SocialId } from './socialLinks'
+
+interface LanguageOption {
+  code: AppLanguageCode
+  label: string
+  shortLabel: string
+}
 
 const LANGUAGES = [
   { code: 'en', label: 'English', shortLabel: 'EN' },
   { code: 'ru', label: 'Русский', shortLabel: 'РУ' },
   { code: 'zh-TW', label: '正體中文', shortLabel: '國' },
-]
+] as const satisfies readonly LanguageOption[]
 
-function getInitialTheme() {
+function getInitialTheme(): boolean {
   if (typeof window === 'undefined') {
     return false
   }
@@ -90,9 +98,9 @@ function MoonIcon() {
 
 export default function App() {
   const { t, i18n } = useTranslation()
-  const [copiedId, setCopiedId] = useState(null)
-  const [isDark, setIsDark] = useState(getInitialTheme)
-  const copyTimeoutRef = useRef(null)
+  const [copiedId, setCopiedId] = useState<SocialId | null>(null)
+  const [isDark, setIsDark] = useState<boolean>(getInitialTheme)
+  const copyTimeoutRef = useRef<number | null>(null)
   const activeLanguage =
     LANGUAGES.find(
       ({ code }) => code === (i18n.resolvedLanguage ?? i18n.language)
@@ -122,14 +130,14 @@ export default function App() {
 
   useEffect(
     () => () => {
-      if (copyTimeoutRef.current) {
+      if (copyTimeoutRef.current !== null) {
         window.clearTimeout(copyTimeoutRef.current)
       }
     },
     []
   )
 
-  const changeLanguage = (languageCode) => {
+  const changeLanguage = (languageCode: AppLanguageCode) => {
     startTransition(() => {
       void i18n.changeLanguage(languageCode)
     })
@@ -141,18 +149,18 @@ export default function App() {
     }
   }
 
-  async function copyLink(url, id) {
+  async function copyLink(url: string, id: SocialId) {
     try {
       await navigator.clipboard.writeText(url)
 
-      if (copyTimeoutRef.current) {
+      if (copyTimeoutRef.current !== null) {
         window.clearTimeout(copyTimeoutRef.current)
       }
 
       setCopiedId(id)
       copyTimeoutRef.current = window.setTimeout(() => setCopiedId(null), 1500)
     } catch {
-      window.prompt(t('copy'), url)
+      window.prompt(String(t('copy')), url)
     }
   }
 
@@ -180,35 +188,38 @@ export default function App() {
                     Link Page
                   </div>
 
-                  <Listbox value={activeLanguage.code} onChange={changeLanguage}>
+                  <Listbox
+                    value={activeLanguage.code}
+                    onChange={changeLanguage}
+                  >
                     <div className="relative min-w-0">
-                        <ListboxButton className="relative inline-flex h-[46px] w-full min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/75 shadow-sm transition hover:border-amber-300 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 dark:hover:border-cyan-300 dark:focus-visible:ring-cyan-300">
-                          <span className="block w-full truncate px-8 text-center">
-                            {activeLanguage.shortLabel}
-                          </span>
-                          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
-                            <ChevronIcon />
-                          </span>
-                        </ListboxButton>
+                      <ListboxButton className="relative inline-flex h-[46px] w-full min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/75 shadow-sm transition hover:border-amber-300 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 dark:hover:border-cyan-300 dark:focus-visible:ring-cyan-300">
+                        <span className="block w-full truncate px-8 text-center">
+                          {activeLanguage.shortLabel}
+                        </span>
+                        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+                          <ChevronIcon />
+                        </span>
+                      </ListboxButton>
 
-                        <ListboxOptions className="absolute right-0 z-10 mt-3 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/10 focus:outline-none dark:border-slate-700 dark:bg-slate-950">
-                          {LANGUAGES.map(({ code, label }) => (
-                            <ListboxOption
-                              key={code}
-                              value={code}
-                              className={({ focus }) =>
-                                `flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition ${focus ? 'bg-slate-100 text-slate-950 dark:bg-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`
-                              }
-                            >
-                              {({ selected }) => (
-                                <>
-                                  <span>{label}</span>
-                                  {selected ? <CheckIcon /> : null}
-                                </>
-                              )}
-                            </ListboxOption>
-                          ))}
-                        </ListboxOptions>
+                      <ListboxOptions className="absolute right-0 z-10 mt-3 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/10 focus:outline-none dark:border-slate-700 dark:bg-slate-950">
+                        {LANGUAGES.map(({ code, label }) => (
+                          <ListboxOption
+                            key={code}
+                            value={code}
+                            className={({ focus }) =>
+                              `flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition ${focus ? 'bg-slate-100 text-slate-950 dark:bg-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`
+                            }
+                          >
+                            {({ selected }) => (
+                              <>
+                                <span>{label}</span>
+                                {selected ? <CheckIcon /> : null}
+                              </>
+                            )}
+                          </ListboxOption>
+                        ))}
+                      </ListboxOptions>
                     </div>
                   </Listbox>
 
@@ -218,7 +229,7 @@ export default function App() {
                       onChange={setIsDark}
                       className="group inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-white/15 bg-white/10 px-0.5 transition data-[checked]:border-amber-300 data-[checked]:bg-amber-300/90 dark:data-[checked]:border-cyan-300 dark:data-[checked]:bg-cyan-300/85"
                     >
-                      <span className="sr-only">{t('theme')}</span>
+                      <span className="sr-only">{String(t('theme'))}</span>
                       <span className="flex size-6 translate-x-0 items-center justify-center rounded-full bg-white text-slate-900 shadow-lg transition group-data-[checked]:translate-x-5 group-data-[checked]:bg-slate-950 group-data-[checked]:text-amber-300 dark:group-data-[checked]:text-cyan-300">
                         {isDark ? <MoonIcon /> : <SunIcon />}
                       </span>
@@ -238,17 +249,17 @@ export default function App() {
                       className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-[2.6rem]"
                       id="profile-title"
                     >
-                      {t('title')}
+                      {String(t('title'))}
                     </p>
                   </div>
                 </div>
 
                 <div className="max-w-lg rounded-[1.75rem] border border-white/10 bg-white/5 p-5 backdrop-blur-sm sm:p-6">
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/55">
-                    {t('aboutMe')}
+                    {String(t('aboutMe'))}
                   </p>
                   <p className="mt-3 text-sm leading-7 text-slate-200 sm:text-[0.95rem]">
-                    {t('intro')}
+                    {String(t('intro'))}
                   </p>
                 </div>
               </div>
@@ -261,8 +272,8 @@ export default function App() {
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
                   Social
                 </p>
-                <h2 className="mt-3 overflow-hidden text-ellipsis whitespace-nowrap font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
-                  {t('subtitle')}
+                <h2 className="mt-3 truncate font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
+                  {String(t('subtitle'))}
                 </h2>
               </div>
             </div>
@@ -300,12 +311,12 @@ export default function App() {
                         type="button"
                         className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-950 hover:bg-slate-950 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:border-slate-700 dark:text-slate-200 dark:hover:border-white dark:hover:bg-white dark:hover:text-slate-950 dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-950"
                         onClick={() => copyLink(social.url, social.id)}
-                        aria-label={`${t('copy')} ${social.label}`}
+                        aria-label={`${String(t('copy'))} ${social.label}`}
                       >
-                        {t('copy')}
+                        {String(t('copy'))}
                       </button>
                       <span className="text-sm font-medium text-slate-400 dark:text-slate-500">
-                        {t('visit')}
+                        {String(t('visit'))}
                       </span>
                     </div>
                   </div>
@@ -315,13 +326,13 @@ export default function App() {
 
             <div className="flex min-h-7 flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {t('builtWith')}
+                {String(t('builtWith'))}
               </p>
               <div
                 aria-live="polite"
                 className="text-right text-sm font-semibold text-emerald-600 dark:text-emerald-400"
               >
-                {copiedId ? t('copied') : null}
+                {copiedId ? String(t('copied')) : null}
               </div>
             </div>
           </div>
