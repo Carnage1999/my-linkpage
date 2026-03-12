@@ -14,15 +14,15 @@ i18n
     resources: {
       en: { translation: en },
       ru: { translation: ru },
-      'zh-TW': { translation: zhTW }
+      'zh-TW': { translation: zhTW },
     },
     fallbackLng: 'en',
     supportedLngs: ['en', 'ru', 'zh-TW'],
     detection: {
       order: ['localStorage', 'navigator', 'path', 'querystring'],
-      caches: ['localStorage']
+      caches: ['localStorage'],
     },
-    interpolation: { escapeValue: false }
+    interpolation: { escapeValue: false },
   })
 
 export default i18n

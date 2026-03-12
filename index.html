@@ -7,20 +7,24 @@
 
     <!-- 只初始化主題（避免 FOUC） -->
     <script>
-      (function () {
+      ;(function () {
         try {
-          const savedTheme = localStorage.getItem('theme'); // 'light' | 'dark' | null
-          if (savedTheme === 'dark') document.documentElement.classList.add('dark');
-          else if (savedTheme === 'light') document.documentElement.classList.remove('dark');
+          const savedTheme = localStorage.getItem('theme') // 'light' | 'dark' | null
+          if (savedTheme === 'dark')
+            document.documentElement.classList.add('dark')
+          else if (savedTheme === 'light')
+            document.documentElement.classList.remove('dark')
           else {
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (prefersDark) document.documentElement.classList.add('dark');
+            const prefersDark = window.matchMedia(
+              '(prefers-color-scheme: dark)'
+            ).matches
+            if (prefersDark) document.documentElement.classList.add('dark')
           }
         } catch (err) {
           /* eslint-disable-next-line no-console */
-          console.warn('Init theme error:', err);
+          console.warn('Init theme error:', err)
         }
-      })();
+      })()
     </script>
 
     <link rel="icon" href="/favicon.ico" />

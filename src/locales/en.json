@@ -3,6 +3,10 @@
   "subtitle": "Links & socials",
   "visit": "Visit",
   "copy": "Copy",
+  "copied": "Copied",
+  "language": "Language",
   "theme": "Theme",
+  "lightMode": "Light mode",
+  "darkMode": "Dark mode",
   "builtWith": "Built with ♥"
 }

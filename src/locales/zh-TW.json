@@ -3,6 +3,10 @@
   "subtitle": "社群與連結",
   "visit": "前往",
   "copy": "複製",
+  "copied": "已複製",
+  "language": "語言",
   "theme": "主題",
+  "lightMode": "淺色模式",
+  "darkMode": "深色模式",
   "builtWith": "使用 ♥ 建置"
 }
