@@ -23,25 +23,47 @@ const LANGUAGES = [
   { code: 'zh-TW', label: '正體中文', shortLabel: '國' },
 ] as const satisfies readonly LanguageOption[]
 
+type ThemeMode = 'light' | 'dark'
+
+const THEME_STORAGE_KEY = 'theme'
+
+function getSystemPrefersDark(): boolean {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+function getStoredTheme(): ThemeMode | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
+    if (savedTheme === 'dark') {
+      return 'dark'
+    }
+
+    if (savedTheme === 'light') {
+      return 'light'
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
 function getInitialTheme(): boolean {
+  const storedTheme = getStoredTheme()
+
+  if (storedTheme) {
+    return storedTheme === 'dark'
+  }
+
   if (typeof window === 'undefined') {
     return false
   }
 
-  try {
-    const savedTheme = localStorage.getItem('theme')
-    if (savedTheme === 'dark') {
-      return true
-    }
-
-    if (savedTheme === 'light') {
-      return false
-    }
-  } catch {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-  }
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
+  return getSystemPrefersDark()
 }
 
 function ChevronIcon() {
@@ -109,14 +131,41 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
 
+    return undefined
+  }, [isDark])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+
+    if (getStoredTheme()) {
+      return undefined
+    }
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDark(event.matches)
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange)
+    }
+  }, [])
+
+  const changeTheme = (nextIsDark: boolean) => {
+    setIsDark(nextIsDark)
+
     try {
-      localStorage.setItem('theme', isDark ? 'dark' : 'light')
+      localStorage.setItem(THEME_STORAGE_KEY, nextIsDark ? 'dark' : 'light')
     } catch {
       return undefined
     }
 
     return undefined
-  }, [isDark])
+  }
 
   useEffect(() => {
     try {
@@ -226,7 +275,7 @@ export default function App() {
                   <div className="inline-flex h-[46px] w-full min-w-0 items-center justify-center rounded-full border border-white/15 bg-white/10 px-3 text-sm font-medium text-white shadow-sm">
                     <Switch
                       checked={isDark}
-                      onChange={setIsDark}
+                      onChange={changeTheme}
                       className="group inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-white/15 bg-white/10 px-0.5 transition data-[checked]:border-amber-300 data-[checked]:bg-amber-300/90 dark:data-[checked]:border-cyan-300 dark:data-[checked]:bg-cyan-300/85"
                     >
                       <span className="sr-only">{String(t('theme'))}</span>
