@@ -10,9 +10,9 @@ import { useTranslation } from 'react-i18next'
 import { SOCIALS } from './socialLinks.jsx'
 
 const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'ru', label: 'Русский' },
-  { code: 'zh-TW', label: '正體中文' },
+  { code: 'en', label: 'English', shortLabel: 'EN' },
+  { code: 'ru', label: 'Русский', shortLabel: 'РУ' },
+  { code: 'zh-TW', label: '正體中文', shortLabel: '國' },
 ]
 
 function getInitialTheme() {
@@ -183,7 +183,9 @@ export default function App() {
                   <Listbox value={activeLanguage.code} onChange={changeLanguage}>
                     <div className="relative min-w-0">
                         <ListboxButton className="relative inline-flex h-[46px] w-full min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/75 shadow-sm transition hover:border-amber-300 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 dark:hover:border-cyan-300 dark:focus-visible:ring-cyan-300">
-                          <span className="truncate text-center">{activeLanguage.label}</span>
+                          <span className="block w-full truncate px-8 text-center">
+                            {activeLanguage.shortLabel}
+                          </span>
                           <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
                             <ChevronIcon />
                           </span>
