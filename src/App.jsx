@@ -7,22 +7,7 @@ import {
 } from '@headlessui/react'
 import { startTransition, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-const SOCIALS = [
-  {
-    id: 'github',
-    label: 'GitHub',
-    url: 'https://github.com/Carnage1999',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path
-          d="M12 .5C5.73.5.84 5.39.84 11.66c0 4.83 3.13 8.92 7.47 10.37.55.1.75-.24.75-.53 0-.26-.01-1.12-.02-2.02-3.04.66-3.68-1.47-3.68-1.47-.5-1.28-1.23-1.62-1.23-1.62-.99-.68.07-.67.07-.67 1.1.08 1.68 1.13 1.68 1.13.97 1.66 2.54 1.18 3.16.9.1-.7.38-1.18.69-1.45-2.43-.28-4.99-1.21-4.99-5.39 0-1.19.42-2.16 1.11-2.92-.11-.28-.48-1.4.11-2.92 0 0 .9-.29 2.95 1.11a10.2 10.2 0 012.69-.36c.91.01 1.83.12 2.68.36 2.05-1.4 2.95-1.11 2.95-1.11.59 1.52.22 2.64.11 2.92.69.76 1.11 1.74 1.11 2.92 0 4.18-2.57 5.11-5.01 5.38.39.34.74 1.02.74 2.06 0 1.49-.01 2.69-.01 3.06 0 .29.2.64.76.53 4.34-1.46 7.46-5.54 7.46-10.37C23.16 5.39 18.27.5 12 .5z"
-          fill="currentColor"
-        />
-      </svg>
-    ),
-  },
-]
+import { SOCIALS } from './socialLinks.jsx'
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
