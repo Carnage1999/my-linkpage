@@ -19,13 +19,14 @@ This repository is intended as a sample project for building a lightweight socia
 ## Tech Stack
 
 - React 19
-- Vite 7
+- Vite 8
 - TypeScript 5
 - Tailwind CSS 3
 - Headless UI
 - i18next and react-i18next
 - ESLint 10
 - Prettier
+- eslint-config-prettier
 
 ## Getting Started
 
