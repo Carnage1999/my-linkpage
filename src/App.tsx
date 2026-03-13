@@ -318,10 +318,7 @@ export default function App() {
           <div className="flex flex-col justify-between gap-6 rounded-[1.75rem] bg-white/65 p-4 dark:bg-slate-900/60 sm:p-6">
             <div className="flex flex-col gap-4">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-                  Social
-                </p>
-                <h2 className="mt-3 truncate font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
+                <h2 className="truncate font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
                   {String(t('subtitle'))}
                 </h2>
               </div>
@@ -356,14 +353,24 @@ export default function App() {
                     </a>
 
                     <div className="flex flex-wrap items-center gap-3 pl-[4.25rem] sm:pl-[4.5rem] xl:justify-self-end xl:pl-0">
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-950 hover:bg-slate-950 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:border-slate-700 dark:text-slate-200 dark:hover:border-white dark:hover:bg-white dark:hover:text-slate-950 dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-950"
-                        onClick={() => copyLink(social.url, social.id)}
-                        aria-label={`${String(t('copy'))} ${social.label}`}
-                      >
-                        {String(t('copy'))}
-                      </button>
+                      <div className="relative">
+                        {copiedId === social.id ? (
+                          <div
+                            aria-live="polite"
+                            className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                          >
+                            {String(t('copied'))}
+                          </div>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-950 hover:bg-slate-950 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:border-slate-700 dark:text-slate-200 dark:hover:border-white dark:hover:bg-white dark:hover:text-slate-950 dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-950"
+                          onClick={() => copyLink(social.url, social.id)}
+                          aria-label={`${String(t('copy'))} ${social.label}`}
+                        >
+                          {String(t('copy'))}
+                        </button>
+                      </div>
                       <span className="text-sm font-medium text-slate-400 dark:text-slate-500">
                         {String(t('visit'))}
                       </span>
@@ -377,12 +384,7 @@ export default function App() {
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {String(t('builtWith'))}
               </p>
-              <div
-                aria-live="polite"
-                className="text-right text-sm font-semibold text-emerald-600 dark:text-emerald-400"
-              >
-                {copiedId ? String(t('copied')) : null}
-              </div>
+              <div className="min-h-0" />
             </div>
           </div>
         </section>
