@@ -1,136 +1,108 @@
 # my-linkpage
 
-An example multilingual link page built with React, Vite, TypeScript, Tailwind CSS, and Headless UI.
+A multilingual link-in-bio page built with React, Vite, TypeScript, Tailwind CSS, and Headless UI.
 
-This repository is intended as a sample project for building a lightweight social link landing page with automatic language detection, automatic theme detection on first visit, and a simple data file for maintaining profile links.
+Lightweight social link landing page with automatic language / theme detection, entrance animations, self-hosted fonts, and a centralized config file for managing profile links.
 
 ## Features
 
-- Example implementation for a personal or portfolio-style link page
-- Multilingual UI with English, Russian, and Traditional Chinese
-- First-visit language detection based on the browser language
-- Simplified Chinese browser locales automatically mapped to Traditional Chinese
-- First-visit theme detection based on the user's system color scheme
-- Saved language and theme preferences using `localStorage`
-- Social links maintained in a single dedicated file
-- Responsive layout for desktop and mobile
-- TypeScript-first project setup with linting, formatting, and type checking
+- **Multilingual** — English, Russian, and Traditional Chinese with automatic browser language detection (Simplified Chinese locales are normalized to Traditional Chinese)
+- **Dark / light mode** — follows system preference on first visit; toggle persists via `localStorage`
+- **Animations** — entrance transitions and micro-interactions powered by Framer Motion with `prefers-reduced-motion` support
+- **Self-hosted fonts** — Manrope and Space Grotesk variable fonts via `@fontsource-variable` (no external CDN)
+- **Centralized config** — social links and profile data defined in a single `siteConfig.ts`; brand icons rendered from `simple-icons`
+- **Accessibility** — skip-to-content link, proper heading hierarchy (`<h1>`), semantic `<ul>` for link cards, `aria-label` on language selector and external links, descriptive avatar alt text, `aria-live` copy feedback, localized `document.title`, WCAG-friendly contrast
+- **Performance** — `LazyMotion` tree-shaking, manual Vite chunk splitting (react-vendor / motion / i18n), optimized image attributes
+- **Testing** — unit / component tests with Vitest + Testing Library; E2E tests with Playwright
+- **Code quality** — TypeScript strict mode, ESLint, Prettier, automated `pnpm check` pipeline
 
 ## Tech Stack
 
-- React 19
-- Vite 8
-- TypeScript 5
-- Tailwind CSS 3
-- Headless UI
-- i18next and react-i18next
-- ESLint 10
-- Prettier
+| Category | Tools |
+|---|---|
+| Framework | React 19, TypeScript 5 |
+| Build | Vite 8 |
+| Styling | Tailwind CSS 3, Headless UI |
+| Animation | Framer Motion (LazyMotion + domAnimation) |
+| i18n | i18next, react-i18next |
+| Icons | simple-icons |
+| Fonts | @fontsource-variable/manrope, @fontsource-variable/space-grotesk |
+| Unit tests | Vitest, Testing Library, jsdom |
+| E2E tests | Playwright (Chromium) |
+| Linting | ESLint 10, Prettier |
 
 ## Getting Started
-
-### Install dependencies
 
 ```bash
 pnpm install
 ```
 
-### Start development server
+### Development
 
 ```bash
 pnpm dev
 ```
 
-### Build for production
+### Production build & preview
 
 ```bash
 pnpm build
-```
-
-### Preview production build
-
-```bash
 pnpm preview
 ```
 
-## Quality Checks
+## Scripts
 
-### Type check
-
-```bash
-pnpm typecheck
-```
-
-### Lint
-
-```bash
-pnpm lint
-```
-
-### Format
-
-```bash
-pnpm format
-```
-
-### Run all checks
-
-```bash
-pnpm check
-```
-
-This runs:
-
-```bash
-pnpm typecheck && pnpm lint && pnpm build
-```
+| Script | Description |
+|---|---|
+| `pnpm dev` | Start Vite dev server |
+| `pnpm build` | Production build |
+| `pnpm preview` | Preview production build |
+| `pnpm typecheck` | TypeScript type check |
+| `pnpm lint` | ESLint |
+| `pnpm format` | Prettier format |
+| `pnpm test` | Run unit / component tests (Vitest) |
+| `pnpm test:watch` | Vitest in watch mode |
+| `pnpm test:e2e` | Run E2E tests (Playwright) |
+| `pnpm check` | Full pipeline: typecheck → lint → test → build |
 
 ## Project Structure
 
 ```text
 src/
-	App.tsx             Main page UI
-	main.tsx            App entry
-	i18n.ts             i18n setup and language detection
-	i18next.d.ts        i18next type augmentation
-	socialLinks.tsx     Social link data and icons
-	index.css           Global styles and Tailwind entry
-	locales/
-		en.json
-		ru.json
-		zh-TW.json
+  App.tsx              Main page UI
+  main.tsx             App entry point
+  siteConfig.ts        Profile data and social link definitions
+  SocialIcon.tsx       Brand icon component (simple-icons + custom fallbacks)
+  i18n.ts              i18n setup and language detection
+  i18next.d.ts         i18next type augmentation
+  index.css            Global styles and Tailwind entry
+  locales/
+    en.json            English translations
+    ru.json            Russian translations
+    zh-TW.json         Traditional Chinese translations
+  test/
+    setup.ts           Vitest setup (jsdom polyfills)
+    App.test.tsx       App component tests
+    theme.test.tsx     Theme toggle tests
+    SocialIcon.test.tsx  Icon component tests
+    siteConfig.test.ts   Config validation tests
+e2e/
+  app.spec.ts          Playwright E2E tests
 ```
 
 ## Customization
 
-### Edit social links
+### Edit social links and profile
 
-Update:
-
-- `src/socialLinks.tsx`
-
-This file contains the example social list and icon definitions. Add, remove, or reorder items there.
+Update `src/siteConfig.ts`. This file contains the avatar path and the social links array. Each entry has an `id`, `label`, `url`, and `iconSlug` (matching a `simple-icons` export name like `siGithub`).
 
 ### Edit translations
 
-Update:
-
-- `src/locales/en.json`
-- `src/locales/ru.json`
-- `src/locales/zh-TW.json`
-
-### Edit profile content and layout
-
-Update:
-
-- `src/App.tsx`
+Update the JSON files in `src/locales/`.
 
 ### Edit theme or language detection logic
 
-Update:
-
-- `src/i18n.ts`
-- `src/App.tsx`
+See `src/i18n.ts` (language detection) and `src/App.tsx` (theme initialization).
 
 ## Behavior Notes
 
@@ -139,6 +111,7 @@ Update:
 - If there is no saved theme, the page follows the user's system preference.
 - If there is no saved language, the page follows the user's browser language.
 - Browser locales for Simplified Chinese are normalized to Traditional Chinese.
+- `document.title` and `<html lang>` update dynamically on language change.
 
 ## Assets
 
