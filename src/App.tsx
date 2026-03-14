@@ -7,7 +7,9 @@ import {
 } from '@headlessui/react'
 import {
   AnimatePresence,
-  motion,
+  domAnimation,
+  LazyMotion,
+  m,
   useReducedMotion,
 } from 'framer-motion'
 import { startTransition, useEffect, useRef, useState } from 'react'
@@ -236,9 +238,10 @@ export default function App() {
       }
 
   return (
+    <LazyMotion features={domAnimation} strict>
     <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <motion.div
+        <m.div
           className="absolute left-1/2 top-0 size-72 translate-x-[-135%] rounded-full bg-amber-300/45 blur-3xl dark:bg-cyan-400/20"
           animate={
             prefersReduced
@@ -247,7 +250,7 @@ export default function App() {
           }
           transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <motion.div
+        <m.div
           className="absolute right-0 top-24 size-80 translate-x-1/3 rounded-full bg-rose-300/35 blur-3xl dark:bg-fuchsia-500/15"
           animate={
             prefersReduced
@@ -256,7 +259,7 @@ export default function App() {
           }
           transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <motion.div
+        <m.div
           className="absolute bottom-0 left-1/2 size-96 -translate-x-1/2 rounded-full bg-sky-200/40 blur-3xl dark:bg-indigo-500/20"
           animate={
             prefersReduced
@@ -272,11 +275,11 @@ export default function App() {
         role="main"
         aria-labelledby="profile-title"
       >
-        <motion.section
+        <m.section
           className="grid w-full max-w-5xl gap-4 rounded-[2rem] border border-white/50 bg-white/70 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/65 dark:shadow-black/30 sm:gap-6 sm:p-4 lg:grid-cols-[minmax(20rem,1.02fr)_minmax(22rem,0.98fr)] lg:p-6"
           {...slideUp}
         >
-          <motion.div
+          <m.div
             className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-xl shadow-slate-950/30 sm:p-8"
             {...fade}
             transition={{ duration: 0.5, delay: 0.15 }}
@@ -340,9 +343,12 @@ export default function App() {
                 </div>
 
                 <div className="space-y-4">
-                  <motion.img
+                  <m.img
                     src="/avatar.jpg"
                     alt="Avatar"
+                    width={96}
+                    height={96}
+                    fetchPriority="high"
                     className="size-20 rounded-[1.35rem] border border-white/10 object-cover shadow-lg shadow-black/20 ring-4 ring-white/10 sm:size-24 sm:rounded-[1.6rem]"
                     {...(prefersReduced
                       ? {}
@@ -368,7 +374,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <motion.div
+                <m.div
                   className="max-w-lg rounded-[1.75rem] border border-white/10 bg-white/5 p-5 backdrop-blur-sm sm:p-6"
                   {...(prefersReduced
                     ? {}
@@ -384,12 +390,12 @@ export default function App() {
                   <p className="mt-3 text-sm leading-7 text-slate-200 sm:text-[0.95rem]">
                     {String(t('intro'))}
                   </p>
-                </motion.div>
+                </m.div>
               </div>
             </div>
-          </motion.div>
+          </m.div>
 
-          <motion.div
+          <m.div
             className="flex flex-col justify-between gap-6 rounded-[1.75rem] bg-white/65 p-4 dark:bg-slate-900/60 sm:p-6"
             {...fade}
             transition={{ duration: 0.5, delay: 0.25 }}
@@ -404,7 +410,7 @@ export default function App() {
 
             <section className="grid gap-4" aria-label="links">
               {SOCIALS.map((social, index) => (
-                <motion.article
+                <m.article
                   key={social.id}
                   className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10 sm:p-5"
                   {...(prefersReduced
@@ -454,7 +460,7 @@ export default function App() {
                       <div className="relative">
                         <AnimatePresence>
                           {copiedId === social.id ? (
-                            <motion.div
+                            <m.div
                               aria-live="polite"
                               className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400"
                               initial={prefersReduced ? undefined : { opacity: 0, y: 4 }}
@@ -463,7 +469,7 @@ export default function App() {
                               transition={{ duration: 0.2 }}
                             >
                               {String(t('copied'))}
-                            </motion.div>
+                            </m.div>
                           ) : null}
                         </AnimatePresence>
                         <button
@@ -480,7 +486,7 @@ export default function App() {
                       </span>
                     </div>
                   </div>
-                </motion.article>
+                </m.article>
               ))}
             </section>
 
@@ -490,9 +496,10 @@ export default function App() {
               </p>
               <div className="min-h-0" />
             </div>
-          </motion.div>
-        </motion.section>
+          </m.div>
+        </m.section>
       </main>
     </div>
+    </LazyMotion>
   )
 }

@@ -10,8 +10,8 @@ const config: Config = {
         ink: '#020617',
       },
       fontFamily: {
-        sans: ['Manrope', 'sans-serif'],
-        display: ['Space Grotesk', 'sans-serif'],
+        sans: ['Manrope Variable', 'Manrope', 'sans-serif'],
+        display: ['Space Grotesk Variable', 'Space Grotesk', 'sans-serif'],
       },
       boxShadow: {
         glow: '0 24px 80px rgba(15, 23, 42, 0.18)',
