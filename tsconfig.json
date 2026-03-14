@@ -15,7 +15,7 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "allowSyntheticDefaultImports": true,
-    "types": ["vite/client"]
+    "types": ["vite/client", "vitest/globals"]
   },
   "include": [
     "src",
