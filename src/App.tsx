@@ -15,8 +15,8 @@ import {
 import { startTransition, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AppLanguageCode } from './i18n'
-import { SOCIALS } from './socialLinks'
-import type { SocialId } from './socialLinks'
+import { PROFILE, SOCIALS } from './siteConfig'
+import { SocialIcon } from './SocialIcon'
 
 interface LanguageOption {
   code: AppLanguageCode
@@ -127,7 +127,7 @@ function MoonIcon() {
 
 export default function App() {
   const { t, i18n } = useTranslation()
-  const [copiedId, setCopiedId] = useState<SocialId | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [isDark, setIsDark] = useState<boolean>(getInitialTheme)
   const copyTimeoutRef = useRef<number | null>(null)
   const activeLanguage =
@@ -205,7 +205,7 @@ export default function App() {
     }
   }
 
-  async function copyLink(url: string, id: SocialId) {
+  async function copyLink(url: string, id: string) {
     try {
       await navigator.clipboard.writeText(url)
 
@@ -344,7 +344,7 @@ export default function App() {
 
                 <div className="space-y-4">
                   <m.img
-                    src="/avatar.jpg"
+                    src={PROFILE.avatar}
                     alt="Avatar"
                     width={96}
                     height={96}
@@ -444,7 +444,7 @@ export default function App() {
                       aria-label={`${social.label} link`}
                     >
                       <span className="flex size-14 shrink-0 items-center justify-center rounded-[1.25rem] bg-slate-950 text-white shadow-lg shadow-slate-900/20 transition group-hover:rotate-3 group-hover:scale-105 dark:bg-white dark:text-slate-950">
-                        {social.icon}
+                        <SocialIcon slug={social.iconSlug} />
                       </span>
                       <span className="min-w-0 flex-1 space-y-1">
                         <span className="block text-lg font-semibold text-slate-950 dark:text-white">
