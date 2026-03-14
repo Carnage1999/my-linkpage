@@ -5,6 +5,11 @@ import {
   ListboxOptions,
   Switch,
 } from '@headlessui/react'
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+} from 'framer-motion'
 import { startTransition, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AppLanguageCode } from './i18n'
@@ -213,12 +218,53 @@ export default function App() {
     }
   }
 
+  const prefersReduced = useReducedMotion()
+
+  const fade = prefersReduced
+    ? {}
+    : { initial: { opacity: 0 }, animate: { opacity: 1 } }
+
+  const slideUp = prefersReduced
+    ? {}
+    : {
+        initial: { opacity: 0, y: 32 },
+        animate: { opacity: 1, y: 0 },
+        transition: {
+          duration: 0.6,
+          ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+        },
+      }
+
   return (
     <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-0 size-72 translate-x-[-135%] rounded-full bg-amber-300/45 blur-3xl dark:bg-cyan-400/20" />
-        <div className="absolute right-0 top-24 size-80 translate-x-1/3 rounded-full bg-rose-300/35 blur-3xl dark:bg-fuchsia-500/15" />
-        <div className="absolute bottom-0 left-1/2 size-96 -translate-x-1/2 rounded-full bg-sky-200/40 blur-3xl dark:bg-indigo-500/20" />
+        <motion.div
+          className="absolute left-1/2 top-0 size-72 translate-x-[-135%] rounded-full bg-amber-300/45 blur-3xl dark:bg-cyan-400/20"
+          animate={
+            prefersReduced
+              ? undefined
+              : { x: ['-135%', '-125%', '-135%'], y: [0, 18, 0] }
+          }
+          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute right-0 top-24 size-80 translate-x-1/3 rounded-full bg-rose-300/35 blur-3xl dark:bg-fuchsia-500/15"
+          animate={
+            prefersReduced
+              ? undefined
+              : { x: ['33%', '25%', '33%'], y: [0, -14, 0] }
+          }
+          transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute bottom-0 left-1/2 size-96 -translate-x-1/2 rounded-full bg-sky-200/40 blur-3xl dark:bg-indigo-500/20"
+          animate={
+            prefersReduced
+              ? undefined
+              : { x: ['-50%', '-45%', '-50%'], y: [0, -20, 0] }
+          }
+          transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
+        />
       </div>
 
       <main
@@ -226,8 +272,15 @@ export default function App() {
         role="main"
         aria-labelledby="profile-title"
       >
-        <section className="grid w-full max-w-5xl gap-4 rounded-[2rem] border border-white/50 bg-white/70 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/65 dark:shadow-black/30 sm:gap-6 sm:p-4 lg:grid-cols-[minmax(20rem,1.02fr)_minmax(22rem,0.98fr)] lg:p-6">
-          <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-xl shadow-slate-950/30 sm:p-8">
+        <motion.section
+          className="grid w-full max-w-5xl gap-4 rounded-[2rem] border border-white/50 bg-white/70 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/65 dark:shadow-black/30 sm:gap-6 sm:p-4 lg:grid-cols-[minmax(20rem,1.02fr)_minmax(22rem,0.98fr)] lg:p-6"
+          {...slideUp}
+        >
+          <motion.div
+            className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-xl shadow-slate-950/30 sm:p-8"
+            {...fade}
+            transition={{ duration: 0.5, delay: 0.15 }}
+          >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.3),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(125,211,252,0.22),_transparent_30%)]" />
             <div className="relative flex h-full flex-col justify-between gap-8 sm:gap-10">
               <div className="space-y-5 sm:space-y-6">
@@ -287,10 +340,22 @@ export default function App() {
                 </div>
 
                 <div className="space-y-4">
-                  <img
+                  <motion.img
                     src="/avatar.jpg"
                     alt="Avatar"
                     className="size-20 rounded-[1.35rem] border border-white/10 object-cover shadow-lg shadow-black/20 ring-4 ring-white/10 sm:size-24 sm:rounded-[1.6rem]"
+                    {...(prefersReduced
+                      ? {}
+                      : {
+                          initial: { opacity: 0, scale: 0.8 },
+                          animate: { opacity: 1, scale: 1 },
+                          transition: {
+                            type: 'spring',
+                            stiffness: 260,
+                            damping: 20,
+                            delay: 0.3,
+                          },
+                        })}
                   />
 
                   <div className="space-y-3">
@@ -303,19 +368,32 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="max-w-lg rounded-[1.75rem] border border-white/10 bg-white/5 p-5 backdrop-blur-sm sm:p-6">
+                <motion.div
+                  className="max-w-lg rounded-[1.75rem] border border-white/10 bg-white/5 p-5 backdrop-blur-sm sm:p-6"
+                  {...(prefersReduced
+                    ? {}
+                    : {
+                        initial: { opacity: 0, y: 16 },
+                        animate: { opacity: 1, y: 0 },
+                        transition: { duration: 0.5, delay: 0.45 },
+                      })}
+                >
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/55">
                     {String(t('aboutMe'))}
                   </p>
                   <p className="mt-3 text-sm leading-7 text-slate-200 sm:text-[0.95rem]">
                     {String(t('intro'))}
                   </p>
-                </div>
+                </motion.div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="flex flex-col justify-between gap-6 rounded-[1.75rem] bg-white/65 p-4 dark:bg-slate-900/60 sm:p-6">
+          <motion.div
+            className="flex flex-col justify-between gap-6 rounded-[1.75rem] bg-white/65 p-4 dark:bg-slate-900/60 sm:p-6"
+            {...fade}
+            transition={{ duration: 0.5, delay: 0.25 }}
+          >
             <div className="flex flex-col gap-4">
               <div>
                 <h2 className="truncate font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
@@ -325,10 +403,30 @@ export default function App() {
             </div>
 
             <section className="grid gap-4" aria-label="links">
-              {SOCIALS.map((social) => (
-                <article
+              {SOCIALS.map((social, index) => (
+                <motion.article
                   key={social.id}
-                  className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5 transition hover:-translate-y-1 hover:border-amber-300 hover:shadow-xl hover:shadow-amber-500/10 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10 dark:hover:border-cyan-400 dark:hover:shadow-cyan-500/10 sm:p-5"
+                  className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10 sm:p-5"
+                  {...(prefersReduced
+                    ? {}
+                    : {
+                        initial: { opacity: 0, x: 24 },
+                        animate: { opacity: 1, x: 0 },
+                        transition: {
+                          duration: 0.4,
+                          delay: 0.35 + index * 0.08,
+                          ease: [0.22, 1, 0.36, 1],
+                        },
+                      })}
+                  whileHover={
+                    prefersReduced
+                      ? undefined
+                      : {
+                          y: -4,
+                          transition: { type: 'spring', stiffness: 400, damping: 25 },
+                        }
+                  }
+                  whileTap={prefersReduced ? undefined : { scale: 0.985 }}
                 >
                   <div className="absolute inset-y-0 left-0 w-1 -translate-x-full bg-gradient-to-b from-amber-300 via-orange-400 to-rose-400 transition duration-300 group-hover:translate-x-0 dark:from-cyan-300 dark:via-sky-400 dark:to-indigo-500" />
                   <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center xl:gap-5">
@@ -354,14 +452,20 @@ export default function App() {
 
                     <div className="flex flex-wrap items-center gap-3 pl-[4.25rem] sm:pl-[4.5rem] xl:justify-self-end xl:pl-0">
                       <div className="relative">
-                        {copiedId === social.id ? (
-                          <div
-                            aria-live="polite"
-                            className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400"
-                          >
-                            {String(t('copied'))}
-                          </div>
-                        ) : null}
+                        <AnimatePresence>
+                          {copiedId === social.id ? (
+                            <motion.div
+                              aria-live="polite"
+                              className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                              initial={prefersReduced ? undefined : { opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={prefersReduced ? undefined : { opacity: 0, y: -4 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              {String(t('copied'))}
+                            </motion.div>
+                          ) : null}
+                        </AnimatePresence>
                         <button
                           type="button"
                           className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-950 hover:bg-slate-950 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:border-slate-700 dark:text-slate-200 dark:hover:border-white dark:hover:bg-white dark:hover:text-slate-950 dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-950"
@@ -376,7 +480,7 @@ export default function App() {
                       </span>
                     </div>
                   </div>
-                </article>
+                </motion.article>
               ))}
             </section>
 
@@ -386,8 +490,8 @@ export default function App() {
               </p>
               <div className="min-h-0" />
             </div>
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
       </main>
     </div>
   )
