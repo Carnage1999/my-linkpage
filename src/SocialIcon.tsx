@@ -41,11 +41,11 @@ export function SocialIcon({
 
   return (
     <svg
-      role="img"
       viewBox="0 0 24 24"
       fill="currentColor"
       className={className}
-      aria-hidden
+      aria-hidden="true"
+      focusable="false"
     >
       <path d={icon.path} />
     </svg>

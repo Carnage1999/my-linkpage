@@ -10,5 +10,10 @@
   "theme": "Theme",
   "lightMode": "Light mode",
   "darkMode": "Dark mode",
-  "builtWith": "Built with ♥"
+  "builtWith": "Built with ♥",
+  "builtWithLabel": "Built with love",
+  "avatarAlt": "Photo of Han-che Wang",
+  "skipToContent": "Skip to content",
+  "opensInNewTab": "opens in new tab",
+  "pageTitle": "Wang — Link Page"
 }

@@ -26,7 +26,6 @@ This repository is intended as a sample project for building a lightweight socia
 - i18next and react-i18next
 - ESLint 10
 - Prettier
-- eslint-config-prettier
 
 ## Getting Started
 

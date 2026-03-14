@@ -176,13 +176,15 @@ export default function App() {
 
   useEffect(() => {
     try {
-      document.documentElement.lang = i18n.resolvedLanguage ?? i18n.language
+      const lang = i18n.resolvedLanguage ?? i18n.language
+      document.documentElement.lang = lang
+      document.title = String(t('pageTitle'))
     } catch {
       return undefined
     }
 
     return undefined
-  }, [i18n.language, i18n.resolvedLanguage])
+  }, [i18n.language, i18n.resolvedLanguage, t])
 
   useEffect(
     () => () => {
@@ -240,6 +242,12 @@ export default function App() {
   return (
     <LazyMotion features={domAnimation} strict>
     <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+      <a
+        href="#social-links"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-slate-950 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg dark:focus:bg-white dark:focus:text-slate-950"
+      >
+        {String(t('skipToContent'))}
+      </a>
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <m.div
           className="absolute left-1/2 top-0 size-72 translate-x-[-135%] rounded-full bg-amber-300/45 blur-3xl dark:bg-cyan-400/20"
@@ -272,7 +280,6 @@ export default function App() {
 
       <main
         className="relative mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl items-center justify-center sm:min-h-[calc(100vh-5rem)]"
-        role="main"
         aria-labelledby="profile-title"
       >
         <m.section
@@ -296,6 +303,7 @@ export default function App() {
                   <Listbox
                     value={activeLanguage.code}
                     onChange={changeLanguage}
+                    aria-label={String(t('language'))}
                   >
                     <div className="relative min-w-0">
                       <ListboxButton className="relative inline-flex h-[46px] w-full min-w-0 items-center justify-center whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/75 shadow-sm transition hover:border-amber-300 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 dark:hover:border-cyan-300 dark:focus-visible:ring-cyan-300">
@@ -345,7 +353,7 @@ export default function App() {
                 <div className="space-y-4">
                   <m.img
                     src={PROFILE.avatar}
-                    alt="Avatar"
+                    alt={String(t('avatarAlt'))}
                     width={96}
                     height={96}
                     fetchPriority="high"
@@ -365,12 +373,12 @@ export default function App() {
                   />
 
                   <div className="space-y-3">
-                    <p
+                    <h1
                       className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-[2.6rem]"
                       id="profile-title"
                     >
                       {String(t('title'))}
-                    </p>
+                    </h1>
                   </div>
                 </div>
 
@@ -384,7 +392,7 @@ export default function App() {
                         transition: { duration: 0.5, delay: 0.45 },
                       })}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/55">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">
                     {String(t('aboutMe'))}
                   </p>
                   <p className="mt-3 text-sm leading-7 text-slate-200 sm:text-[0.95rem]">
@@ -408,9 +416,9 @@ export default function App() {
               </div>
             </div>
 
-            <section className="grid gap-4" aria-label="links">
+            <ul className="grid gap-4" aria-label={String(t('subtitle'))} id="social-links">
               {SOCIALS.map((social, index) => (
-                <m.article
+                <m.li
                   key={social.id}
                   className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10 sm:p-5"
                   {...(prefersReduced
@@ -441,7 +449,7 @@ export default function App() {
                       target="_blank"
                       rel="noreferrer"
                       className="flex min-w-0 items-center gap-3 sm:gap-4"
-                      aria-label={`${social.label} link`}
+                      aria-label={`${social.label} (${String(t('opensInNewTab'))})`}
                     >
                       <span className="flex size-14 shrink-0 items-center justify-center rounded-[1.25rem] bg-slate-950 text-white shadow-lg shadow-slate-900/20 transition group-hover:rotate-3 group-hover:scale-105 dark:bg-white dark:text-slate-950">
                         <SocialIcon slug={social.iconSlug} />
@@ -450,7 +458,7 @@ export default function App() {
                         <span className="block text-lg font-semibold text-slate-950 dark:text-white">
                           {social.label}
                         </span>
-                        <span className="block truncate whitespace-nowrap text-sm leading-6 text-slate-500 dark:text-slate-400">
+                        <span className="block truncate whitespace-nowrap text-sm leading-6 text-slate-600 dark:text-slate-400">
                           {social.url}
                         </span>
                       </span>
@@ -481,18 +489,18 @@ export default function App() {
                           {String(t('copy'))}
                         </button>
                       </div>
-                      <span className="text-sm font-medium text-slate-400 dark:text-slate-500">
+                      <span className="text-sm font-medium text-slate-500 dark:text-slate-500">
                         {String(t('visit'))}
                       </span>
                     </div>
                   </div>
-                </m.article>
+                </m.li>
               ))}
-            </section>
+            </ul>
 
             <div className="flex min-h-7 flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {String(t('builtWith'))}
+              <p className="text-sm text-slate-600 dark:text-slate-400" aria-label={String(t('builtWithLabel'))}>
+                <span aria-hidden="true">{String(t('builtWith'))}</span>
               </p>
               <div className="min-h-0" />
             </div>

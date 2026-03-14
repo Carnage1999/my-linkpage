@@ -6,24 +6,26 @@
     <title>Link Page</title>
     <meta name="description" content="Personal link page — find all my social profiles in one place." />
 
-    <!-- 只初始化主題（避免 FOUC） -->
+    <!-- 初始化主題與語言（避免 FOUC） -->
     <script>
       ;(function () {
         try {
-          const savedTheme = localStorage.getItem('theme') // 'light' | 'dark' | null
+          var savedTheme = localStorage.getItem('theme')
           if (savedTheme === 'dark')
             document.documentElement.classList.add('dark')
           else if (savedTheme === 'light')
             document.documentElement.classList.remove('dark')
           else {
-            const prefersDark = window.matchMedia(
+            var prefersDark = window.matchMedia(
               '(prefers-color-scheme: dark)'
             ).matches
             if (prefersDark) document.documentElement.classList.add('dark')
           }
+          var savedLang = localStorage.getItem('i18nextLng')
+          if (savedLang) document.documentElement.lang = savedLang
         } catch (err) {
           /* eslint-disable-next-line no-console */
-          console.warn('Init theme error:', err)
+          console.warn('Init error:', err)
         }
       })()
     </script>

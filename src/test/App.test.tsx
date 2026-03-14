@@ -12,17 +12,17 @@ describe('App', () => {
 
   it('renders all social links', () => {
     render(<App />)
-    expect(screen.getByLabelText('GitHub link')).toBeInTheDocument()
-    expect(screen.getByLabelText('Bluesky link')).toBeInTheDocument()
-    expect(screen.getByLabelText('X link')).toBeInTheDocument()
-    expect(screen.getByLabelText('Line link')).toBeInTheDocument()
-    expect(screen.getByLabelText('Telegram link')).toBeInTheDocument()
-    expect(screen.getByLabelText('LinkedIn link')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^GitHub/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Bluesky/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^X /)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Line/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Telegram/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^LinkedIn/)).toBeInTheDocument()
   })
 
   it('renders social link URLs', () => {
     render(<App />)
-    const githubLink = screen.getByLabelText('GitHub link')
+    const githubLink = screen.getByLabelText(/^GitHub/)
     expect(githubLink).toHaveAttribute('href', 'https://github.com/Carnage1999')
     expect(githubLink).toHaveAttribute('target', '_blank')
     expect(githubLink).toHaveAttribute('rel', 'noreferrer')
@@ -54,7 +54,7 @@ describe('App', () => {
 
   it('renders avatar image with correct attributes', () => {
     render(<App />)
-    const avatar = screen.getByAltText('Avatar')
+    const avatar = screen.getByAltText('Photo of Han-che Wang')
     expect(avatar).toHaveAttribute('src', '/avatar.jpg')
     expect(avatar).toHaveAttribute('width', '96')
     expect(avatar).toHaveAttribute('height', '96')

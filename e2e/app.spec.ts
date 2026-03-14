@@ -7,16 +7,16 @@ test.describe('Link page', () => {
     await expect(page.getByText("Hi, I'm Wang")).toBeVisible()
     await expect(page.getByText('Links & socials')).toBeVisible()
 
-    await expect(page.getByLabel('GitHub link')).toBeVisible()
-    await expect(page.getByLabel('Bluesky link')).toBeVisible()
-    await expect(page.getByLabel('X link')).toBeVisible()
-    await expect(page.getByLabel('LinkedIn link')).toBeVisible()
+    await expect(page.getByLabel(/^GitHub/)).toBeVisible()
+    await expect(page.getByLabel(/^Bluesky/)).toBeVisible()
+    await expect(page.getByLabel(/^X /)).toBeVisible()
+    await expect(page.getByLabel(/^LinkedIn/)).toBeVisible()
   })
 
   test('social links open in new tab', async ({ page }) => {
     await page.goto('/')
 
-    const github = page.getByLabel('GitHub link')
+    const github = page.getByLabel(/^GitHub/)
     await expect(github).toHaveAttribute('target', '_blank')
     await expect(github).toHaveAttribute('rel', 'noreferrer')
     await expect(github).toHaveAttribute('href', 'https://github.com/Carnage1999')

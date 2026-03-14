@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { SocialIcon } from '../SocialIcon'
 
@@ -31,8 +31,8 @@ describe('SocialIcon', () => {
   })
 
   it('has aria-hidden on the svg', () => {
-    render(<SocialIcon slug="siX" />)
-    const svg = screen.getByRole('img', { hidden: true })
+    const { container } = render(<SocialIcon slug="siX" />)
+    const svg = container.querySelector('svg')
     expect(svg).toHaveAttribute('aria-hidden', 'true')
   })
 })

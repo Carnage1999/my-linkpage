@@ -10,5 +10,10 @@
   "theme": "主題",
   "lightMode": "淺色模式",
   "darkMode": "深色模式",
-  "builtWith": "使用 ♥ 建置"
+  "builtWith": "使用 ♥ 建置",
+  "builtWithLabel": "用愛建置",
+  "avatarAlt": "王瀚哲的照片",
+  "skipToContent": "跳到主要內容",
+  "opensInNewTab": "在新分頁中開啟",
+  "pageTitle": "Wang — 連結頁面"
 }
