@@ -17,16 +17,16 @@
   },
   "packageManager": "pnpm@10.32.1",
   "dependencies": {
-    "@fontsource-variable/manrope": "^5.2.5",
-    "@fontsource-variable/space-grotesk": "^5.2.5",
+    "@fontsource-variable/manrope": "^5.2.8",
+    "@fontsource-variable/space-grotesk": "^5.2.10",
     "@headlessui/react": "^2.2.9",
-    "framer-motion": "^12.37.0",
-    "i18next": "^25.8.18",
+    "framer-motion": "^12.38.0",
+    "i18next": "^25.10.5",
     "i18next-browser-languagedetector": "^8.2.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-i18next": "^16.5.8",
-    "simple-icons": "^16.12.0"
+    "react-i18next": "^16.6.2",
+    "simple-icons": "^16.13.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -39,7 +39,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.27",
-    "eslint": "^10.0.3",
+    "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
@@ -52,8 +52,8 @@
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.1",
-    "vite": "^8.0.0",
-    "vitest": "^4.1.0"
+    "typescript-eslint": "^8.57.2",
+    "vite": "^8.0.2",
+    "vitest": "^4.1.1"
   }
 }
