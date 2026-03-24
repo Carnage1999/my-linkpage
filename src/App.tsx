@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import type { AppLanguageCode } from './i18n'
 import { PROFILE, SOCIALS } from './siteConfig'
 import { SocialIcon } from './SocialIcon'
+import { SEO } from './components/SEO'
 
 interface LanguageOption {
   code: AppLanguageCode
@@ -241,6 +242,7 @@ export default function App() {
 
   return (
     <LazyMotion features={domAnimation} strict>
+    <SEO />
     <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <a
         href="#social-links"

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://link.w1999.me/sitemap.xml
