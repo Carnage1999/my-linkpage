@@ -418,10 +418,10 @@ export default function App() {
 
             <ul className="grid gap-4" aria-label={String(t('subtitle'))} id="social-links">
               {SOCIALS.map((social, index) => (
-                <m.li
-                  key={social.id}
-                  className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10 sm:p-5"
-                  {...(prefersReduced
+                <li key={social.id} className="block w-full">
+                  <m.div
+                    className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10 sm:p-5"
+                    {...(prefersReduced
                     ? {}
                     : {
                         initial: { opacity: 0, x: 24 },
@@ -494,7 +494,8 @@ export default function App() {
                       </span>
                     </div>
                   </div>
-                </m.li>
+                  </m.div>
+                </li>
               ))}
             </ul>
 
