@@ -120,7 +120,7 @@ See `src/i18n.ts` (language detection) and `src/App.tsx` (theme initialization).
 
 ## License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International license.
+This project is licensed under the PolyForm Noncommercial License 1.0.0.
 
 - License file: `LICENSE`
-- License summary: https://creativecommons.org/licenses/by-nc/4.0/
+- License summary: https://polyformproject.org/licenses/noncommercial/1.0.0
