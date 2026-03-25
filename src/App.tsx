@@ -285,11 +285,11 @@ export default function App() {
         aria-labelledby="profile-title"
       >
         <m.section
-          className="grid w-full max-w-5xl gap-4 rounded-[2rem] border border-white/50 bg-white/70 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/65 dark:shadow-black/30 sm:gap-6 sm:p-4 lg:grid-cols-[minmax(20rem,1.02fr)_minmax(22rem,0.98fr)] lg:p-6"
+          className="grid w-full min-w-0 max-w-5xl gap-4 rounded-[2rem] border border-white/50 bg-white/70 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/65 dark:shadow-black/30 sm:gap-6 sm:p-4 lg:grid-cols-[minmax(20rem,1.02fr)_minmax(22rem,0.98fr)] lg:p-6"
           {...slideUp}
         >
           <m.div
-            className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-xl shadow-slate-950/30 sm:p-8"
+            className="relative min-w-0 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-xl shadow-slate-950/30 sm:p-8"
             {...fade}
             transition={{ duration: 0.5, delay: 0.15 }}
           >
@@ -406,7 +406,7 @@ export default function App() {
           </m.div>
 
           <m.div
-            className="flex flex-col justify-between gap-6 rounded-[1.75rem] bg-white/65 p-4 dark:bg-slate-900/60 sm:p-6"
+            className="flex min-w-0 flex-col justify-between gap-6 rounded-[1.75rem] bg-white/65 p-4 dark:bg-slate-900/60 sm:p-6"
             {...fade}
             transition={{ duration: 0.5, delay: 0.25 }}
           >
@@ -418,9 +418,9 @@ export default function App() {
               </div>
             </div>
 
-            <ul className="grid gap-4" aria-label={String(t('subtitle'))} id="social-links">
+            <ul className="grid min-w-0 gap-4" aria-label={String(t('subtitle'))} id="social-links">
               {SOCIALS.map((social, index) => (
-                <li key={social.id} className="block w-full">
+                <li key={social.id} className="block w-full min-w-0">
                   <m.div
                     className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10 sm:p-5"
                     {...(prefersReduced
