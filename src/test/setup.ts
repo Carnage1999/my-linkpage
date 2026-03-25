@@ -1,51 +1,44 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
-import { afterEach, beforeAll } from 'vitest'
+import { afterEach, beforeAll, vi } from 'vitest'
 
-// jsdom 28 doesn't provide localStorage without a valid --localstorage-file
-// Provide a minimal Storage polyfill if the native one is broken
+// jsdom doesn't provide localStorage without a valid --localstorage-file
 function ensureLocalStorage() {
   try {
     window.localStorage.setItem('__test__', '1')
     window.localStorage.removeItem('__test__')
   } catch {
-    const store: Record<string, string> = {}
+    const store = new Map<string, string>()
     const storage: Storage = {
-      getItem: (key: string) => store[key] ?? null,
-      setItem: (key: string, value: string) => {
-        store[key] = String(value)
-      },
-      removeItem: (key: string) => {
-        delete store[key]
-      },
-      clear: () => {
-        for (const key of Object.keys(store)) delete store[key]
-      },
-      key: (index: number) => Object.keys(store)[index] ?? null,
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => store.set(key, String(value)),
+      removeItem: (key: string) => store.delete(key),
+      clear: () => store.clear(),
+      key: (index: number) => Array.from(store.keys())[index] ?? null,
       get length() {
-        return Object.keys(store).length
+        return store.size
       },
     }
-    Object.defineProperty(window, 'localStorage', { value: storage, writable: true })
+    vi.stubGlobal('localStorage', storage)
   }
 }
 
 // jsdom doesn't implement window.matchMedia
 function ensureMatchMedia() {
   if (typeof window.matchMedia === 'function') return
-  Object.defineProperty(window, 'matchMedia', {
-    writable: true,
-    value: (query: string) => ({
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => ({
       matches: false,
       media: query,
       onchange: null,
-      addListener: () => {},
-      removeListener: () => {},
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      dispatchEvent: () => false,
-    }),
-  })
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(() => false),
+    }))
+  )
 }
 
 beforeAll(() => {
@@ -58,4 +51,5 @@ afterEach(() => {
   localStorage.clear()
   document.documentElement.classList.remove('dark')
   document.documentElement.lang = 'en'
+  vi.clearAllMocks()
 })
