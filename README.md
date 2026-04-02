@@ -11,7 +11,10 @@ Lightweight social link landing page with automatic language / theme detection, 
 - **Animations** — entrance transitions and micro-interactions powered by Framer Motion with `prefers-reduced-motion` support
 - **Self-hosted fonts** — Manrope and Space Grotesk variable fonts via `@fontsource-variable` (no external CDN)
 - **Centralized config** — social links and profile data defined in a single `siteConfig.ts`; brand icons rendered from `simple-icons`
-- **Analytics & click tracking** — privacy-friendly analytics via Plausible or Umami (configurable in `siteConfig.ts`); local click heatmap powered by `localStorage` showing per-link click intensity with animated bars
+- **Analytics & click tracking** — privacy-friendly analytics via Plausible or Umami (configurable in `siteConfig.ts`); local click heatmap with recharts trend chart (daily/weekly), animated per-link intensity bars, and a reset button — all powered by `localStorage`
+- **Dynamic OG image** — build-time social preview card (1200×630) generated with satori + @resvg/resvg-js, featuring name, tagline, social pills, and gradient background
+- **Error boundary** — top-level React Error Boundary prevents white-screen crashes with a user-friendly fallback UI and reload button
+- **Clipboard fallback** — copy-to-clipboard uses `navigator.clipboard` with `document.execCommand('copy')` fallback for older browsers/WebViews
 - **Accessibility** — skip-to-content link, proper heading hierarchy (`<h1>`), semantic `<ul>` for link cards, `aria-label` on language selector and external links, descriptive avatar alt text, `aria-live` copy feedback, localized `document.title`, WCAG-friendly contrast
 - **Performance** — `LazyMotion` tree-shaking, manual Vite chunk splitting (react-vendor / motion / i18n), optimized image attributes
 - **Testing** — unit / component tests with Vitest + Testing Library; E2E tests with Playwright
@@ -26,7 +29,9 @@ Lightweight social link landing page with automatic language / theme detection, 
 | Styling | Tailwind CSS 3, Headless UI |
 | Animation | Framer Motion (LazyMotion + domAnimation) |
 | i18n | i18next, react-i18next |
+| Charts | Recharts |
 | Icons | simple-icons |
+| OG image | satori, @resvg/resvg-js |
 | Fonts | @fontsource-variable/manrope, @fontsource-variable/space-grotesk |
 | Unit tests | Vitest, Testing Library, jsdom |
 | E2E tests | Playwright (Chromium) |
@@ -56,7 +61,8 @@ pnpm preview
 | Script | Description |
 |---|---|
 | `pnpm dev` | Start Vite dev server |
-| `pnpm build` | Production build |
+| `pnpm build` | Generate OG image + production build |
+| `pnpm generate-og` | Regenerate OG social preview image |
 | `pnpm preview` | Preview production build |
 | `pnpm typecheck` | TypeScript type check |
 | `pnpm lint` | ESLint |
@@ -71,18 +77,19 @@ pnpm preview
 ```text
 src/
   App.tsx              Main page UI
-  main.tsx             App entry point
+  main.tsx             App entry point (wrapped in ErrorBoundary)
   siteConfig.ts        Profile data, social links, and analytics config
   SocialIcon.tsx       Brand icon component (simple-icons + custom fallbacks)
   i18n.ts              i18n setup and language detection
   i18next.d.ts         i18next type augmentation
   index.css            Global styles and Tailwind entry
   components/
-    SEO.tsx            Dynamic meta tags and JSON-LD structured data
-    LinkHeatmap.tsx    Per-link click intensity heatmap bars
+    ErrorBoundary.tsx Crash fallback UI with reload button
+    SEO.tsx            Dynamic meta tags, OG image, and JSON-LD structured data
+    LinkHeatmap.tsx    Per-link click intensity bars + recharts trend chart
   hooks/
     useAnalytics.ts    Plausible / Umami script injection and event tracking
-    useLinkClickStats.ts  localStorage-backed click counter (powers heatmap)
+    useLinkClickStats.ts  localStorage-backed click counter with timeline (powers heatmap & trend chart)
   locales/
     en.json            English translations
     ru.json            Russian translations
@@ -97,6 +104,8 @@ src/
     useLinkClickStats.test.ts  Click stats hook tests
 e2e/
   app.spec.ts          Playwright E2E tests
+scripts/
+  generate-og-image.ts Build-time OG social preview image generator
 ```
 
 ## Customization
@@ -138,11 +147,16 @@ Every social link click sends a `Link Click` event with `id`, `label`, and `url`
 
 See `src/i18n.ts` (language detection) and `src/App.tsx` (theme initialization).
 
+### Customize OG image
+
+Edit the constants at the top of `scripts/generate-og-image.ts` (`NAME`, `TAGLINE`, `DOMAIN`, `SOCIALS`), then run `pnpm generate-og` to regenerate `public/og-image.png`. The image is also regenerated automatically on every `pnpm build`.
+
 ## Behavior Notes
 
 - Language selection is saved in `localStorage` after the user changes it manually.
 - Theme selection is also saved in `localStorage` after the user toggles it manually.
-- Link click counts are stored in `localStorage` under `link-click-stats` and visualized as a heatmap bar chart below the links.
+- Link click counts are stored in `localStorage` under `link-click-stats`; timestamps are stored under `link-click-timeline` and visualized as a daily/weekly trend chart and per-link heatmap bars.
+- Click statistics can be reset from the heatmap panel UI.
 - If there is no saved theme, the page follows the user's system preference.
 - If there is no saved language, the page follows the user's browser language.
 - Browser locales for Simplified Chinese are normalized to Traditional Chinese.
@@ -151,6 +165,7 @@ See `src/i18n.ts` (language detection) and `src/App.tsx` (theme initialization).
 ## Assets
 
 - Avatar image: `public/avatar.jpg`
+- OG social preview: `public/og-image.png` (auto-generated at build time)
 - Favicon: `public/favicon.ico`
 
 ## License
