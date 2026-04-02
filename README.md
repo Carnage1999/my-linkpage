@@ -11,6 +11,7 @@ Lightweight social link landing page with automatic language / theme detection, 
 - **Animations** — entrance transitions and micro-interactions powered by Framer Motion with `prefers-reduced-motion` support
 - **Self-hosted fonts** — Manrope and Space Grotesk variable fonts via `@fontsource-variable` (no external CDN)
 - **Centralized config** — social links and profile data defined in a single `siteConfig.ts`; brand icons rendered from `simple-icons`
+- **Analytics & click tracking** — privacy-friendly analytics via Plausible or Umami (configurable in `siteConfig.ts`); local click heatmap powered by `localStorage` showing per-link click intensity with animated bars
 - **Accessibility** — skip-to-content link, proper heading hierarchy (`<h1>`), semantic `<ul>` for link cards, `aria-label` on language selector and external links, descriptive avatar alt text, `aria-live` copy feedback, localized `document.title`, WCAG-friendly contrast
 - **Performance** — `LazyMotion` tree-shaking, manual Vite chunk splitting (react-vendor / motion / i18n), optimized image attributes
 - **Testing** — unit / component tests with Vitest + Testing Library; E2E tests with Playwright
@@ -71,11 +72,17 @@ pnpm preview
 src/
   App.tsx              Main page UI
   main.tsx             App entry point
-  siteConfig.ts        Profile data and social link definitions
+  siteConfig.ts        Profile data, social links, and analytics config
   SocialIcon.tsx       Brand icon component (simple-icons + custom fallbacks)
   i18n.ts              i18n setup and language detection
   i18next.d.ts         i18next type augmentation
   index.css            Global styles and Tailwind entry
+  components/
+    SEO.tsx            Dynamic meta tags and JSON-LD structured data
+    LinkHeatmap.tsx    Per-link click intensity heatmap bars
+  hooks/
+    useAnalytics.ts    Plausible / Umami script injection and event tracking
+    useLinkClickStats.ts  localStorage-backed click counter (powers heatmap)
   locales/
     en.json            English translations
     ru.json            Russian translations
@@ -86,6 +93,8 @@ src/
     theme.test.tsx     Theme toggle tests
     SocialIcon.test.tsx  Icon component tests
     siteConfig.test.ts   Config validation tests
+    useAnalytics.test.ts       Analytics hook tests
+    useLinkClickStats.test.ts  Click stats hook tests
 e2e/
   app.spec.ts          Playwright E2E tests
 ```
@@ -100,6 +109,31 @@ Update `src/siteConfig.ts`. This file contains the avatar path and the social li
 
 Update the JSON files in `src/locales/`.
 
+### Configure analytics
+
+Edit the `ANALYTICS` export in `src/siteConfig.ts`:
+
+```ts
+// Plausible
+export const ANALYTICS = {
+  provider: 'plausible',
+  plausibleDomain: 'link.example.com',
+  // plausibleHost: 'https://plausible.example.com',  // optional self-hosted
+}
+
+// Umami
+export const ANALYTICS = {
+  provider: 'umami',
+  umamiWebsiteId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+  // umamiHost: 'https://umami.example.com',  // optional self-hosted
+}
+
+// Disable external analytics (local heatmap still works)
+export const ANALYTICS = null
+```
+
+Every social link click sends a `Link Click` event with `id`, `label`, and `url` properties. The local click heatmap is always active and stores counts in the visitor's own `localStorage` — no cookies or fingerprinting.
+
 ### Edit theme or language detection logic
 
 See `src/i18n.ts` (language detection) and `src/App.tsx` (theme initialization).
@@ -108,6 +142,7 @@ See `src/i18n.ts` (language detection) and `src/App.tsx` (theme initialization).
 
 - Language selection is saved in `localStorage` after the user changes it manually.
 - Theme selection is also saved in `localStorage` after the user toggles it manually.
+- Link click counts are stored in `localStorage` under `link-click-stats` and visualized as a heatmap bar chart below the links.
 - If there is no saved theme, the page follows the user's system preference.
 - If there is no saved language, the page follows the user's browser language.
 - Browser locales for Simplified Chinese are normalized to Traditional Chinese.
