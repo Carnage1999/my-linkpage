@@ -2,6 +2,7 @@ import '@fontsource-variable/manrope'
 import '@fontsource-variable/space-grotesk'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import './i18n'
 import './index.css'
 
@@ -11,4 +12,8 @@ if (!rootElement) {
   throw new Error('Root element not found')
 }
 
-createRoot(rootElement).render(<App />)
+createRoot(rootElement).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+)
