@@ -15,5 +15,7 @@
   "avatarAlt": "Фото Ханьчжэ Вана",
   "skipToContent": "Перейти к содержимому",
   "opensInNewTab": "открывается в новой вкладке",
-  "pageTitle": "Wang — Страница ссылок"
+  "pageTitle": "Wang — Страница ссылок",
+  "clickHeatmap": "Тепловая карта кликов",
+  "totalClicks": "Всего кликов"
 }

@@ -3,6 +3,36 @@
  * social links, and avatar without touching any component code.
  */
 
+// ─── Analytics (privacy-friendly) ────────────────────────
+
+export interface AnalyticsConfig {
+  /** Which analytics provider to use */
+  readonly provider: 'plausible' | 'umami'
+  /** Plausible: your domain (e.g. "link.w1999.me") */
+  readonly plausibleDomain?: string
+  /** Plausible: self-hosted URL (omit for plausible.io cloud) */
+  readonly plausibleHost?: string
+  /** Umami: the website-id shown in Umami dashboard */
+  readonly umamiWebsiteId?: string
+  /** Umami: self-hosted URL (omit for cloud.umami.is) */
+  readonly umamiHost?: string
+}
+
+/**
+ * Set to `null` to disable external analytics entirely.
+ * The local click heatmap still works without this.
+ *
+ * Example — Plausible:
+ *   { provider: 'plausible', plausibleDomain: 'link.w1999.me' }
+ *
+ * Example — Umami:
+ *   { provider: 'umami', umamiWebsiteId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' }
+ */
+export const ANALYTICS: AnalyticsConfig | null = {
+  provider: 'umami',
+  umamiWebsiteId: 'b6e3dfdc-afb4-4586-b39c-4a1e0826748a',
+}
+
 // ─── Profile ─────────────────────────────────────────────
 
 export const PROFILE = {

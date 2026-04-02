@@ -18,6 +18,9 @@ import type { AppLanguageCode } from './i18n'
 import { PROFILE, SOCIALS } from './siteConfig'
 import { SocialIcon } from './SocialIcon'
 import { SEO } from './components/SEO'
+import { LinkHeatmap } from './components/LinkHeatmap'
+import { useAnalytics } from './hooks/useAnalytics'
+import { useLinkClickStats } from './hooks/useLinkClickStats'
 
 interface LanguageOption {
   code: AppLanguageCode
@@ -131,6 +134,8 @@ export default function App() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [isDark, setIsDark] = useState<boolean>(getInitialTheme)
   const copyTimeoutRef = useRef<number | null>(null)
+  const { trackLinkClick } = useAnalytics()
+  const { recordClick } = useLinkClickStats()
   const activeLanguage =
     LANGUAGES.find(
       ({ code }) => code === (i18n.resolvedLanguage ?? i18n.language)
@@ -453,6 +458,10 @@ export default function App() {
                       rel="noreferrer"
                       className="flex min-w-0 items-center gap-3 sm:gap-4"
                       aria-label={`${social.label} (${String(t('opensInNewTab'))})`}
+                      onClick={() => {
+                        trackLinkClick(social.id, social.label, social.url)
+                        recordClick(social.id)
+                      }}
                     >
                       <span className="flex size-14 shrink-0 items-center justify-center rounded-[1.25rem] bg-slate-950 text-white shadow-lg shadow-slate-900/20 transition group-hover:rotate-3 group-hover:scale-105 dark:bg-white dark:text-slate-950">
                         <SocialIcon slug={social.iconSlug} />
@@ -502,6 +511,8 @@ export default function App() {
                 </li>
               ))}
             </ul>
+
+            <LinkHeatmap socials={SOCIALS} />
 
             <div className="flex min-h-7 flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="text-sm text-slate-600 dark:text-slate-400" aria-label={String(t('builtWithLabel'))}>
