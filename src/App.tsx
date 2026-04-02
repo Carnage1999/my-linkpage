@@ -432,6 +432,7 @@ export default function App() {
                           duration: 0.4,
                           delay: 0.35 + index * 0.08,
                           ease: [0.22, 1, 0.36, 1],
+                          y: { duration: 0.15, ease: 'easeIn' },
                         },
                       })}
                   whileHover={
@@ -467,30 +468,31 @@ export default function App() {
                     </a>
 
                     <div className="flex flex-wrap items-center gap-3 pl-[4.25rem] sm:pl-[4.5rem] xl:justify-self-end xl:pl-0">
-                      <div className="relative">
-                        <AnimatePresence>
-                          {copiedId === social.id ? (
-                            <m.div
-                              aria-live="polite"
-                              className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-emerald-600 dark:text-emerald-400"
-                              initial={prefersReduced ? undefined : { opacity: 0, y: 4 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={prefersReduced ? undefined : { opacity: 0, y: -4 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              {String(t('copied'))}
-                            </m.div>
-                          ) : null}
+                      <button
+                        type="button"
+                        className={`relative inline-grid items-center justify-center overflow-hidden rounded-full border px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                          copiedId === social.id
+                            ? 'border-emerald-500 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
+                            : 'border-slate-200 text-slate-700 hover:border-slate-950 hover:bg-slate-950 hover:text-white dark:border-slate-700 dark:text-slate-200 dark:hover:border-white dark:hover:bg-white dark:hover:text-slate-950'
+                        } focus-visible:ring-amber-400 dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-950`}
+                        onClick={() => copyLink(social.url, social.id)}
+                        aria-label={`${String(t('copy'))} ${social.label}`}
+                      >
+                        <span className="invisible col-start-1 row-start-1">{String(t('copy'))}</span>
+                        <span className="invisible col-start-1 row-start-1">{String(t('copied'))}</span>
+                        <AnimatePresence mode="wait" initial={false}>
+                          <m.span
+                            key={copiedId === social.id ? 'copied' : 'copy'}
+                            initial={prefersReduced ? undefined : { opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={prefersReduced ? undefined : { opacity: 0, y: -8 }}
+                            transition={{ duration: 0.15 }}
+                            className="col-start-1 row-start-1"
+                          >
+                            {copiedId === social.id ? String(t('copied')) : String(t('copy'))}
+                          </m.span>
                         </AnimatePresence>
-                        <button
-                          type="button"
-                          className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-950 hover:bg-slate-950 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 dark:border-slate-700 dark:text-slate-200 dark:hover:border-white dark:hover:bg-white dark:hover:text-slate-950 dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-950"
-                          onClick={() => copyLink(social.url, social.id)}
-                          aria-label={`${String(t('copy'))} ${social.label}`}
-                        >
-                          {String(t('copy'))}
-                        </button>
-                      </div>
+                      </button>
                       <span className="text-sm font-medium text-slate-500 dark:text-slate-500">
                         {String(t('visit'))}
                       </span>
