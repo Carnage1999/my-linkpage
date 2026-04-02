@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { PROFILE, SOCIALS } from '../siteConfig'
+import { SOCIALS } from '../siteConfig'
 
 const LOCALE_MAP: Record<string, string> = {
   en: 'en_US',
@@ -19,10 +19,8 @@ export function SEO() {
   const currentUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://link.w1999.me'
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://link.w1999.me'
   
-  // The avatar url should be absolute for OG images
-  const ogImageUrl = PROFILE.avatar.startsWith('http') 
-    ? PROFILE.avatar 
-    : `${origin}${PROFILE.avatar.startsWith('/') ? '' : '/'}${PROFILE.avatar}`
+  // Use the build-time generated OG image
+  const ogImageUrl = `${origin}/og-image.png`
 
   // Define structured data (JSON-LD Person schema)
   const schema = {
@@ -50,13 +48,15 @@ export function SEO() {
       <meta property="og:type" content="profile" />
       <meta property="og:url" content={currentUrl} />
       <meta property="og:image" content={ogImageUrl} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
       <meta property="og:site_name" content={pageTitle} />
       <meta property="og:locale" content={ogLocale} />
       {alternateLocales.map(locale => (
         <meta key={locale} property="og:locale:alternate" content={locale} />
       ))}
       
-      <meta name="twitter:card" content="summary" />
+      <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:site" content="@wang_hanzhe" />
       <meta name="twitter:creator" content="@wang_hanzhe" />
       <meta name="twitter:title" content={pageTitle} />
