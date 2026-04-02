@@ -29,7 +29,7 @@ Lightweight social link landing page with automatic language / theme detection, 
 | Fonts | @fontsource-variable/manrope, @fontsource-variable/space-grotesk |
 | Unit tests | Vitest, Testing Library, jsdom |
 | E2E tests | Playwright (Chromium) |
-| Linting | ESLint 10, Prettier |
+| Linting | ESLint 9, Prettier |
 
 ## Getting Started
 
