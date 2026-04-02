@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { SiteMetadata, SocialLinkEntry } from '../siteConfig'
 
@@ -23,7 +24,7 @@ export function SEO({ site, socials, ogImagePath }: { site: SiteMetadata; social
   const ogImageUrl = ogImagePath.startsWith('http') ? ogImagePath : `${origin}${ogImagePath}`
 
   // Define structured data (JSON-LD Person schema)
-  const schema = {
+  const schema = useMemo(() => ({
     "@context": "https://schema.org",
     "@type": "Person",
     "name": String(t('title')),
@@ -31,7 +32,7 @@ export function SEO({ site, socials, ogImagePath }: { site: SiteMetadata; social
     "image": ogImageUrl,
     "url": origin,
     "sameAs": socials.map(social => social.url)
-  }
+  }), [t, description, ogImageUrl, origin, socials])
 
   const ogLocale = LOCALE_MAP[currentLang] ?? 'en_US'
   const alternateLocales = LANGUAGES.filter(l => l !== currentLang).map(l => LOCALE_MAP[l] ?? l)

@@ -383,6 +383,7 @@ export default function App() {
                     alt={String(t('avatarAlt'))}
                     width={96}
                     height={96}
+                    loading="eager"
                     fetchPriority="high"
                     className="size-20 rounded-[1.35rem] border border-white/10 object-cover shadow-lg shadow-black/20 ring-4 ring-white/10 sm:size-24 sm:rounded-[1.6rem]"
                     {...(prefersReduced
@@ -535,8 +536,9 @@ export default function App() {
             <LinkHeatmap socials={socials} />
 
             <div className="flex min-h-7 flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <p className="text-sm text-slate-600 dark:text-slate-400" aria-label={String(t('builtWithLabel'))}>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 <span aria-hidden="true">{String(t('builtWith'))}</span>
+                <span className="sr-only">{String(t('builtWithLabel'))}</span>
               </p>
               <div className="min-h-0" />
             </div>

@@ -75,7 +75,7 @@ test.describe('Core rendering', () => {
   })
 
   test('shows footer', async ({ page }) => {
-    await expect(page.getByLabel('Built with love')).toBeVisible()
+    await expect(page.getByText('Built with ♥')).toBeVisible()
   })
 })
 
