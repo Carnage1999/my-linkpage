@@ -1,5 +1,7 @@
 # my-linkpage
 
+**English** | [Русский](README.ru.md) | [正體中文](README.zh-TW.md)
+
 A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind CSS.
 
 **Live demo → <https://link.w1999.me>**
