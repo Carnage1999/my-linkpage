@@ -17,5 +17,11 @@
   "opensInNewTab": "открывается в новой вкладке",
   "pageTitle": "Wang — Страница ссылок",
   "clickHeatmap": "Тепловая карта кликов",
-  "totalClicks": "Всего кликов"
+  "totalClicks": "Всего кликов",
+  "clickTrend": "Тренд кликов",
+  "daily": "По дням",
+  "weekly": "По неделям",
+  "resetStats": "Сброс",
+  "confirmReset": "Подтвердить",
+  "cancel": "Отмена"
 }

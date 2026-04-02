@@ -17,5 +17,11 @@
   "opensInNewTab": "在新分頁中開啟",
   "pageTitle": "Wang — 連結頁面",
   "clickHeatmap": "點擊熱力圖",
-  "totalClicks": "總點擊數"
+  "totalClicks": "總點擊數",
+  "clickTrend": "點擊趨勢",
+  "daily": "每日",
+  "weekly": "每週",
+  "resetStats": "重置",
+  "confirmReset": "確認",
+  "cancel": "取消"
 }

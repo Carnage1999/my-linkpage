@@ -17,5 +17,11 @@
   "opensInNewTab": "opens in new tab",
   "pageTitle": "Wang — Link Page",
   "clickHeatmap": "Click heatmap",
-  "totalClicks": "Total clicks"
+  "totalClicks": "Total clicks",
+  "clickTrend": "Click trend",
+  "daily": "Daily",
+  "weekly": "Weekly",
+  "resetStats": "Reset",
+  "confirmReset": "Confirm",
+  "cancel": "Cancel"
 }
