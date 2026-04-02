@@ -1,59 +1,49 @@
 # my-linkpage
 
-A multilingual link-in-bio page built with React, Vite, TypeScript, Tailwind CSS, and Headless UI.
+A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind CSS.
 
-Lightweight social link landing page with automatic language / theme detection, entrance animations, self-hosted fonts, and a centralized config file for managing profile links.
+**Live demo → <https://link.w1999.me>**
 
 ## Features
 
-- **Multilingual** — English, Russian, and Traditional Chinese with automatic browser language detection (Simplified Chinese locales are normalized to Traditional Chinese)
-- **Dark / light mode** — follows system preference on first visit; toggle persists via `localStorage`
-- **Animations** — entrance transitions and micro-interactions powered by Framer Motion with `prefers-reduced-motion` support
-- **Self-hosted fonts** — Manrope and Space Grotesk variable fonts via `@fontsource-variable` (no external CDN)
-- **Centralized config** — social links and profile data defined in a single `siteConfig.ts`; brand icons rendered from `simple-icons`
-- **Analytics & click tracking** — privacy-friendly analytics via Plausible or Umami (configurable in `siteConfig.ts`); local click heatmap with recharts trend chart (daily/weekly), animated per-link intensity bars, and a reset button — all powered by `localStorage`
-- **Dynamic OG image** — build-time social preview card (1200×630) generated with satori + @resvg/resvg-js, featuring name, tagline, social pills, and gradient background
-- **Error boundary** — top-level React Error Boundary prevents white-screen crashes with a user-friendly fallback UI and reload button
-- **Clipboard fallback** — copy-to-clipboard uses `navigator.clipboard` with `document.execCommand('copy')` fallback for older browsers/WebViews
-- **Accessibility** — skip-to-content link, proper heading hierarchy (`<h1>`), semantic `<ul>` for link cards, `aria-label` on language selector and external links, descriptive avatar alt text, `aria-live` copy feedback, localized `document.title`, WCAG-friendly contrast
-- **Performance** — `LazyMotion` tree-shaking, manual Vite chunk splitting (react-vendor / motion / i18n), optimized image attributes
-- **Testing** — unit / component tests with Vitest + Testing Library; E2E tests with Playwright
-- **Code quality** — TypeScript strict mode, ESLint, Prettier, automated `pnpm check` pipeline
+- **Multilingual** — EN / RU / ZH-TW with automatic browser language detection (Simplified Chinese → Traditional Chinese)
+- **Dark / light mode** — follows system preference; user toggle persists via `localStorage`
+- **Animations** — Framer Motion entrance transitions with `prefers-reduced-motion` support
+- **Self-hosted fonts** — Manrope & Space Grotesk variable fonts via `@fontsource-variable`
+- **Centralized config** — profile, social links, and analytics all in `siteConfig.ts`
+- **Analytics & click heatmap** — Plausible / Umami analytics (configurable); local per-link click heatmap with daily/weekly trend chart, intensity bars, and reset — all `localStorage`, no cookies
+- **Dynamic OG image** — 1200×630 social preview card generated at build time via satori + resvg
+- **SEO** — dynamic meta tags, Open Graph / Twitter cards, JSON-LD Person schema, hreflang
+- **Error boundary** — top-level crash fallback with reload button
+- **Clipboard fallback** — `navigator.clipboard` with `execCommand` fallback for older browsers
+- **Accessibility** — skip link, semantic HTML, ARIA labels, `aria-live` feedback, WCAG contrast
+- **Performance** — LazyMotion tree-shaking, Vite manual chunk splitting
+- **Testing** — Vitest + Testing Library unit tests; Playwright E2E (Chromium, Firefox, WebKit)
+- **Code quality** — TypeScript strict mode, ESLint 9, Prettier, `pnpm check` pipeline
 
 ## Tech Stack
 
 | Category | Tools |
 |---|---|
-| Framework | React 19, TypeScript 5 |
+| Framework | React 19, TypeScript 6 |
 | Build | Vite 8 |
 | Styling | Tailwind CSS 3, Headless UI |
-| Animation | Framer Motion (LazyMotion + domAnimation) |
+| Animation | Framer Motion |
 | i18n | i18next, react-i18next |
 | Charts | Recharts |
 | Icons | simple-icons |
 | OG image | satori, @resvg/resvg-js |
-| Fonts | @fontsource-variable/manrope, @fontsource-variable/space-grotesk |
-| Unit tests | Vitest, Testing Library, jsdom |
-| E2E tests | Playwright (Chromium, Firefox, WebKit) |
+| Fonts | @fontsource-variable (Manrope, Space Grotesk) |
+| Testing | Vitest, Testing Library, Playwright |
 | Linting | ESLint 9, Prettier |
 
 ## Getting Started
 
 ```bash
 pnpm install
-```
-
-### Development
-
-```bash
-pnpm dev
-```
-
-### Production build & preview
-
-```bash
-pnpm build
-pnpm preview
+pnpm dev        # development server
+pnpm build      # OG image generation + production build
+pnpm preview    # preview production build
 ```
 
 ## Scripts
@@ -67,110 +57,71 @@ pnpm preview
 | `pnpm typecheck` | TypeScript type check |
 | `pnpm lint` | ESLint |
 | `pnpm format` | Prettier format |
-| `pnpm test` | Run unit / component tests (Vitest) |
-| `pnpm test:watch` | Vitest in watch mode |
-| `pnpm test:e2e` | Run E2E tests (Playwright) |
+| `pnpm test` | Unit / component tests (Vitest) |
+| `pnpm test:e2e` | E2E tests (Playwright) |
 | `pnpm check` | Full pipeline: typecheck → lint → test → build |
 
 ## Project Structure
 
 ```text
 src/
-  App.tsx              Main page UI
-  main.tsx             App entry point (wrapped in ErrorBoundary)
-  siteConfig.ts        Profile data, social links, and analytics config
-  SocialIcon.tsx       Brand icon component (simple-icons + custom fallbacks)
-  i18n.ts              i18n setup and language detection
-  i18next.d.ts         i18next type augmentation
-  index.css            Global styles and Tailwind entry
+  siteConfig.ts          Profile, social links, and analytics config
+  App.tsx                Main page UI
+  main.tsx               Entry point (wrapped in ErrorBoundary)
+  SocialIcon.tsx         Brand icon component (simple-icons)
+  i18n.ts                Language detection and i18n setup
+  index.css              Global styles and Tailwind entry
   components/
-    ErrorBoundary.tsx Crash fallback UI with reload button
-    SEO.tsx            Dynamic meta tags, OG image, and JSON-LD structured data
-    LinkHeatmap.tsx    Per-link click intensity bars + recharts trend chart
+    ErrorBoundary.tsx    Crash fallback UI
+    SEO.tsx              Meta tags, OG image, JSON-LD
+    LinkHeatmap.tsx      Click heatmap and trend chart
   hooks/
-    useAnalytics.ts    Plausible / Umami script injection and event tracking
-    useLinkClickStats.ts  localStorage-backed click counter with timeline (powers heatmap & trend chart)
-  locales/
-    en.json            English translations
-    ru.json            Russian translations
-    zh-TW.json         Traditional Chinese translations
-  test/
-    setup.ts           Vitest setup (jsdom polyfills)
-    App.test.tsx       App component tests
-    theme.test.tsx     Theme toggle tests
-    SocialIcon.test.tsx  Icon component tests
-    siteConfig.test.ts   Config validation tests
-    useAnalytics.test.ts       Analytics hook tests
-    useLinkClickStats.test.ts  Click stats hook tests
-e2e/
-  app.spec.ts          Playwright E2E tests
+    useAnalytics.ts          Analytics script loader and event tracking
+    useLinkClickStats.ts     localStorage click counter and timeline
+  locales/               Translation files (en / ru / zh-TW)
+  test/                  Vitest unit and component tests
+e2e/                     Playwright E2E tests
 scripts/
-  generate-og-image.ts Build-time OG social preview image generator
+  generate-og-image.ts   Build-time OG image generator
 ```
 
 ## Customization
 
-### Edit social links and profile
+### Social links and profile
 
-Update `src/siteConfig.ts`. This file contains the avatar path and the social links array. Each entry has an `id`, `label`, `url`, and `iconSlug` (matching a `simple-icons` export name like `siGithub`).
+Edit `src/siteConfig.ts` — each link has `id`, `label`, `url`, and `iconSlug` (matching a [simple-icons](https://simpleicons.org) export like `siGithub`).
 
-### Edit translations
+### Translations
 
-Update the JSON files in `src/locales/`.
+Edit or add JSON files in `src/locales/`.
 
-### Configure analytics
+### Analytics
 
-Edit the `ANALYTICS` export in `src/siteConfig.ts`:
+Set the `ANALYTICS` export in `src/siteConfig.ts`:
 
 ```ts
 // Plausible
-export const ANALYTICS = {
-  provider: 'plausible',
-  plausibleDomain: 'link.example.com',
-  // plausibleHost: 'https://plausible.example.com',  // optional self-hosted
-}
+export const ANALYTICS = { provider: 'plausible', plausibleDomain: 'link.example.com' }
 
 // Umami
-export const ANALYTICS = {
-  provider: 'umami',
-  umamiWebsiteId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-  // umamiHost: 'https://umami.example.com',  // optional self-hosted
-}
+export const ANALYTICS = { provider: 'umami', umamiWebsiteId: 'xxxxxxxx-…' }
 
-// Disable external analytics (local heatmap still works)
+// Disable (local heatmap still works)
 export const ANALYTICS = null
 ```
 
-Every social link click sends a `Link Click` event with `id`, `label`, and `url` properties. The local click heatmap is always active and stores counts in the visitor's own `localStorage` — no cookies or fingerprinting.
+### OG image
 
-### Edit theme or language detection logic
+Edit constants in `scripts/generate-og-image.ts`, then run `pnpm generate-og`. The image is also regenerated on every `pnpm build`.
 
-See `src/i18n.ts` (language detection) and `src/App.tsx` (theme initialization).
+## Deployment
 
-### Customize OG image
+Pre-configured for multiple platforms:
 
-Edit the constants at the top of `scripts/generate-og-image.ts` (`NAME`, `TAGLINE`, `DOMAIN`, `SOCIALS`), then run `pnpm generate-og` to regenerate `public/og-image.png`. The image is also regenerated automatically on every `pnpm build`.
-
-## Behavior Notes
-
-- Language selection is saved in `localStorage` after the user changes it manually.
-- Theme selection is also saved in `localStorage` after the user toggles it manually.
-- Link click counts are stored in `localStorage` under `link-click-stats`; timestamps are stored under `link-click-timeline` and visualized as a daily/weekly trend chart and per-link heatmap bars.
-- Click statistics can be reset from the heatmap panel UI.
-- If there is no saved theme, the page follows the user's system preference.
-- If there is no saved language, the page follows the user's browser language.
-- Browser locales for Simplified Chinese are normalized to Traditional Chinese.
-- `document.title` and `<html lang>` update dynamically on language change.
-
-## Assets
-
-- Avatar image: `public/avatar.jpg`
-- OG social preview: `public/og-image.png` (auto-generated at build time)
-- Favicon: `public/favicon.ico`
+- **Vercel** — `vercel.json` with security headers and asset caching
+- **Firebase Hosting** — `firebase.json` with SPA rewrites and security headers
+- **Nginx** — `nginx.conf` and `customHttp.yml` provided
 
 ## License
 
-This project is licensed under the PolyForm Noncommercial License 1.0.0.
-
-- License file: `LICENSE`
-- License summary: https://polyformproject.org/licenses/noncommercial/1.0.0
+[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0) — see `LICENSE` for details.
