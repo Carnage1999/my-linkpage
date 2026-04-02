@@ -1,6 +1,8 @@
 /**
- * Site-wide configuration — edit this file to update your profile,
- * social links, and avatar without touching any component code.
+ * Site-wide configuration types and build-time fallbacks.
+ *
+ * Runtime data is loaded from /siteConfig.json via the useSiteConfig hook.
+ * Edit public/siteConfig.json to update links without redeploying.
  */
 
 // ─── Analytics (privacy-friendly) ────────────────────────
@@ -18,28 +20,6 @@ export interface AnalyticsConfig {
   readonly umamiHost?: string
 }
 
-/**
- * Set to `null` to disable external analytics entirely.
- * The local click heatmap still works without this.
- *
- * Example — Plausible:
- *   { provider: 'plausible', plausibleDomain: 'link.w1999.me' }
- *
- * Example — Umami:
- *   { provider: 'umami', umamiWebsiteId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' }
- */
-export const ANALYTICS: AnalyticsConfig | null = {
-  provider: 'umami',
-  umamiWebsiteId: 'b6e3dfdc-afb4-4586-b39c-4a1e0826748a',
-}
-
-// ─── Profile ─────────────────────────────────────────────
-
-export const PROFILE = {
-  /** Path to avatar image (relative to /public) */
-  avatar: '/avatar.jpg',
-} as const
-
 // ─── Social links ────────────────────────────────────────
 
 export interface SocialLinkEntry {
@@ -51,47 +31,40 @@ export interface SocialLinkEntry {
   readonly url: string
   /**
    * Icon slug from simple-icons (https://simpleicons.org).
+   * Optional — auto-detected from URL when omitted.
    * Must match the exported name: e.g. "siGithub", "siX", "siLinkedin".
-   * Run `npx simple-icons --list` to browse all slugs.
    */
-  readonly iconSlug: string
+  readonly iconSlug?: string
 }
 
-export const SOCIALS: readonly SocialLinkEntry[] = [
-  {
-    id: 'github',
-    label: 'GitHub',
-    url: 'https://github.com/Carnage1999',
-    iconSlug: 'siGithub',
-  },
-  {
-    id: 'bluesky',
-    label: 'Bluesky',
-    url: 'https://bsky.app/profile/w1999.me',
-    iconSlug: 'siBluesky',
-  },
-  {
-    id: 'x',
-    label: 'X',
-    url: 'https://x.com/wang_hanzhe',
-    iconSlug: 'siX',
-  },
-  {
-    id: 'line',
-    label: 'Line',
-    url: 'https://line.me/ti/p/Oc10OLyIM0',
-    iconSlug: 'siLine',
-  },
-  {
-    id: 'telegram',
-    label: 'Telegram',
-    url: 'https://t.me/WHZ1999',
-    iconSlug: 'siTelegram',
-  },
-  {
-    id: 'linkedin',
-    label: 'LinkedIn',
-    url: 'https://www.linkedin.com/in/hanzhe-wang/',
-    iconSlug: 'siLinkedin',
-  },
-]
+// ─── Site metadata ───────────────────────────────────────
+
+export interface SiteMetadata {
+  readonly name: string
+  readonly tagline: string
+  readonly domain: string
+  readonly twitterHandle?: string
+}
+
+// ─── Top-level config shape (matches public/siteConfig.json) ─
+
+export interface SiteConfig {
+  readonly site?: SiteMetadata
+  readonly profile: { readonly avatar: string }
+  readonly analytics?: AnalyticsConfig | null
+  readonly socials: readonly SocialLinkEntry[]
+  /** Path or URL for the Open Graph image. Defaults to "/api/og". */
+  readonly ogImagePath?: string
+}
+
+// ─── Fallback defaults (used while JSON is loading or on error) ─
+
+export const DEFAULT_SITE: SiteMetadata = {
+  name: 'Han-che Wang',
+  tagline: 'Links & Socials',
+  domain: 'link.w1999.me',
+} as const
+
+export const DEFAULT_PROFILE = { avatar: '/avatar.jpg' } as const
+
+export const DEFAULT_SOCIALS: readonly SocialLinkEntry[] = []

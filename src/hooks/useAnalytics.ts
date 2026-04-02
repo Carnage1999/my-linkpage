@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { ANALYTICS } from '../siteConfig'
+import type { AnalyticsConfig } from '../siteConfig'
 
 // ─── Plausible / Umami type augmentations ────────────────
 
@@ -23,11 +23,10 @@ declare global {
 
 let scriptInjected = false
 
-function injectScript(): void {
+function injectScript(cfg: AnalyticsConfig | null): void {
   if (scriptInjected || typeof document === 'undefined') return
   scriptInjected = true
 
-  const cfg = ANALYTICS
   if (!cfg) return
 
   const script = document.createElement('script')
@@ -66,28 +65,27 @@ function injectScript(): void {
 
 // ─── Public hook ─────────────────────────────────────────
 
-export function useAnalytics() {
+export function useAnalytics(analytics: AnalyticsConfig | null = null) {
   const ready = useRef(false)
 
   useEffect(() => {
     if (!ready.current) {
-      injectScript()
+      injectScript(analytics)
       ready.current = true
     }
-  }, [])
+  }, [analytics])
 
   const trackEvent = useCallback(
     (name: string, props?: Record<string, string>) => {
-      const cfg = ANALYTICS
-      if (!cfg) return
+      if (!analytics) return
 
-      if (cfg.provider === 'plausible') {
+      if (analytics.provider === 'plausible') {
         window.plausible?.(name, props ? { props } : undefined)
-      } else if (cfg.provider === 'umami') {
+      } else if (analytics.provider === 'umami') {
         window.umami?.track(name, props)
       }
     },
-    [],
+    [analytics],
   )
 
   const trackLinkClick = useCallback(

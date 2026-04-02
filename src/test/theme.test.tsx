@@ -5,20 +5,23 @@ import App from '../App'
 import '../i18n'
 
 describe('Theme toggle', () => {
-  it('defaults to light mode (no stored preference, no system dark)', () => {
+  it('defaults to light mode (no stored preference, no system dark)', async () => {
     render(<App />)
+    await screen.findByRole('switch')
     expect(document.documentElement.classList.contains('dark')).toBe(false)
   })
 
-  it('applies dark mode from localStorage', () => {
+  it('applies dark mode from localStorage', async () => {
     localStorage.setItem('theme', 'dark')
     render(<App />)
+    await screen.findByRole('switch')
     expect(document.documentElement.classList.contains('dark')).toBe(true)
   })
 
-  it('applies light mode from localStorage', () => {
+  it('applies light mode from localStorage', async () => {
     localStorage.setItem('theme', 'light')
     render(<App />)
+    await screen.findByRole('switch')
     expect(document.documentElement.classList.contains('dark')).toBe(false)
   })
 
@@ -26,7 +29,7 @@ describe('Theme toggle', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    const toggle = screen.getByRole('switch')
+    const toggle = await screen.findByRole('switch')
     expect(document.documentElement.classList.contains('dark')).toBe(false)
 
     await user.click(toggle)

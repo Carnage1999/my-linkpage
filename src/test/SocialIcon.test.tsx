@@ -11,9 +11,19 @@ describe('SocialIcon', () => {
     expect(svg?.querySelector('path')).toHaveAttribute('d')
   })
 
-  it('renders nothing for an unknown slug', () => {
+  it('renders a fallback link icon for an unknown slug', () => {
     const { container } = render(<SocialIcon slug="siUnknown" />)
-    expect(container.firstChild).toBeNull()
+    const svg = container.querySelector('svg')
+    expect(svg).toBeInTheDocument()
+    // Fallback icon uses stroke instead of fill
+    expect(svg).toHaveAttribute('stroke', 'currentColor')
+  })
+
+  it('renders a fallback link icon when slug is omitted', () => {
+    const { container } = render(<SocialIcon />)
+    const svg = container.querySelector('svg')
+    expect(svg).toBeInTheDocument()
+    expect(svg).toHaveAttribute('stroke', 'currentColor')
   })
 
   it('applies custom className', () => {

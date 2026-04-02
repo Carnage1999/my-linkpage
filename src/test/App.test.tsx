@@ -5,14 +5,14 @@ import App from '../App'
 import '../i18n'
 
 describe('App', () => {
-  it('renders profile title', () => {
+  it('renders profile title', async () => {
     render(<App />)
-    expect(screen.getByText("Hi, I'm Wang")).toBeInTheDocument()
+    expect(await screen.findByText("Hi, I'm Wang")).toBeInTheDocument()
   })
 
-  it('renders all social links', () => {
+  it('renders all social links', async () => {
     render(<App />)
-    expect(screen.getByLabelText(/^GitHub/)).toBeInTheDocument()
+    expect(await screen.findByLabelText(/^GitHub/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Bluesky/)).toBeInTheDocument()
     expect(screen.getByLabelText(/^X /)).toBeInTheDocument()
     expect(screen.getByLabelText(/^Line/)).toBeInTheDocument()
@@ -20,16 +20,17 @@ describe('App', () => {
     expect(screen.getByLabelText(/^LinkedIn/)).toBeInTheDocument()
   })
 
-  it('renders social link URLs', () => {
+  it('renders social link URLs', async () => {
     render(<App />)
-    const githubLink = screen.getByLabelText(/^GitHub/)
+    const githubLink = await screen.findByLabelText(/^GitHub/)
     expect(githubLink).toHaveAttribute('href', 'https://github.com/Carnage1999')
     expect(githubLink).toHaveAttribute('target', '_blank')
     expect(githubLink).toHaveAttribute('rel', 'noreferrer')
   })
 
-  it('renders copy buttons for each social', () => {
+  it('renders copy buttons for each social', async () => {
     render(<App />)
+    await screen.findByLabelText(/^GitHub/)
     const copyButtons = screen.getAllByRole('button', { name: /^Copy /i })
     expect(copyButtons).toHaveLength(6)
   })
@@ -44,8 +45,7 @@ describe('App', () => {
     })
 
     render(<App />)
-
-    const copyGithub = screen.getByRole('button', { name: /Copy GitHub/i })
+    const copyGithub = await screen.findByRole('button', { name: /Copy GitHub/i })
     await user.click(copyGithub)
 
     expect(writeText).toHaveBeenCalledWith('https://github.com/Carnage1999')
@@ -53,9 +53,9 @@ describe('App', () => {
     expect(visibleSpans.length).toBeGreaterThan(0)
   })
 
-  it('renders avatar image with correct attributes', () => {
+  it('renders avatar image with correct attributes', async () => {
     render(<App />)
-    const avatar = screen.getByAltText('Photo of Han-che Wang')
+    const avatar = await screen.findByAltText('Photo of Han-che Wang')
     expect(avatar).toHaveAttribute('src', '/avatar.jpg')
     expect(avatar).toHaveAttribute('width', '96')
     expect(avatar).toHaveAttribute('height', '96')

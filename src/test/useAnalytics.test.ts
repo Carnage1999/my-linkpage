@@ -1,6 +1,17 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useAnalytics } from '../hooks/useAnalytics'
+import type { AnalyticsConfig } from '../siteConfig'
+
+const UMAMI_CONFIG: AnalyticsConfig = {
+  provider: 'umami',
+  umamiWebsiteId: 'test-id',
+}
+
+const PLAUSIBLE_CONFIG: AnalyticsConfig = {
+  provider: 'plausible',
+  plausibleDomain: 'test.example.com',
+}
 
 describe('useAnalytics', () => {
   it('returns trackEvent and trackLinkClick functions', () => {
@@ -10,7 +21,7 @@ describe('useAnalytics', () => {
   })
 
   it('trackLinkClick calls trackEvent with correct params', () => {
-    // ANALYTICS is null by default, so calls are no-ops — just verify no throw
+    // analytics is null by default, so calls are no-ops — just verify no throw
     const { result } = renderHook(() => useAnalytics())
     expect(() => {
       result.current.trackLinkClick('github', 'GitHub', 'https://github.com/test')
@@ -21,11 +32,10 @@ describe('useAnalytics', () => {
     const plausibleSpy = vi.fn()
     window.plausible = plausibleSpy as never
 
-    const { result } = renderHook(() => useAnalytics())
+    const { result } = renderHook(() => useAnalytics(PLAUSIBLE_CONFIG))
     result.current.trackEvent('Test Event', { key: 'value' })
 
-    // Since ANALYTICS is null in test env, plausible won't be called via the hook
-    // This just ensures no crash
+    expect(plausibleSpy).toHaveBeenCalledWith('Test Event', { props: { key: 'value' } })
     delete window.plausible
   })
 
@@ -33,11 +43,10 @@ describe('useAnalytics', () => {
     const trackSpy = vi.fn()
     window.umami = { track: trackSpy }
 
-    const { result } = renderHook(() => useAnalytics())
+    const { result } = renderHook(() => useAnalytics(UMAMI_CONFIG))
     result.current.trackEvent('Test Event', { key: 'value' })
 
-    // Since ANALYTICS is null in test env, umami won't be called via the hook
-    // This just ensures no crash
+    expect(trackSpy).toHaveBeenCalledWith('Test Event', { key: 'value' })
     delete window.umami
   })
 })

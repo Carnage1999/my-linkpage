@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { SOCIALS } from '../siteConfig'
+import type { SiteMetadata, SocialLinkEntry } from '../siteConfig'
 
 const LOCALE_MAP: Record<string, string> = {
   en: 'en_US',
@@ -9,7 +9,7 @@ const LOCALE_MAP: Record<string, string> = {
 
 const LANGUAGES = ['en', 'ru', 'zh-TW']
 
-export function SEO() {
+export function SEO({ site, socials, ogImagePath }: { site: SiteMetadata; socials: readonly SocialLinkEntry[]; ogImagePath: string }) {
   const { t, i18n } = useTranslation()
   const pageTitle = String(t('pageTitle')) || 'Wang — Link Page'
   const description = String(t('intro')) || 'Personal link page — find all my social profiles in one place.'
@@ -19,8 +19,8 @@ export function SEO() {
   const currentUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://link.w1999.me'
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://link.w1999.me'
   
-  // Use the build-time generated OG image
-  const ogImageUrl = `${origin}/og-image.png`
+  // Dynamic OG image: absolute URL from ogImagePath
+  const ogImageUrl = ogImagePath.startsWith('http') ? ogImagePath : `${origin}${ogImagePath}`
 
   // Define structured data (JSON-LD Person schema)
   const schema = {
@@ -30,7 +30,7 @@ export function SEO() {
     "description": description,
     "image": ogImageUrl,
     "url": origin,
-    "sameAs": SOCIALS.map(social => social.url)
+    "sameAs": socials.map(social => social.url)
   }
 
   const ogLocale = LOCALE_MAP[currentLang] ?? 'en_US'
@@ -57,8 +57,8 @@ export function SEO() {
       ))}
       
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:site" content="@wang_hanzhe" />
-      <meta name="twitter:creator" content="@wang_hanzhe" />
+      {site.twitterHandle && <meta name="twitter:site" content={site.twitterHandle} />}
+      {site.twitterHandle && <meta name="twitter:creator" content={site.twitterHandle} />}
       <meta name="twitter:title" content={pageTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={ogImageUrl} />

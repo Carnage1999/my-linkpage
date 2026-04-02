@@ -1,6 +1,26 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
-import { afterEach, beforeAll, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, vi } from 'vitest'
+import { invalidateSiteConfig } from '../hooks/useSiteConfig'
+
+const TEST_SITE_CONFIG = {
+  site: {
+    name: 'Han-che Wang',
+    tagline: 'Links & Socials',
+    domain: 'link.w1999.me',
+    twitterHandle: '@wang_hanzhe',
+  },
+  profile: { avatar: '/avatar.jpg' },
+  analytics: null,
+  socials: [
+    { id: 'github', label: 'GitHub', url: 'https://github.com/Carnage1999' },
+    { id: 'bluesky', label: 'Bluesky', url: 'https://bsky.app/profile/w1999.me' },
+    { id: 'x', label: 'X', url: 'https://x.com/wang_hanzhe' },
+    { id: 'line', label: 'Line', url: 'https://line.me/ti/p/Oc10OLyIM0' },
+    { id: 'telegram', label: 'Telegram', url: 'https://t.me/WHZ1999' },
+    { id: 'linkedin', label: 'LinkedIn', url: 'https://www.linkedin.com/in/hanzhe-wang/' },
+  ],
+}
 
 // jsdom doesn't provide localStorage without a valid --localstorage-file
 function ensureLocalStorage() {
@@ -44,6 +64,22 @@ function ensureMatchMedia() {
 beforeAll(() => {
   ensureLocalStorage()
   ensureMatchMedia()
+})
+
+beforeEach(() => {
+  invalidateSiteConfig()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string) => {
+      if (url === '/siteConfig.json') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(TEST_SITE_CONFIG),
+        })
+      }
+      return Promise.resolve({ ok: false, status: 404 })
+    }),
+  )
 })
 
 afterEach(() => {

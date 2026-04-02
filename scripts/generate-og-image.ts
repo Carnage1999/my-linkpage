@@ -6,19 +6,21 @@
  * Output: public/og-image.png  (1200 × 630)
  */
 
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Resvg } from '@resvg/resvg-js'
 import satori from 'satori'
 
-// ─── Config (mirrors siteConfig.ts) ──────────────────────
-const NAME = 'Han-che Wang'
-const TAGLINE = 'Links & Socials'
-const DOMAIN = 'link.w1999.me'
-const SOCIALS = ['GitHub', 'Bluesky', 'X', 'Line', 'Telegram', 'LinkedIn']
+// ─── Config (read from siteConfig.json at build time) ────
+const ROOT = join(import.meta.dirname, '..')
+const configRaw = readFileSync(join(ROOT, 'public/siteConfig.json'), 'utf-8')
+const config = JSON.parse(configRaw) as { site?: { name: string; tagline: string; domain: string }; socials: { label: string }[] }
+const NAME = config.site?.name ?? 'Han-che Wang'
+const TAGLINE = config.site?.tagline ?? 'Links & Socials'
+const DOMAIN = config.site?.domain ?? 'link.w1999.me'
+const SOCIALS = config.socials.map((s) => s.label)
 
 // ─── Fonts (Google Fonts API returns TTF when asked) ─────
-const ROOT = join(import.meta.dirname, '..')
 
 async function fetchFont(url: string): Promise<ArrayBuffer> {
   const res = await fetch(url)

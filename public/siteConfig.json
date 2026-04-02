@@ -1,0 +1,47 @@
+{
+  "site": {
+    "name": "Han-che Wang",
+    "tagline": "Links & Socials",
+    "domain": "link.w1999.me",
+    "twitterHandle": "@wang_hanzhe"
+  },
+  "profile": {
+    "avatar": "/avatar.jpg"
+  },
+  "analytics": {
+    "provider": "umami",
+    "umamiWebsiteId": "b6e3dfdc-afb4-4586-b39c-4a1e0826748a"
+  },
+  "socials": [
+    {
+      "id": "github",
+      "label": "GitHub",
+      "url": "https://github.com/Carnage1999"
+    },
+    {
+      "id": "bluesky",
+      "label": "Bluesky",
+      "url": "https://bsky.app/profile/w1999.me"
+    },
+    {
+      "id": "x",
+      "label": "X",
+      "url": "https://x.com/wang_hanzhe"
+    },
+    {
+      "id": "line",
+      "label": "Line",
+      "url": "https://line.me/ti/p/Oc10OLyIM0"
+    },
+    {
+      "id": "telegram",
+      "label": "Telegram",
+      "url": "https://t.me/WHZ1999"
+    },
+    {
+      "id": "linkedin",
+      "label": "LinkedIn",
+      "url": "https://www.linkedin.com/in/hanzhe-wang/"
+    }
+  ]
+}

@@ -6,13 +6,14 @@ A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind
 
 ## Features
 
+- **Zero-deploy updates** — edit `public/siteConfig.json` to add/remove/reorder social links, change profile, or update analytics — no rebuild needed
+- **Auto icon detection** — icons are resolved automatically from link URLs (47+ platforms); override with `iconSlug` when needed
+- **Dynamic OG image** — Vercel serverless function generates a 1200×630 social preview card at request time, always reflecting the latest config
 - **Multilingual** — EN / RU / ZH-TW with automatic browser language detection (Simplified Chinese → Traditional Chinese)
 - **Dark / light mode** — follows system preference; user toggle persists via `localStorage`
 - **Animations** — Framer Motion entrance transitions with `prefers-reduced-motion` support
 - **Self-hosted fonts** — Manrope & Space Grotesk variable fonts via `@fontsource-variable`
-- **Centralized config** — profile, social links, and analytics all in `siteConfig.ts`
 - **Analytics & click heatmap** — Plausible / Umami analytics (configurable); local per-link click heatmap with daily/weekly trend chart, intensity bars, and reset — all `localStorage`, no cookies
-- **Dynamic OG image** — 1200×630 social preview card generated at build time via satori + resvg
 - **SEO** — dynamic meta tags, Open Graph / Twitter cards, JSON-LD Person schema, hreflang
 - **Error boundary** — top-level crash fallback with reload button
 - **Clipboard fallback** — `navigator.clipboard` with `execCommand` fallback for older browsers
@@ -64,11 +65,14 @@ pnpm preview    # preview production build
 ## Project Structure
 
 ```text
+public/
+  siteConfig.json        ★ Single source of truth — edit this file to update everything
 src/
-  siteConfig.ts          Profile, social links, and analytics config
+  siteConfig.ts          Type definitions and build-time fallback defaults
   App.tsx                Main page UI
   main.tsx               Entry point (wrapped in ErrorBoundary)
-  SocialIcon.tsx         Brand icon component (simple-icons)
+  SocialIcon.tsx         Brand icon component (simple-icons + auto-detection)
+  iconRegistry.ts        47+ platform icons with URL → icon auto-matching
   i18n.ts                Language detection and i18n setup
   index.css              Global styles and Tailwind entry
   components/
@@ -76,20 +80,47 @@ src/
     SEO.tsx              Meta tags, OG image, JSON-LD
     LinkHeatmap.tsx      Click heatmap and trend chart
   hooks/
+    useSiteConfig.ts         Runtime JSON config loader (fetches siteConfig.json)
     useAnalytics.ts          Analytics script loader and event tracking
     useLinkClickStats.ts     localStorage click counter and timeline
   locales/               Translation files (en / ru / zh-TW)
   test/                  Vitest unit and component tests
+api/
+  og.ts                  Vercel serverless function — dynamic OG image generation
 e2e/                     Playwright E2E tests
 scripts/
-  generate-og-image.ts   Build-time OG image generator
+  generate-og-image.ts   Build-time OG image generator (static fallback)
 ```
 
 ## Customization
 
-### Social links and profile
+### Social links, profile, and site metadata
 
-Edit `src/siteConfig.ts` — each link has `id`, `label`, `url`, and `iconSlug` (matching a [simple-icons](https://simpleicons.org) export like `siGithub`).
+Edit `public/siteConfig.json` — this is the **only file** you need to change. No rebuild or redeploy required.
+
+```jsonc
+{
+  "site": {
+    "name": "Your Name",
+    "tagline": "Links & Socials",
+    "domain": "your-domain.com",
+    "twitterHandle": "@your_handle"    // optional
+  },
+  "profile": {
+    "avatar": "/avatar.jpg"
+  },
+  "analytics": {                        // optional — omit to disable
+    "provider": "umami",                // "umami" or "plausible"
+    "umamiWebsiteId": "xxxxxxxx-..."
+  },
+  "socials": [
+    { "id": "github", "label": "GitHub", "url": "https://github.com/you" },
+    { "id": "x", "label": "X", "url": "https://x.com/you" }
+    // Icons are auto-detected from URLs — no iconSlug needed
+    // Add iconSlug manually to override: "iconSlug": "siGithub"
+  ]
+}
+```
 
 ### Translations
 
@@ -97,22 +128,21 @@ Edit or add JSON files in `src/locales/`.
 
 ### Analytics
 
-Set the `ANALYTICS` export in `src/siteConfig.ts`:
+Configure in `public/siteConfig.json`:
 
-```ts
+```jsonc
 // Plausible
-export const ANALYTICS = { provider: 'plausible', plausibleDomain: 'link.example.com' }
+"analytics": { "provider": "plausible", "plausibleDomain": "link.example.com" }
 
 // Umami
-export const ANALYTICS = { provider: 'umami', umamiWebsiteId: 'xxxxxxxx-…' }
+"analytics": { "provider": "umami", "umamiWebsiteId": "xxxxxxxx-…" }
 
-// Disable (local heatmap still works)
-export const ANALYTICS = null
+// Disable (omit the "analytics" key — local heatmap still works)
 ```
 
 ### OG image
 
-Edit constants in `scripts/generate-og-image.ts`, then run `pnpm generate-og`. The image is also regenerated on every `pnpm build`.
+The OG image is generated **dynamically** at `/api/og` by reading `siteConfig.json` at request time — no manual regeneration needed. A static fallback is also generated on `pnpm build` via `scripts/generate-og-image.ts`.
 
 ## Deployment
 

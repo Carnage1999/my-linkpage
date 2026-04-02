@@ -15,12 +15,12 @@ import {
 import { startTransition, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AppLanguageCode } from './i18n'
-import { PROFILE, SOCIALS } from './siteConfig'
 import { SocialIcon } from './SocialIcon'
 import { SEO } from './components/SEO'
 import { LinkHeatmap } from './components/LinkHeatmap'
 import { useAnalytics } from './hooks/useAnalytics'
 import { useLinkClickStats } from './hooks/useLinkClickStats'
+import { useSiteConfig } from './hooks/useSiteConfig'
 
 interface LanguageOption {
   code: AppLanguageCode
@@ -131,10 +131,11 @@ function MoonIcon() {
 
 export default function App() {
   const { t, i18n } = useTranslation()
+  const { loading, site, profile, analytics, socials, ogImagePath } = useSiteConfig()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [isDark, setIsDark] = useState<boolean>(getInitialTheme)
   const copyTimeoutRef = useRef<number | null>(null)
-  const { trackLinkClick } = useAnalytics()
+  const { trackLinkClick } = useAnalytics(analytics)
   const { recordClick } = useLinkClickStats()
   const activeLanguage =
     LANGUAGES.find(
@@ -256,9 +257,17 @@ export default function App() {
         },
       }
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300" />
+      </div>
+    )
+  }
+
   return (
     <LazyMotion features={domAnimation} strict>
-    <SEO />
+    <SEO site={site} socials={socials} ogImagePath={ogImagePath} />
     <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <a
         href="#social-links"
@@ -370,7 +379,7 @@ export default function App() {
 
                 <div className="space-y-4">
                   <m.img
-                    src={PROFILE.avatar}
+                    src={profile.avatar}
                     alt={String(t('avatarAlt'))}
                     width={96}
                     height={96}
@@ -435,7 +444,7 @@ export default function App() {
             </div>
 
             <ul className="grid min-w-0 gap-4" aria-label={String(t('subtitle'))} id="social-links">
-              {SOCIALS.map((social, index) => (
+              {socials.map((social, index) => (
                 <li key={social.id} className="block w-full min-w-0">
                   <m.div
                     className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10 sm:p-5"
@@ -523,7 +532,7 @@ export default function App() {
               ))}
             </ul>
 
-            <LinkHeatmap socials={SOCIALS} />
+            <LinkHeatmap socials={socials} />
 
             <div className="flex min-h-7 flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="text-sm text-slate-600 dark:text-slate-400" aria-label={String(t('builtWithLabel'))}>
