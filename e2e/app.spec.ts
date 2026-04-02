@@ -164,19 +164,26 @@ test.describe('Language switcher', () => {
 // ─── Copy to clipboard ──────────────────────────────────
 
 test.describe('Copy to clipboard', () => {
-  test.beforeEach(async ({ page, context }) => {
-    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  test.beforeEach(async ({ page, context, browserName }) => {
+    // Clipboard permissions are only supported in Chromium
+    if (browserName === 'chromium') {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    }
     await resetStorage(page)
   })
 
-  test('copy button shows "Copied" feedback and writes correct URL', async ({ page }) => {
+  test('copy button shows "Copied" feedback and writes correct URL', async ({ page, browserName }) => {
     const copyBtn = page.getByRole('button', { name: /Copy GitHub/i })
     await copyBtn.click()
 
     // The animated (non-invisible) text should now read "Copied"
     await expect(copyBtn.locator('span.col-start-1:not(.invisible)', { hasText: 'Copied' })).toBeVisible()
-    const clipboard = await page.evaluate(() => navigator.clipboard.readText())
-    expect(clipboard).toBe('https://github.com/Carnage1999')
+
+    // Clipboard verification only works reliably in Chromium
+    if (browserName === 'chromium') {
+      const clipboard = await page.evaluate(() => navigator.clipboard.readText())
+      expect(clipboard).toBe('https://github.com/Carnage1999')
+    }
   })
 
   test('"Copied" feedback disappears after timeout', async ({ page }) => {
@@ -188,15 +195,18 @@ test.describe('Copy to clipboard', () => {
     await expect(copyBtn.locator('span.col-start-1:not(.invisible)', { hasText: 'Copy' })).toBeVisible({ timeout: 3000 })
   })
 
-  test('copying a different link replaces the previous feedback', async ({ page }) => {
+  test('copying a different link replaces the previous feedback', async ({ page, browserName }) => {
     const githubBtn = page.getByRole('button', { name: /Copy GitHub/i })
     await githubBtn.click()
     await expect(githubBtn.locator('span.col-start-1:not(.invisible)', { hasText: 'Copied' })).toBeVisible()
 
     const blueskyBtn = page.getByRole('button', { name: /Copy Bluesky/i })
     await blueskyBtn.click()
-    const clipboard = await page.evaluate(() => navigator.clipboard.readText())
-    expect(clipboard).toBe('https://bsky.app/profile/w1999.me')
+
+    if (browserName === 'chromium') {
+      const clipboard = await page.evaluate(() => navigator.clipboard.readText())
+      expect(clipboard).toBe('https://bsky.app/profile/w1999.me')
+    }
     // Bluesky button should now show Copied
     await expect(blueskyBtn.locator('span.col-start-1:not(.invisible)', { hasText: 'Copied' })).toBeVisible()
   })
