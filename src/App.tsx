@@ -215,7 +215,18 @@ export default function App() {
 
   async function copyLink(url: string, id: string) {
     try {
-      await navigator.clipboard.writeText(url)
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url)
+      } else {
+        const textArea = document.createElement('textarea')
+        textArea.value = url
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-9999px'
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+      }
 
       if (copyTimeoutRef.current !== null) {
         window.clearTimeout(copyTimeoutRef.current)
