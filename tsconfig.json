@@ -20,6 +20,7 @@
     "eslint.config.ts",
     "postcss.config.ts",
     "prettier.config.ts",
+    "playwright.config.ts",
     "eslint-plugin-tailwindcss.d.ts"
   ]
 }
