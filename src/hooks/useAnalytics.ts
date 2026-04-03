@@ -24,10 +24,8 @@ declare global {
 let scriptInjected = false
 
 function injectScript(cfg: AnalyticsConfig | null): void {
-  if (scriptInjected || typeof document === 'undefined') return
+  if (scriptInjected || typeof document === 'undefined' || !cfg) return
   scriptInjected = true
-
-  if (!cfg) return
 
   const script = document.createElement('script')
   script.defer = true
@@ -69,7 +67,7 @@ export function useAnalytics(analytics: AnalyticsConfig | null = null) {
   const ready = useRef(false)
 
   useEffect(() => {
-    if (!ready.current) {
+    if (!ready.current && analytics) {
       injectScript(analytics)
       ready.current = true
     }

@@ -1,8 +1,8 @@
 import '@fontsource-variable/manrope'
 import '@fontsource-variable/space-grotesk'
 import { createRoot } from 'react-dom/client'
-import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { AppRouter } from './router'
 import './i18n'
 import './index.css'
 
@@ -14,6 +14,6 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <ErrorBoundary>
-    <App />
-  </ErrorBoundary>
+    <AppRouter />
+  </ErrorBoundary>,
 )

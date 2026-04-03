@@ -10,12 +10,13 @@
 
 - **零部署更新** — 編輯 `public/siteConfig.json` 即可新增、移除或調整社群連結、個人資料或分析工具，無需重新建置
 - **自動偵測圖示** — 透過 [simple-icons](https://simpleicons.org) 根據連結網址自動匹配圖示（支援 48 平台）；需要時可用 `iconSlug` 手動覆寫
-- **動態 OG 圖片** — Vercel Serverless Function (`/api/og`) 依請求即時產生 1200×630 社群預覽圖，始終反映最新設定
+- **動態 OG 圖片** — Serverless 端點（`/api/og`）使用 Web Standard API 依請求即時產生 1200×630 社群預覽圖，始終反映最新設定
 - **多語系** — EN / RU / ZH-TW，自動偵測瀏覽器語言（簡體中文 → 正體中文）
 - **深色 / 淺色模式** — 跟隨系統偏好；使用者的切換選擇透過 `localStorage` 保存
 - **動畫效果** — Framer Motion 進場過渡動畫，支援 `prefers-reduced-motion`
 - **自託管字型** — 透過 `@fontsource-variable` 提供 Manrope 與 Space Grotesk 可變字型
 - **分析與點擊熱力圖** — 可設定 Plausible / Umami 分析工具；本機端逐連結點擊熱力圖含每日/每週趨勢圖 — 全部使用 `localStorage`，無 Cookie
+- **統計儀表板** — 選擇性啟用的密碼保護 `/stats` 頁面，透過 Upstash Redis 實現伺服器端點擊追蹤；30 天趨勢圖、逐連結統計、Umami/Plausible 嵌入 — 完全透過環境變數選擇性啟用
 - **SEO** — 動態 meta/OG/Twitter 標籤、JSON-LD Person schema、hreflang、canonical 連結
 - **無障礙** — skip link、語意化 HTML、ARIA 標籤、`aria-live` 回饋、WCAG 對比度；E2E 中包含 axe-core 無障礙稽核
 - **錯誤邊界** — 頂層崩潰備援 UI，附重新載入按鈕
@@ -30,13 +31,15 @@
 | 類別 | 工具 |
 |---|---|
 | 框架 | React 19、TypeScript 6 |
+| 路由 | react-router-dom 7 |
 | 建置 | Vite 8 |
 | 樣式 | Tailwind CSS 3、Headless UI |
 | 動畫 | Framer Motion |
 | 國際化 | i18next、react-i18next |
 | 圖表 | Recharts |
 | 圖示 | simple-icons（48 平台） |
-| OG 圖片 | satori、@resvg/resvg-js（建置時期 + Vercel serverless） |
+| OG 圖片 | satori、@resvg/resvg-js（建置時期 + serverless） |
+| 統計後端 | Upstash Redis（REST API，無需 SDK） |
 | 字型 | @fontsource-variable（Manrope、Space Grotesk） |
 | 測試 | Vitest、Testing Library、Playwright、axe-core |
 | 程式碼檢查 | ESLint 9、Prettier |
@@ -76,6 +79,7 @@ src/
   siteConfig.ts            型別定義與建置時期預設值
   App.tsx                  主頁面 UI
   main.tsx                 進入點（包裹於 ErrorBoundary）
+  router.tsx               客戶端路由（/、/stats）
   SocialIcon.tsx           品牌圖示元件（simple-icons + 自動偵測）
   iconRegistry.ts          48 平台圖示註冊表，URL → 圖示自動匹配
   i18n.ts                  語言偵測與 i18n 設定
@@ -88,10 +92,21 @@ src/
     useSiteConfig.ts       執行階段 JSON 設定載入器（擷取 siteConfig.json）
     useAnalytics.ts        分析腳本載入器與事件追蹤
     useLinkClickStats.ts   localStorage 點擊計數器與時間軸
+    useStats.ts            伺服器端統計認證與資料 hook
+  pages/
+    StatsPage.tsx          密碼保護的統計儀表板
   locales/                 翻譯檔案（en / ru / zh-TW）
   test/                    Vitest 單元與元件測試
 api/
-  og.ts                    Vercel Serverless Function — 動態產生 OG 圖片
+  og.ts                    Serverless Function — 動態產生 OG 圖片（Web Standard API）
+  stats/
+    _handlers.ts           跨平台請求處理器
+    _redis.ts              Upstash Redis REST 輔助函式
+    _token.ts              HMAC 權杖認證（Web Crypto API）
+    auth.ts                登入端點
+    check.ts               功能偵測端點
+    data.ts                統計資料端點
+    record.ts              點擊紀錄端點
 e2e/
   app.spec.ts              Playwright E2E 測試
   a11y.spec.ts             axe-core 無障礙稽核
@@ -152,11 +167,25 @@ scripts/
 
 OG 圖片透過 `/api/og` **動態產生**，每次請求時讀取 `siteConfig.json`，無需手動重新產生。靜態備援圖片也會在 `pnpm build` 時產生。
 
+### 統計儀表板（選擇性啟用）
+
+`/stats` 統計儀表板為**完全選擇性啟用**。設定以下環境變數即可啟用：
+
+| 變數 | 說明 |
+|---|---|
+| `STATS_PASSWORD` | 存取統計儀表板的密碼 |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST 端點 URL |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST 認證權杖 |
+
+三個變數皆設定時，所有連結將自動啟用點擊追蹤，頁尾也會出現「統計」連結。任一變數缺少時，此功能完全隱藏 — 不會有額外請求或 UI 變動。
+
+統計 API 使用 Web Standard `Request`/`Response` 與 Web Crypto API，可在 **Vercel Edge、Cloudflare Workers、Netlify Edge Functions** 及其他支援 Web Platform API 的平台上運行。
+
 ## 部署
 
 已預先設定多個平台：
 
-- **Vercel** — `vercel.json` 含安全標頭、資源快取與 `/api/og` serverless OG 圖片端點
+- **Vercel** — `vercel.json` 含安全標頭、資源快取、`/api/og` OG 圖片端點與 `/api/stats/*` edge 端點
 - **Firebase Hosting** — `firebase.json` 含 SPA 重寫與安全標頭
 - **Nginx** — 附 `nginx.conf` 與 `customHttp.yml`
 - **CI** — GitHub Actions 執行 lint、typecheck、單元測試、建置，接著 E2E + 無障礙測試（每次 push/PR）

@@ -1,14 +1,16 @@
 /**
- * Vercel Serverless Function — generates an Open Graph image (1200×630 PNG)
+ * Serverless Function — generates an Open Graph image (1200×630 PNG)
  * dynamically by reading the current /siteConfig.json at request time.
  *
  * Endpoint:  GET /api/og
+ *
+ * Uses Web Standard Request/Response — works on Vercel Edge, Cloudflare,
+ * Netlify, and any platform supporting @resvg/resvg-js.
  *
  * This means the OG image always reflects the latest config —
  * no redeploy needed when social links change.
  */
 
-import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Resvg } from '@resvg/resvg-js'
 import satori from 'satori'
 
@@ -277,11 +279,10 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
 
 // ─── Handler ─────────────────────────────────────────────
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(request: Request): Promise<Response> {
   try {
-    const protocol = req.headers['x-forwarded-proto'] ?? 'https'
-    const host = req.headers['x-forwarded-host'] ?? req.headers.host ?? 'link.w1999.me'
-    const origin = `${protocol}://${host}`
+    const url = new URL(request.url)
+    const origin = url.origin
 
     const [config, fonts] = await Promise.all([loadConfig(origin), loadFonts()])
 
@@ -304,12 +305,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: WIDTH } })
     const png = resvg.render().asPng()
 
-    res.setHeader('Content-Type', 'image/png')
-    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600')
-    res.status(200).send(Buffer.from(png))
+    return new Response(new Uint8Array(png), {
+      status: 200,
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600',
+      },
+    })
   } catch (err) {
     console.error('OG generation failed:', err)
     // Fallback: redirect to static OG image
-    res.redirect(302, '/og-image.png')
+    return Response.redirect(new URL('/og-image.png', request.url).href, 302)
   }
 }

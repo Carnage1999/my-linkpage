@@ -23,5 +23,6 @@
   "weekly": "Weekly",
   "resetStats": "Reset",
   "confirmReset": "Confirm",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "statsDashboard": "Stats"
 }

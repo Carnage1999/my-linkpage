@@ -10,12 +10,13 @@
 
 - **Обновление без деплоя** — отредактируйте `public/siteConfig.json`, чтобы добавить, удалить или изменить ссылки, профиль или аналитику — пересборка не требуется
 - **Автоопределение иконок** — иконки автоматически подбираются по URL через [simple-icons](https://simpleicons.org) (48 платформ); при необходимости можно указать `iconSlug` вручную
-- **Динамическое OG-изображение** — серверная функция Vercel (`/api/og`) генерирует превью 1200×630 по запросу, всегда актуальное
+- **Динамическое OG-изображение** — серверный endpoint (`/api/og`) генерирует превью 1200×630 на базе Web Standard API, всегда актуальное
 - **Мультиязычность** — EN / RU / ZH-TW с автоопределением языка браузера (упрощённый китайский → традиционный китайский)
 - **Тёмная / светлая тема** — следует системным настройкам; пользовательский выбор сохраняется в `localStorage`
 - **Анимации** — входные переходы Framer Motion с поддержкой `prefers-reduced-motion`
 - **Самостоятельно размещённые шрифты** — переменные шрифты Manrope и Space Grotesk через `@fontsource-variable`
 - **Аналитика и тепловая карта кликов** — Plausible / Umami (настраивается); локальная тепловая карта кликов с графиками трендов за день/неделю — всё в `localStorage`, без cookies
+- **Панель статистики** — опциональная защищённая паролем страница `/stats` с серверным отслеживанием кликов через Upstash Redis; 30-дневный график трендов, статистика по ссылкам, встроенный Umami/Plausible — полностью опционально через переменные окружения
 - **SEO** — динамические мета-теги/OG/Twitter, JSON-LD Person schema, hreflang, канонический URL
 - **Доступность** — skip-ссылка, семантический HTML, ARIA-метки, `aria-live` обратная связь, WCAG контраст; аудит axe-core в E2E
 - **Обработка ошибок** — аварийный fallback верхнего уровня с кнопкой перезагрузки
@@ -30,13 +31,15 @@
 | Категория | Инструменты |
 |---|---|
 | Фреймворк | React 19, TypeScript 6 |
+| Маршрутизация | react-router-dom 7 |
 | Сборка | Vite 8 |
 | Стилизация | Tailwind CSS 3, Headless UI |
 | Анимации | Framer Motion |
 | i18n | i18next, react-i18next |
 | Графики | Recharts |
 | Иконки | simple-icons (48 платформ) |
-| OG-изображение | satori, @resvg/resvg-js (сборка + Vercel serverless) |
+| OG-изображение | satori, @resvg/resvg-js (сборка + serverless) |
+| Бэкенд статистики | Upstash Redis (REST API, без SDK) |
 | Шрифты | @fontsource-variable (Manrope, Space Grotesk) |
 | Тестирование | Vitest, Testing Library, Playwright, axe-core |
 | Линтинг | ESLint 9, Prettier |
@@ -76,6 +79,7 @@ src/
   siteConfig.ts            Определения типов и значения по умолчанию для сборки
   App.tsx                  Главный UI страницы
   main.tsx                 Точка входа (обёрнута в ErrorBoundary)
+  router.tsx               Клиентская маршрутизация (/, /stats)
   SocialIcon.tsx           Компонент иконок (simple-icons + автоопределение)
   iconRegistry.ts          Реестр иконок 48 платформ с автоматическим сопоставлением URL → иконка
   i18n.ts                  Определение языка и настройка i18n
@@ -88,10 +92,21 @@ src/
     useSiteConfig.ts       Загрузчик JSON-конфигурации (загружает siteConfig.json)
     useAnalytics.ts        Загрузчик аналитических скриптов и отслеживание событий
     useLinkClickStats.ts   Счётчик кликов и хронология в localStorage
+    useStats.ts            Хуки аутентификации и данных статистики
+  pages/
+    StatsPage.tsx          Панель статистики с защитой паролем
   locales/                 Файлы переводов (en / ru / zh-TW)
   test/                    Юнит- и компонентные тесты Vitest
 api/
-  og.ts                    Серверная функция Vercel — динамическая генерация OG-изображения
+  og.ts                    Серверная функция — динамическая генерация OG-изображения (Web Standard API)
+  stats/
+    _handlers.ts           Кросс-платформенные обработчики запросов
+    _redis.ts              Upstash Redis REST-хелперы
+    _token.ts              HMAC-аутентификация токенов (Web Crypto API)
+    auth.ts                Endpoint аутентификации
+    check.ts               Endpoint обнаружения функции
+    data.ts                Endpoint данных статистики
+    record.ts              Endpoint записи кликов
 e2e/
   app.spec.ts              E2E-тесты Playwright
   a11y.spec.ts             Аудит доступности axe-core
@@ -152,11 +167,25 @@ scripts/
 
 OG-изображение генерируется **динамически** по адресу `/api/og`, считывая `siteConfig.json` при каждом запросе — ручная перегенерация не нужна. Статический fallback также создаётся при `pnpm build`.
 
+### Панель статистики (опционально)
+
+Панель статистики по адресу `/stats` — **полностью опциональная**. Для включения установите следующие переменные окружения:
+
+| Переменная | Описание |
+|---|---|
+| `STATS_PASSWORD` | Пароль для доступа к панели статистики |
+| `UPSTASH_REDIS_REST_URL` | URL REST-endpoint Upstash Redis |
+| `UPSTASH_REDIS_REST_TOKEN` | Токен аутентификации Upstash Redis REST |
+
+Когда все три переменные установлены, отслеживание кликов автоматически включается для всех ссылок, а в подвале появляется ссылка «Статистика». Если любая переменная отсутствует, функция полностью скрыта — никаких дополнительных запросов или изменений UI.
+
+API статистики использует Web Standard `Request`/`Response` и Web Crypto API, поэтому работает на **Vercel Edge, Cloudflare Workers, Netlify Edge Functions** и других платформах с поддержкой Web Platform API.
+
 ## Развёртывание
 
 Предварительная настройка для нескольких платформ:
 
-- **Vercel** — `vercel.json` с заголовками безопасности, кешированием ассетов и серверным endpoint `/api/og` для OG-изображений
+- **Vercel** — `vercel.json` с заголовками безопасности, кешированием ассетов, endpoint `/api/og` для OG-изображений и edge-endpointами `/api/stats/*`
 - **Firebase Hosting** — `firebase.json` с SPA-перенаправлениями и заголовками безопасности
 - **Nginx** — `nginx.conf` и `customHttp.yml` в комплекте
 - **CI** — GitHub Actions: lint, typecheck, юнит-тесты, сборка, затем E2E + аудит доступности при каждом push/PR

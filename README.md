@@ -10,12 +10,13 @@ A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind
 
 - **Zero-deploy updates** — edit `public/siteConfig.json` to add/remove/reorder social links, change profile, or update analytics — no rebuild needed
 - **Auto icon detection** — icons resolved automatically from link URLs via [simple-icons](https://simpleicons.org) (48 platforms); override with `iconSlug` when needed
-- **Dynamic OG image** — Vercel serverless function (`/api/og`) generates a 1200×630 social preview at request time, always reflecting the latest config
+- **Dynamic OG image** — serverless endpoint (`/api/og`) generates a 1200×630 social preview at request time using Web Standard APIs, always reflecting the latest config
 - **Multilingual** — EN / RU / ZH-TW with automatic browser language detection (Simplified Chinese → Traditional Chinese)
 - **Dark / light mode** — follows system preference; user toggle persists via `localStorage`
 - **Animations** — Framer Motion entrance transitions with `prefers-reduced-motion` support
 - **Self-hosted fonts** — Manrope & Space Grotesk variable fonts via `@fontsource-variable`
 - **Analytics & click heatmap** — Plausible / Umami (configurable); local per-link click heatmap with daily/weekly trend chart — all `localStorage`, no cookies
+- **Stats dashboard** — optional password-protected `/stats` page with server-side click tracking via Upstash Redis; 30-day trend chart, per-link breakdown, Umami/Plausible embed — fully opt-in via environment variables
 - **SEO** — dynamic meta/OG/Twitter tags, JSON-LD Person schema, hreflang, canonical link
 - **Accessibility** — skip link, semantic HTML, ARIA labels, `aria-live` feedback, WCAG contrast; dedicated axe-core audit in E2E
 - **Error boundary** — top-level crash fallback with reload button
@@ -30,13 +31,15 @@ A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind
 | Category | Tools |
 |---|---|
 | Framework | React 19, TypeScript 6 |
+| Routing | react-router-dom 7 |
 | Build | Vite 8 |
 | Styling | Tailwind CSS 3, Headless UI |
 | Animation | Framer Motion |
 | i18n | i18next, react-i18next |
 | Charts | Recharts |
 | Icons | simple-icons (48 platforms) |
-| OG image | satori, @resvg/resvg-js (build-time + Vercel serverless) |
+| OG image | satori, @resvg/resvg-js (build-time + serverless) |
+| Stats backend | Upstash Redis (REST API, no SDK) |
 | Fonts | @fontsource-variable (Manrope, Space Grotesk) |
 | Testing | Vitest, Testing Library, Playwright, axe-core |
 | Linting | ESLint 9, Prettier |
@@ -76,6 +79,7 @@ src/
   siteConfig.ts            Type definitions and build-time fallback defaults
   App.tsx                  Main page UI
   main.tsx                 Entry point (wrapped in ErrorBoundary)
+  router.tsx               Client-side routing (/, /stats)
   SocialIcon.tsx           Brand icon component (simple-icons + auto-detection)
   iconRegistry.ts          48-platform icon registry with URL → icon auto-matching
   i18n.ts                  Language detection and i18n setup
@@ -88,10 +92,21 @@ src/
     useSiteConfig.ts       Runtime JSON config loader (fetches siteConfig.json)
     useAnalytics.ts        Analytics script loader and event tracking
     useLinkClickStats.ts   localStorage click counter and timeline
+    useStats.ts            Server-side stats auth and data hooks
+  pages/
+    StatsPage.tsx          Password-protected stats dashboard
   locales/                 Translation files (en / ru / zh-TW)
   test/                    Vitest unit and component tests
 api/
-  og.ts                    Vercel serverless function — dynamic OG image
+  og.ts                    Serverless function — dynamic OG image (Web Standard API)
+  stats/
+    _handlers.ts           Platform-agnostic request handlers
+    _redis.ts              Upstash Redis REST helpers
+    _token.ts              HMAC token auth (Web Crypto API)
+    auth.ts                Login endpoint
+    check.ts               Feature-detection endpoint
+    data.ts                Stats data endpoint
+    record.ts              Click recording endpoint
 e2e/
   app.spec.ts              Playwright E2E tests
   a11y.spec.ts             axe-core accessibility audit
@@ -152,11 +167,25 @@ Configure in `public/siteConfig.json`:
 
 Generated **dynamically** at `/api/og` by reading `siteConfig.json` at request time — no manual regeneration needed. A static fallback is also generated on `pnpm build`.
 
+### Stats dashboard (optional)
+
+The stats dashboard at `/stats` is **fully opt-in**. To enable it, set the following environment variables:
+
+| Variable | Description |
+|---|---|
+| `STATS_PASSWORD` | Password to access the stats dashboard |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST endpoint URL |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST auth token |
+
+When all three variables are set, click tracking is automatically enabled for all links, and a "Stats" link appears in the page footer. When any variable is missing, the feature is completely hidden — no extra requests, no UI changes.
+
+The stats API uses Web Standard `Request`/`Response` and Web Crypto API, so it works on **Vercel Edge, Cloudflare Workers, Netlify Edge Functions**, and other platforms supporting the Web Platform APIs.
+
 ## Deployment
 
 Pre-configured for multiple platforms:
 
-- **Vercel** — `vercel.json` with security headers, asset caching, and `/api/og` serverless OG image endpoint
+- **Vercel** — `vercel.json` with security headers, asset caching, `/api/og` OG image endpoint, and `/api/stats/*` edge endpoints
 - **Firebase Hosting** — `firebase.json` with SPA rewrites and security headers
 - **Nginx** — `nginx.conf` and `customHttp.yml` provided
 - **CI** — GitHub Actions runs lint, typecheck, unit tests, build, then E2E + accessibility tests on every push/PR

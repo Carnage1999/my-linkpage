@@ -23,5 +23,6 @@
   "weekly": "每週",
   "resetStats": "重置",
   "confirmReset": "確認",
-  "cancel": "取消"
+  "cancel": "取消",
+  "statsDashboard": "統計"
 }

@@ -23,5 +23,6 @@
   "weekly": "По неделям",
   "resetStats": "Сброс",
   "confirmReset": "Подтвердить",
-  "cancel": "Отмена"
+  "cancel": "Отмена",
+  "statsDashboard": "Статистика"
 }
