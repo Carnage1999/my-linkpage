@@ -17,11 +17,8 @@ import { useTranslation } from 'react-i18next'
 import type { AppLanguageCode } from './i18n'
 import { SocialIcon } from './SocialIcon'
 import { SEO } from './components/SEO'
-import { LinkHeatmap } from './components/LinkHeatmap'
 import { useAnalytics } from './hooks/useAnalytics'
-import { useLinkClickStats } from './hooks/useLinkClickStats'
 import { useSiteConfig } from './hooks/useSiteConfig'
-import { useStatsEnabled } from './hooks/useStats'
 
 interface LanguageOption {
   code: AppLanguageCode
@@ -137,8 +134,6 @@ export default function App() {
   const [isDark, setIsDark] = useState<boolean>(getInitialTheme)
   const copyTimeoutRef = useRef<number | null>(null)
   const { trackLinkClick } = useAnalytics(analytics)
-  const { recordClick } = useLinkClickStats()
-  const statsEnabled = useStatsEnabled()
   const activeLanguage =
     LANGUAGES.find(
       ({ code }) => code === (i18n.resolvedLanguage ?? i18n.language)
@@ -483,14 +478,6 @@ export default function App() {
                       aria-label={`${social.label} (${String(t('opensInNewTab'))})`}
                       onClick={() => {
                         trackLinkClick(social.id, social.label, social.url)
-                        recordClick(social.id)
-                        if (statsEnabled) {
-                          void fetch('/api/stats/record', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ linkId: social.id }),
-                          }).catch(() => {})
-                        }
                       }}
                     >
                       <span className="flex size-14 shrink-0 items-center justify-center rounded-[1.25rem] bg-slate-950 text-white shadow-lg shadow-slate-900/20 transition group-hover:rotate-3 group-hover:scale-105 dark:bg-white dark:text-slate-950">
@@ -542,23 +529,11 @@ export default function App() {
               ))}
             </ul>
 
-            <LinkHeatmap socials={socials} />
-
             <div className="flex min-h-7 flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 <span aria-hidden="true">{String(t('builtWith'))}</span>
                 <span className="sr-only">{String(t('builtWithLabel'))}</span>
               </p>
-              {statsEnabled ? (
-                <a
-                  href="/stats"
-                  className="text-xs font-medium text-slate-400 transition hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
-                >
-                  {String(t('statsDashboard'))}
-                </a>
-              ) : (
-                <div className="min-h-0" />
-              )}
             </div>
           </m.div>
         </m.section>
