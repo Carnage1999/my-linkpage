@@ -4,16 +4,17 @@
  *
  * Endpoint:  GET /api/og
  *
- * The renderer is a native addon, so this stays on the Node.js runtime.
- * The Linux glibc binary is a real file under api/native. The package path
- * is a pnpm symlink, which Vercel will not put in a function package.
+ * The renderer is a native addon, so the deployed file stays on the Node.js
+ * runtime. Vercel does not bundle this handler's TypeScript imports, which
+ * is why scripts/bundle-og.ts emits api/og.js. The glibc binary is copied
+ * next to @resvg/resvg-js so that package's own require can see it.
  */
 
 import { createRequire } from 'node:module'
 import satori from 'satori'
-import { shareSubtitle } from '../src/i18n/homepage'
-import { SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE } from './stats/_cache'
-import { readRuntimeSite } from './stats/_site-store'
+import { shareSubtitle } from '../../src/i18n/homepage'
+import { SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE } from '../stats/_cache'
+import { readRuntimeSite } from '../stats/_site-store'
 
 const nativeRequire = createRequire(import.meta.url)
 
@@ -21,10 +22,7 @@ function loadResvg(): typeof import('@resvg/resvg-js') {
   if (process.platform !== 'linux' || process.arch !== 'x64') {
     return nativeRequire('@resvg/resvg-js') as typeof import('@resvg/resvg-js')
   }
-  // The package's JS wrapper stringifies options. The .node file is a real
-  // copy: requiring the package name follows a pnpm symlink, which Vercel
-  // rejects inside a function package.
-  const binding = nativeRequire('./native/resvgjs.linux-x64-gnu.node') as {
+  const binding = nativeRequire('./resvgjs.linux-x64-gnu.node') as {
     Resvg: new (svg: string, options?: string) => InstanceType<typeof import('@resvg/resvg-js').Resvg>
   }
   class Resvg extends binding.Resvg {

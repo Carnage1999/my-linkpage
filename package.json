@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsx scripts/copy-resvg-native.ts && tsx scripts/generate-public-images.ts && tsx scripts/generate-site-icons.ts && tsx scripts/update-sitemap-lastmod.ts && tsx scripts/generate-og-image.ts && vite build",
+    "build": "tsx scripts/copy-resvg-native.ts && tsx scripts/bundle-og.ts && tsx scripts/generate-public-images.ts && tsx scripts/generate-site-icons.ts && tsx scripts/update-sitemap-lastmod.ts && tsx scripts/generate-og-image.ts && vite build",
     "generate-og": "tsx scripts/generate-og-image.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -46,6 +46,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "esbuild": "0.28.2",
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
