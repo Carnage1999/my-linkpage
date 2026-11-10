@@ -1,4 +1,4 @@
-import { m, useReducedMotion } from 'framer-motion'
+import { m, useReducedMotion } from 'motion/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -44,7 +44,7 @@ export function LinkHeatmap({ socials }: { socials: readonly SocialLinkEntry[] }
   return (
     <div className="space-y-4 rounded-2xl border border-slate-200/60 bg-slate-50/60 p-4 dark:border-slate-800/60 dark:bg-slate-900/40">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        <p className="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
           {String(t('clickHeatmap'))}
         </p>
 
@@ -89,7 +89,7 @@ export function LinkHeatmap({ socials }: { socials: readonly SocialLinkEntry[] }
 
               <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200/60 dark:bg-slate-800/60">
                 <m.div
-                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-400 to-rose-500 dark:from-cyan-400 dark:to-indigo-500"
+                  className="absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-amber-400 to-rose-500 dark:from-cyan-400 dark:to-indigo-500"
                   initial={false}
                   animate={{ width: `${Math.max(intensity * 100, count > 0 ? 4 : 0)}%` }}
                   transition={
@@ -100,7 +100,7 @@ export function LinkHeatmap({ socials }: { socials: readonly SocialLinkEntry[] }
                 />
               </div>
 
-              <span className="w-8 text-right font-mono text-xs tabular-nums text-slate-500 dark:text-slate-400">
+              <span className="w-8 text-right font-mono text-xs text-slate-500 tabular-nums dark:text-slate-400">
                 {count}
               </span>
             </li>
@@ -111,7 +111,7 @@ export function LinkHeatmap({ socials }: { socials: readonly SocialLinkEntry[] }
       {/* Trend chart */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          <p className="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
             {String(t('clickTrend'))}
           </p>
           <div className="flex gap-1">
@@ -145,8 +145,8 @@ export function LinkHeatmap({ socials }: { socials: readonly SocialLinkEntry[] }
             <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
               <defs>
                 <linearGradient id="clickGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" className="[stop-color:theme(colors.amber.400)] dark:[stop-color:theme(colors.cyan.400)]" stopOpacity={0.3} />
-                  <stop offset="95%" className="[stop-color:theme(colors.amber.400)] dark:[stop-color:theme(colors.cyan.400)]" stopOpacity={0} />
+                  <stop offset="5%" className="[stop-color:var(--color-amber-400)] dark:[stop-color:var(--color-cyan-400)]" stopOpacity={0.3} />
+                  <stop offset="95%" className="[stop-color:var(--color-amber-400)] dark:[stop-color:var(--color-cyan-400)]" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-800" />

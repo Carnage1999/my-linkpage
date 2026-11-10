@@ -1,5 +1,5 @@
 import js from '@eslint/js'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import { defineConfig, globalIgnores, type Config } from 'eslint/config'
 import eslintConfigPrettier from 'eslint-config-prettier'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -11,7 +11,15 @@ export default defineConfig([
   globalIgnores(['dist']),
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  ...tailwindcss.configs['flat/recommended'],
+  // The plugin's published config type is built against an older ESLint config type.
+  tailwindcss.configs.recommended as Config,
+  {
+    settings: {
+      tailwindcss: {
+        cssConfigPath: 'src/index.css',
+      },
+    },
+  },
   reactHooks.configs.flat['recommended-latest'],
   reactRefresh.configs.vite,
   {
@@ -22,11 +30,6 @@ export default defineConfig([
       parserOptions: {
         ecmaFeatures: { jsx: true },
         sourceType: 'module',
-      },
-    },
-    settings: {
-      tailwindcss: {
-        config: 'tailwind.config.ts',
       },
     },
     rules: {

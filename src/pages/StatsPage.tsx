@@ -71,7 +71,7 @@ function LoginForm({
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-cyan-400 dark:focus:ring-cyan-400/30"
+              className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-xs transition placeholder:text-slate-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-hidden dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-cyan-400 dark:focus:ring-cyan-400/30"
               placeholder="••••••••"
             />
           </div>
@@ -83,7 +83,7 @@ function LoginForm({
           <button
             type="submit"
             disabled={loading || !password}
-            className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+            className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
           >
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
@@ -105,8 +105,8 @@ function StatCard({
   sub?: string
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/80">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+    <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-xs dark:border-slate-800/60 dark:bg-slate-900/80">
+      <p className="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
         {label}
       </p>
       <p className="mt-1 font-display text-3xl font-bold tracking-tight text-slate-950 dark:text-white">
@@ -131,14 +131,14 @@ function AnalyticsEmbed({ analytics }: { analytics: AnalyticsConfig | null }) {
     const shareUrl = `${host}/share/${analytics.umamiWebsiteId}`
     return (
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        <h2 className="text-sm font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
           Umami Analytics
         </h2>
         <div className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
           <iframe
             title="Umami Analytics"
             src={shareUrl}
-            className="h-[600px] w-full border-0"
+            className="h-150 w-full border-0"
             loading="lazy"
           />
         </div>
@@ -161,14 +161,14 @@ function AnalyticsEmbed({ analytics }: { analytics: AnalyticsConfig | null }) {
     const shareUrl = `${host}/${analytics.plausibleDomain}`
     return (
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+        <h2 className="text-sm font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
           Plausible Analytics
         </h2>
         <div className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
           <iframe
             title="Plausible Analytics"
             src={`${shareUrl}?embed=true&theme=system`}
-            className="h-[600px] w-full border-0"
+            className="h-150 w-full border-0"
             loading="lazy"
           />
         </div>
@@ -208,7 +208,7 @@ function LinkTable({
 
   return (
     <div className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+      <h2 className="text-sm font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
         Per-Link Clicks
       </h2>
       <div className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
@@ -245,7 +245,7 @@ function LinkTable({
                       </p>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-700 dark:text-slate-200">
+                  <td className="px-4 py-3 text-right font-mono text-slate-700 tabular-nums dark:text-slate-200">
                     {count.toLocaleString()}
                   </td>
                   <td className="hidden w-48 px-4 py-3 sm:table-cell">
@@ -254,7 +254,7 @@ function LinkTable({
                         ref={(el) => {
                           if (el) el.style.width = `${Math.max(pct, count > 0 ? 4 : 0)}%`
                         }}
-                        className="h-full rounded-full bg-gradient-to-r from-amber-400 to-rose-500 transition-all dark:from-cyan-400 dark:to-indigo-500"
+                        className="h-full rounded-full bg-linear-to-r from-amber-400 to-rose-500 transition-all dark:from-cyan-400 dark:to-indigo-500"
                       />
                     </div>
                   </td>
@@ -282,7 +282,7 @@ function TrendChart({ daily }: { daily: StatsData['daily'] }) {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+      <h2 className="text-sm font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
         Daily Trend (30 days)
       </h2>
       <div className="h-56 w-full rounded-2xl border border-slate-200/60 bg-white p-4 dark:border-slate-800/60 dark:bg-slate-900/80">
@@ -295,12 +295,12 @@ function TrendChart({ daily }: { daily: StatsData['daily'] }) {
               <linearGradient id="statsTrendGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop
                   offset="5%"
-                  className="[stop-color:theme(colors.amber.400)] dark:[stop-color:theme(colors.cyan.400)]"
+                  className="[stop-color:var(--color-amber-400)] dark:[stop-color:var(--color-cyan-400)]"
                   stopOpacity={0.3}
                 />
                 <stop
                   offset="95%"
-                  className="[stop-color:theme(colors.amber.400)] dark:[stop-color:theme(colors.cyan.400)]"
+                  className="[stop-color:var(--color-amber-400)] dark:[stop-color:var(--color-cyan-400)]"
                   stopOpacity={0}
                 />
               </linearGradient>
@@ -368,7 +368,7 @@ function PerLinkChart({
 
   return (
     <div className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+      <h2 className="text-sm font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
         Per-Link Daily Clicks
       </h2>
       <div className="h-64 w-full rounded-2xl border border-slate-200/60 bg-white p-4 dark:border-slate-800/60 dark:bg-slate-900/80">
@@ -515,11 +515,11 @@ function Dashboard({
         {/* Tabs: Click Stats / Analytics */}
         <TabGroup>
           <TabList className="flex gap-1 rounded-2xl border border-slate-200/60 bg-white p-1 dark:border-slate-800/60 dark:bg-slate-900/80">
-            <Tab className="rounded-xl px-4 py-2 text-sm font-semibold transition focus:outline-none data-[selected]:bg-slate-900 data-[selected]:text-white data-[selected]:shadow-sm dark:data-[selected]:bg-white dark:data-[selected]:text-slate-900 [&:not([data-selected])]:text-slate-500 [&:not([data-selected])]:hover:bg-slate-100 dark:[&:not([data-selected])]:text-slate-400 dark:[&:not([data-selected])]:hover:bg-slate-800">
+            <Tab className="rounded-xl px-4 py-2 text-sm font-semibold transition focus:outline-hidden data-selected:bg-slate-900 data-selected:text-white data-selected:shadow-xs dark:data-selected:bg-white dark:data-selected:text-slate-900 [&:not([data-selected])]:text-slate-500 [&:not([data-selected])]:hover:bg-slate-100 dark:[&:not([data-selected])]:text-slate-400 dark:[&:not([data-selected])]:hover:bg-slate-800">
               Click Stats
             </Tab>
             {analytics ? (
-              <Tab className="rounded-xl px-4 py-2 text-sm font-semibold transition focus:outline-none data-[selected]:bg-slate-900 data-[selected]:text-white data-[selected]:shadow-sm dark:data-[selected]:bg-white dark:data-[selected]:text-slate-900 [&:not([data-selected])]:text-slate-500 [&:not([data-selected])]:hover:bg-slate-100 dark:[&:not([data-selected])]:text-slate-400 dark:[&:not([data-selected])]:hover:bg-slate-800">
+              <Tab className="rounded-xl px-4 py-2 text-sm font-semibold transition focus:outline-hidden data-selected:bg-slate-900 data-selected:text-white data-selected:shadow-xs dark:data-selected:bg-white dark:data-selected:text-slate-900 [&:not([data-selected])]:text-slate-500 [&:not([data-selected])]:hover:bg-slate-100 dark:[&:not([data-selected])]:text-slate-400 dark:[&:not([data-selected])]:hover:bg-slate-800">
                 {analytics.provider === 'umami' ? 'Umami' : 'Plausible'} Analytics
               </Tab>
             ) : null}
