@@ -137,19 +137,34 @@ export function useSiteDraft(token: string) {
     }
   }
 
-  function save() {
-    const renamed = state.rows.some((row) => row.originalId && row.originalId !== row.id.trim())
-    if (renamed && !window.confirm(String(t('manageIdWarn')))) return
-    void send('PUT', {
-      site: { name: state.name, tagline: state.tagline, domain: state.domain, twitterHandle: state.handle },
-      profile: { avatar: state.avatarUrl.trim() || state.avatarPath },
-      socials: state.rows.map((row) => ({
+  async function socialsForSave() {
+    const { resolveStoredIcon } = await import('../../icons/catalog')
+    return state.rows.map((row) => {
+      const icon = resolveStoredIcon({ url: row.url.trim(), iconSlug: row.iconSlug.trim() || undefined })
+      return {
         id: row.id.trim(),
         label: row.label.trim(),
         url: row.url.trim(),
-        ...(row.iconSlug ? { iconSlug: row.iconSlug } : {}),
-      })),
+        ...icon,
+      }
     })
+  }
+
+  function save() {
+    const renamed = state.rows.some((row) => row.originalId && row.originalId !== row.id.trim())
+    if (renamed && !window.confirm(String(t('manageIdWarn')))) return
+    void (async () => {
+      try {
+        const socials = await socialsForSave()
+        await send('PUT', {
+          site: { name: state.name, tagline: state.tagline, domain: state.domain, twitterHandle: state.handle },
+          profile: { avatar: state.avatarUrl.trim() || state.avatarPath },
+          socials,
+        })
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : String(t('manageNetwork')))
+      }
+    })()
   }
 
   function exportJson() {

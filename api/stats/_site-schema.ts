@@ -1,4 +1,3 @@
-import { resolveStoredIcon } from '../../src/icons/catalog'
 import { DEFAULT_AVATAR, safeAvatarUrl } from '../../src/lib/safeAvatarUrl'
 import { safeLinkUrl, safeSvgPath } from '../../src/lib/safeUrl'
 import type { SocialLinkEntry } from '../../src/siteConfig'
@@ -106,19 +105,18 @@ export function validateSiteConfig(input: unknown, version: number): PublicSiteC
     seen.add(id)
     const label = text(row.label, 80, 'Link label')
     const url = validateLinkUrl(text(row.url, 500, 'Link URL'))
-    const requested = typeof row.iconSlug === 'string' ? row.iconSlug.trim().slice(0, 64) : undefined
-    let icon: { iconSlug?: string; iconPath?: string }
-    try {
-      icon = resolveStoredIcon({ url, iconSlug: requested })
-    } catch (error) {
-      throw new SiteValidationError(error instanceof Error ? error.message : 'Unknown icon')
+    // The path is resolved in the browser when /manage saves, so this edge
+    // function does not import the simple-icons package (the 1 MB limit).
+    const requested = typeof row.iconSlug === 'string' ? row.iconSlug.trim() : ''
+    if (requested && !/^(?:si[A-Za-z0-9]+|[a-z0-9]+(?:-[a-z0-9]+){0,8})$/.test(requested)) {
+      throw new SiteValidationError(`Unknown icon: ${requested}`)
     }
-    const iconPath = icon.iconPath ? (safeSvgPath(icon.iconPath) ?? undefined) : undefined
+    const iconPath = safeSvgPath(row.iconPath) ?? undefined
     return {
       id,
       label,
       url,
-      ...(icon.iconSlug ? { iconSlug: icon.iconSlug } : {}),
+      ...(requested ? { iconSlug: requested } : {}),
       ...(iconPath ? { iconPath } : {}),
     }
   })
