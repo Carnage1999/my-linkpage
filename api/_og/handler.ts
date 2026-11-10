@@ -285,12 +285,22 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
 
 // ─── Handler ─────────────────────────────────────────────
 
+function pageUrl(request: Request): URL {
+  try {
+    return new URL(request.url)
+  } catch {
+    const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? 'localhost'
+    const proto = request.headers.get('x-forwarded-proto') ?? 'https'
+    return new URL(request.url || '/', `${proto}://${host}`)
+  }
+}
+
 export default async function handler(request: Request): Promise<Response> {
   try {
     const [config, fonts] = await Promise.all([loadConfig(), loadFonts()])
 
     const name = config.site?.name ?? 'Han-che Wang'
-    const requested = new URL(request.url).searchParams.get('lng')
+    const requested = pageUrl(request).searchParams.get('lng')
     const tagline = shareSubtitle({ requested, i18n: config.i18n })
     const domain = config.site?.domain ?? 'link.w1999.me'
     const markup = buildMarkup(config.socials, name, tagline, domain)
@@ -321,7 +331,6 @@ export default async function handler(request: Request): Promise<Response> {
     })
   } catch (err) {
     console.error('OG generation failed:', err)
-    // Fallback: redirect to static OG image
-    return Response.redirect(new URL('/og-image.png', request.url).href, 302)
+    return Response.redirect(new URL('/og-image.png', pageUrl(request)).href, 302)
   }
 }
