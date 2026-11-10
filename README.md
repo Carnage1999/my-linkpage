@@ -34,7 +34,7 @@ A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind
 | Build | Vite 8 |
 | Styling | Tailwind CSS 4 (`@tailwindcss/vite`), Headless UI |
 | Animation | Motion |
-| i18n | i18next 27, react-i18next 18 |
+| i18n | Homepage texts in the site config; dashboard labels in `src/manage/copy.ts` |
 | Charts | Recharts 3 |
 | Icons | simple-icons 16 (full set, path stored at save) |
 | OG image | satori, @resvg/resvg-js (build-time + serverless) |
@@ -106,7 +106,7 @@ src/
       ProviderSettings.tsx Provider credentials and script toggles
       LinkHeatmap.tsx      Per-link click comparison
       clickCsv.ts          CSV export
-  locales/                 Translation files (en / ru / zh-TW)
+  manage/copy.ts           Dashboard labels (en / ru / zh-TW)
   test/                    Vitest unit and component tests
 api/
   og.ts                    Serverless function — dynamic OG image (Web Standard API)
@@ -148,7 +148,7 @@ scripts/
 
 Change the live site at `/manage`. `public/siteConfig.json` is the seed when Redis is empty or unreachable, and the source for `index.html` plus the built `public/og-image.png`. Those two stay as they were at build time until the next deploy. The React page, its meta tags, and `/api/og` follow the save immediately.
 
-The Site tab’s display name is the share-image name and the author metadata. Homepage sentences, including the heading and subtitle, are edited per language on the Languages tab. An empty line keeps the bundled text. The dashboard itself keeps the files in `src/locales/`. Right-to-left languages are shown left to right.
+The Site tab’s display name is the share-image name and the author metadata. Homepage sentences, including the heading and subtitle, are edited per language on the Languages tab and stored with the site config. A missing line uses the default language. The dashboard keeps its own labels in `src/manage/copy.ts`. Right-to-left languages are shown left to right.
 
 ```jsonc
 {
@@ -174,7 +174,7 @@ The avatar picker lists images shipped in `public/` (jpg, png, webp, svg), skipp
 
 ### Translations
 
-Edit or add JSON files in `src/locales/`.
+Homepage copy is edited on the Languages tab. Dashboard labels live in `src/manage/copy.ts`.
 
 ### Analytics
 

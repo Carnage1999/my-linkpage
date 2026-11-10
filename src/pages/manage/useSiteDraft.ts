@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { replaceSiteConfig, useSiteConfig } from '../../hooks/useSiteConfig'
-import { bundledValue, canonicalLocale, isPublicKey, type HomepageI18n } from '../../i18n/publicCopy'
+import { canonicalLocale, homepageText, PUBLIC_KEYS, type HomepageI18n, type HomepageTexts, type PublicKey } from '../../i18n/homepage'
+import { useManageCopy } from '../../manage/useManageCopy'
+import { notifySiteConfigSaved } from '../../siteSync'
 import type { SiteConfig } from '../../siteConfig'
 
 export interface LinkRow {
@@ -40,19 +41,10 @@ interface DraftState {
   i18n: HomepageI18n
 }
 
-/** Drop empty lines and lines that match the bundled text, so the save is only overrides. */
-function compactI18n(i18n: HomepageI18n): HomepageI18n {
-  const overrides: HomepageI18n['overrides'] = {}
-  for (const [code, pack] of Object.entries(i18n.overrides)) {
-    const strings: Record<string, string> = {}
-    for (const [key, value] of Object.entries(pack)) {
-      const trimmed = value.trim()
-      if (!trimmed || !isPublicKey(key) || trimmed === bundledValue(code, key)) continue
-      strings[key] = trimmed
-    }
-    if (Object.keys(strings).length > 0) overrides[code] = strings
-  }
-  return { ...i18n, overrides }
+function copyTexts(i18n: HomepageI18n, from: string): HomepageTexts {
+  const texts: HomepageTexts = {}
+  for (const key of PUBLIC_KEYS) texts[key] = homepageText(i18n, from, key)
+  return texts
 }
 
 function snapshot(state: DraftState): string {
@@ -74,7 +66,7 @@ function draftFrom(config: ReturnType<typeof useSiteConfig>): DraftState {
 }
 
 export function useSiteDraft(token: string) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
   const config = useSiteConfig()
   const [state, setState] = useState(() => draftFrom(config))
   const [savedSnap, setSavedSnap] = useState(() => snapshot(draftFrom(config)))
@@ -130,6 +122,7 @@ export function useSiteDraft(token: string) {
         return
       }
       replaceSiteConfig(payload)
+      notifySiteConfigSaved(response.headers.get('x-site-purge') !== 'ok')
       const site = payload.site
       if (!site) {
         setStatus(String(t('manageSaved')))
@@ -179,7 +172,7 @@ export function useSiteDraft(token: string) {
           site: { name: state.name, tagline: state.tagline, domain: state.domain, twitterHandle: state.handle },
           profile: { avatar: state.avatarUrl.trim() || state.avatarPath },
           socials,
-          i18n: compactI18n(state.i18n),
+          i18n: state.i18n,
         })
       } catch (error) {
         setStatus(error instanceof Error ? error.message : String(t('manageNetwork')))
@@ -197,7 +190,7 @@ export function useSiteDraft(token: string) {
         url: row.url,
         ...(row.iconSlug ? { iconSlug: row.iconSlug } : {}),
       })),
-      i18n: compactI18n(state.i18n),
+      i18n: state.i18n,
     }
     const blob = new Blob([JSON.stringify(body, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -216,15 +209,11 @@ export function useSiteDraft(token: string) {
     setRows: (rows: LinkRow[]) => patch({ rows }),
     setDetect: (detect: boolean) => setState((current) => ({ ...current, i18n: { ...current.i18n, detect } })),
     setFallback: (fallback: string) => setState((current) => ({ ...current, i18n: { ...current.i18n, fallback } })),
-    setOverride: (code: string, key: string, value: string) =>
+    setText: (code: string, key: PublicKey, value: string) =>
       setState((current) => {
-        const overrides = { ...current.i18n.overrides }
-        const pack = { ...(overrides[code] ?? {}) }
-        if (value) pack[key] = value
-        else delete pack[key]
-        if (Object.keys(pack).length > 0) overrides[code] = pack
-        else delete overrides[code]
-        return { ...current, i18n: { ...current.i18n, overrides } }
+        const texts = { ...current.i18n.texts }
+        texts[code] = { ...(texts[code] ?? {}), [key]: value }
+        return { ...current, i18n: { ...current.i18n, texts } }
       }),
     moveLanguage: (index: number, direction: -1 | 1) =>
       setState((current) => {
@@ -241,9 +230,9 @@ export function useSiteDraft(token: string) {
         if (current.i18n.languages.length <= 1) return current
         const languages = current.i18n.languages.filter((language) => language.code !== code)
         const fallback = current.i18n.fallback === code ? languages[0]?.code ?? current.i18n.fallback : current.i18n.fallback
-        const overrides = { ...current.i18n.overrides }
-        delete overrides[code]
-        return { ...current, i18n: { ...current.i18n, languages, fallback, overrides } }
+        const texts = { ...current.i18n.texts }
+        delete texts[code]
+        return { ...current, i18n: { ...current.i18n, languages, fallback, texts } }
       }),
     addLanguage: (code: string, label: string, shortLabel: string) => {
       const canonical = canonicalLocale(code)
@@ -255,6 +244,7 @@ export function useSiteDraft(token: string) {
         i18n: {
           ...current.i18n,
           languages: [...current.i18n.languages, { code: canonical, label: label.trim(), shortLabel: shortLabel.trim() }],
+          texts: { ...current.i18n.texts, [canonical]: copyTexts(current.i18n, current.i18n.fallback) },
         },
       }))
       return { ok: true as const, code: canonical }

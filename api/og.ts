@@ -13,7 +13,8 @@
 
 import { Resvg } from '@resvg/resvg-js'
 import satori from 'satori'
-import { shareSubtitle } from '../src/i18n/publicCopy'
+import { shareSubtitle } from '../src/i18n/homepage'
+import { SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE } from './stats/_cache'
 import { readRuntimeSite } from './stats/_site-store'
 
 // ─── Types (mirroring siteConfig.ts) ─────────────────────
@@ -67,7 +68,7 @@ async function loadFonts() {
 // ─── Config loader ───────────────────────────────────────
 
 async function loadConfig() {
-  return readRuntimeSite()
+  return readRuntimeSite({ fresh: true })
 }
 
 // ─── OG Layout (satori JSX-like object tree) ─────────────
@@ -298,7 +299,10 @@ export default async function handler(request: Request): Promise<Response> {
       status: 200,
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600',
+        'Cache-Control': SITE_BROWSER_CACHE,
+        'CDN-Cache-Control': SITE_CDN_CACHE,
+        'Vercel-CDN-Cache-Control': SITE_CDN_CACHE,
+        'Vercel-Cache-Tag': SITE_CACHE_TAG,
       },
     })
   } catch (err) {

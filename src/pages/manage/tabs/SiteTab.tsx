@@ -1,10 +1,10 @@
-import { useTranslation } from 'react-i18next'
+import { useManageCopy } from '../../../manage/useManageCopy'
 import publicImages from '../../../generated/public-images.json'
 import { safeAvatarUrl } from '../../../lib/safeAvatarUrl'
 import { fieldClass, type SiteDraft } from '../useSiteDraft'
 
 export function SiteTab({ draft }: { draft: SiteDraft }) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
   const preview = safeAvatarUrl(draft.avatarUrl.trim() ? draft.avatarUrl : draft.avatarPath)
 
   return (

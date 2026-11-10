@@ -12,12 +12,13 @@ import {
   m,
   useReducedMotion,
 } from 'motion/react'
-import { startTransition, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useEffect, useRef, useState } from 'react'
 import { SocialIcon } from './SocialIcon'
 import { SEO } from './components/SEO'
 import { useAnalytics } from './hooks/useAnalytics'
 import { useSiteConfig } from './hooks/useSiteConfig'
+import { homepageText, type PublicKey } from './i18n/homepage'
+import { detectHomepageLanguage, setUiLanguage, useUiLanguage } from './i18n/language'
 import { safeAvatarUrl } from './lib/safeAvatarUrl'
 import { safeLinkUrl } from './lib/safeUrl'
 import { recordLinkClick, recordPageview, useStatsEnabled } from './hooks/useStats'
@@ -118,17 +119,32 @@ function MoonIcon() {
 }
 
 export default function App() {
-  const { t, i18n } = useTranslation()
   const { loading, site, profile, scripts, socials, ogImagePath, i18n: homepageI18n } = useSiteConfig()
+  const [uiLanguage] = useUiLanguage()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [isDark, setIsDark] = useState<boolean>(getInitialTheme)
   const copyTimeoutRef = useRef<number | null>(null)
   const { trackLinkClick } = useAnalytics(scripts)
   const statsEnabled = useStatsEnabled()
   const languages = homepageI18n.languages
+  const enabledCodes = languages.map((language) => language.code).join(',')
+  const detect = homepageI18n.detect
+  const fallback = homepageI18n.fallback
+  useEffect(() => {
+    setUiLanguage(
+      detectHomepageLanguage({
+        languages: enabledCodes.split(',').filter(Boolean).map((code) => ({ code, label: code, shortLabel: code })),
+        fallback,
+        detect,
+        texts: {},
+      }),
+    )
+  }, [enabledCodes, fallback, detect])
   const activeLanguage =
-    languages.find(({ code }) => code === (i18n.resolvedLanguage ?? i18n.language)) ??
+    languages.find((language) => language.code === uiLanguage) ??
+    languages.find((language) => language.code === homepageI18n.fallback) ??
     languages[0] ?? { code: 'en', label: 'English', shortLabel: 'EN' }
+  const t = (key: PublicKey) => homepageText(homepageI18n, activeLanguage.code, key)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
@@ -175,10 +191,9 @@ export default function App() {
 
   useEffect(() => {
     try {
-      const lang = i18n.resolvedLanguage ?? i18n.language
-      const pageTitle = String(t('pageTitle')) || 'Wang — Link Page'
-      const description = String(t('intro'))
-      document.documentElement.lang = lang
+      const pageTitle = homepageText(homepageI18n, activeLanguage.code, 'pageTitle') || 'Wang — Link Page'
+      const description = homepageText(homepageI18n, activeLanguage.code, 'intro')
+      document.documentElement.lang = activeLanguage.code
       document.title = pageTitle
       // index.html ships a static title and description for crawlers. React 19
       // hoists its own tags beside those, so drop the ones that are now stale.
@@ -193,7 +208,7 @@ export default function App() {
     }
 
     return undefined
-  }, [i18n.language, i18n.resolvedLanguage, t])
+  }, [activeLanguage.code, homepageI18n])
 
   useEffect(
     () => () => {
@@ -205,15 +220,7 @@ export default function App() {
   )
 
   const changeLanguage = (languageCode: string) => {
-    startTransition(() => {
-      void i18n.changeLanguage(languageCode)
-    })
-
-    try {
-      localStorage.setItem('i18nextLng', languageCode)
-    } catch {
-      return undefined
-    }
+    setUiLanguage(languageCode)
   }
 
   async function copyLink(url: string, id: string) {

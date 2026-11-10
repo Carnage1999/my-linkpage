@@ -15,15 +15,15 @@ export function __resetScriptCache(): void {
   cache = null
 }
 
-export async function scriptPayload() {
-  if (cache && Date.now() - cache.at < 60_000) return cache.body
-  const body = publicScriptsFrom(await loadEffective())
+export async function scriptPayload(options?: { fresh?: boolean }) {
+  if (!options?.fresh && cache && Date.now() - cache.at < 60_000) return cache.body
+  const body = publicScriptsFrom(await loadEffective(options))
   cache = { at: Date.now(), body }
   return body
 }
 
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405)
-  const body = await scriptPayload()
+  const body = await scriptPayload({ fresh: true })
   return json(body, 200, undefined, publicCdnHeaders())
 }

@@ -3,8 +3,6 @@ import { describe, expect, it } from 'vitest'
 import * as matchers from 'vitest-axe/matchers'
 import { axe } from 'vitest-axe'
 import App from '../App'
-import '../i18n'
-
 declare module 'vitest' {
   interface Matchers<R, T> {
     toHaveNoViolations: () => R

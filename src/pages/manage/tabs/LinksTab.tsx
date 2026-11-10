@@ -1,9 +1,9 @@
-import { useTranslation } from 'react-i18next'
+import { useManageCopy } from '../../../manage/useManageCopy'
 import { fieldClass, type SiteDraft } from '../useSiteDraft'
 import { IconPicker } from './IconPicker'
 
 export function LinksTab({ draft }: { draft: SiteDraft }) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
 
   return (
     <section className="space-y-4 rounded-2xl border border-slate-200/60 bg-white p-4 dark:border-slate-800/60 dark:bg-slate-900/80">

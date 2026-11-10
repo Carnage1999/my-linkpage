@@ -33,8 +33,8 @@ async function load(): Promise<PublicSiteConfig> {
   }
 }
 
-export async function readRuntimeSite(): Promise<PublicSiteConfig> {
-  if (cache && Date.now() - cache.at < CACHE_MS) return cache.value
+export async function readRuntimeSite(options?: { fresh?: boolean }): Promise<PublicSiteConfig> {
+  if (!options?.fresh && cache && Date.now() - cache.at < CACHE_MS) return cache.value
   const value = await load()
   cache = { at: Date.now(), value }
   return value

@@ -2,8 +2,6 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import App from '../App'
-import '../i18n'
-
 describe('App', () => {
   it('renders profile title', async () => {
     render(<App />)

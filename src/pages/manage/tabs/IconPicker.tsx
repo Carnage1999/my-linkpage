@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useManageCopy } from '../../../manage/useManageCopy'
 import { SocialIcon } from '../../../SocialIcon'
 import type { IconRecord } from '../../../icons/catalog'
 
@@ -16,7 +16,7 @@ export function IconPicker({
   iconPath?: string
   onChange: (iconSlug: string) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
   const dialogId = useId()
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [open, setOpen] = useState(false)

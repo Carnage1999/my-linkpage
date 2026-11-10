@@ -420,8 +420,8 @@ export function publicScriptsFrom(effective: EffectiveSettings): PublicScripts {
   }
 }
 
-async function readStored(): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
-  if (cache && Date.now() - cache.at < CACHE_MS) return cache
+async function readStored(options?: { fresh?: boolean }): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
+  if (!options?.fresh && cache && Date.now() - cache.at < CACHE_MS) return cache
   if (!isRedisConfigured()) return { stored: { v: 1 }, secrets: {} }
   try {
     const response = await redisCommand(['GET', KEY])
@@ -438,8 +438,8 @@ async function readStored(): Promise<{ stored: StoredSettings; secrets: SecretBa
   }
 }
 
-export async function loadEffective(): Promise<EffectiveSettings> {
-  const { stored, secrets } = await readStored()
+export async function loadEffective(options?: { fresh?: boolean }): Promise<EffectiveSettings> {
+  const { stored, secrets } = await readStored(options)
   return buildEffective(stored, secrets)
 }
 

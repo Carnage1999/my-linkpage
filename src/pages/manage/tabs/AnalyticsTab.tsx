@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useManageCopy } from '../../../manage/useManageCopy'
 import type { VisitorProviderId } from '../../../../api/stats/_providers/types'
 import type { SettingsView } from '../../../../api/stats/_settings'
 import { ProviderSettings } from '../ProviderSettings'
@@ -19,7 +19,7 @@ export function AnalyticsTab({
   onSaved: () => void
   dirtyRef: { current: boolean }
 }) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
 
   return (
     <div className="space-y-6">

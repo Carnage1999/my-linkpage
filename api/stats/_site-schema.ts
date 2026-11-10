@@ -1,12 +1,16 @@
 import {
-  bundledValue,
   canonicalLocale,
   DEFAULT_HOMEPAGE_I18N,
+  fallbackCode,
   isPublicKey,
   KEY_LIMIT,
+  PUBLIC_KEYS,
+  seedTextsFor,
   type HomepageI18n,
   type HomepageLanguage,
-} from '../../src/i18n/publicCopy'
+  type HomepageTexts,
+  type PublicKey,
+} from '../../src/i18n/homepage'
 import { DEFAULT_AVATAR, safeAvatarUrl } from '../../src/lib/safeAvatarUrl'
 import { safeLinkUrl, safeSvgPath } from '../../src/lib/safeUrl'
 import type { SocialLinkEntry } from '../../src/siteConfig'
@@ -15,7 +19,7 @@ export { DEFAULT_AVATAR }
 
 export interface PublicSite {
   name: string
-  /** Legacy share-image subtitle. The homepage subtitle is an i18n override. */
+  /** Legacy share-image subtitle. The homepage subtitle is `i18n.texts`. */
   tagline?: string
   domain: string
   twitterHandle?: string
@@ -87,6 +91,60 @@ export function validateAvatar(value: string): string {
   return safe
 }
 
+function readPack(raw: unknown, code: string): HomepageTexts | null {
+  if (raw == null) return null
+  if (typeof raw !== 'object' || Array.isArray(raw)) throw new SiteValidationError(`Text for ${code} must be an object`)
+  const strings: HomepageTexts = {}
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!isPublicKey(key)) throw new SiteValidationError(`Unknown text: ${key}`)
+    if (typeof value !== 'string') throw new SiteValidationError(`${key} must be text`)
+    const trimmed = value.trim()
+    if (!trimmed) continue
+    if (trimmed.length > KEY_LIMIT[key]) throw new SiteValidationError(`${key} must be at most ${KEY_LIMIT[key]} characters`)
+    strings[key] = trimmed
+  }
+  return strings
+}
+
+/**
+ * Old documents stored `overrides` instead of full texts. Those overrides are
+ * test edits and are dropped. A language with no texts is filled from the seed,
+ * then from the default language.
+ */
+function textsFor(body: Record<string, unknown>, languages: readonly string[], fallback: string): Record<string, HomepageTexts> {
+  const rawTexts = body.texts
+  const stored = rawTexts == null ? {} : rawTexts
+  if (typeof stored !== 'object' || Array.isArray(stored)) throw new SiteValidationError('Homepage text must be an object')
+  const texts: Record<string, HomepageTexts> = {}
+  for (const code of languages) {
+    const saved = readPack((stored as Record<string, unknown>)[code], code)
+    const seed = seedTextsFor(code)
+    if (!saved) {
+      texts[code] = Object.keys(seed).length > 0 ? seed : {}
+      continue
+    }
+    const merged: HomepageTexts = { ...seed }
+    for (const key of PUBLIC_KEYS) {
+      if (saved[key]) merged[key] = saved[key]
+    }
+    texts[code] = merged
+  }
+  const fallbackPack = texts[fallback] ?? {}
+  for (const key of PUBLIC_KEYS) {
+    if (!fallbackPack[key]) fallbackPack[key] = seedTextsFor(fallback)[key] || seedTextsFor('en')[key] || ''
+  }
+  texts[fallback] = fallbackPack
+  for (const code of languages) {
+    if (code === fallback) continue
+    const pack = texts[code] ?? {}
+    for (const key of PUBLIC_KEYS) {
+      if (!pack[key]) pack[key] = fallbackPack[key]
+    }
+    texts[code] = pack
+  }
+  return texts
+}
+
 function validateI18n(value: unknown): HomepageI18n {
   if (value == null) return structuredClone(DEFAULT_HOMEPAGE_I18N)
   if (typeof value !== 'object' || Array.isArray(value)) throw new SiteValidationError('Languages must be an object')
@@ -111,30 +169,13 @@ function validateI18n(value: unknown): HomepageI18n {
   const fallback = canonicalLocale(typeof body.fallback === 'string' ? body.fallback : '')
   if (!fallback || !seen.has(fallback)) throw new SiteValidationError('Default language must be one of the enabled languages')
   if (typeof body.detect !== 'boolean') throw new SiteValidationError('Browser detection must be true or false')
-
-  const overrides: Record<string, Record<string, string>> = {}
-  const rawOverrides = body.overrides ?? {}
-  if (typeof rawOverrides !== 'object' || Array.isArray(rawOverrides)) {
-    throw new SiteValidationError('Text overrides must be an object')
+  const draft = { languages, fallback, detect: body.detect, texts: {} }
+  const texts = textsFor(body, languages.map((language) => language.code), fallbackCode(draft))
+  for (const key of PUBLIC_KEYS) {
+    const sample = texts[fallback]?.[key]
+    if (!sample) throw new SiteValidationError(`Missing ${key as PublicKey}`)
   }
-  for (const [rawCode, pack] of Object.entries(rawOverrides as Record<string, unknown>)) {
-    const code = canonicalLocale(rawCode)
-    if (!code || !seen.has(code)) throw new SiteValidationError(`Unknown language: ${rawCode}`)
-    if (!pack || typeof pack !== 'object' || Array.isArray(pack)) throw new SiteValidationError('Text overrides must be an object')
-    const strings: Record<string, string> = {}
-    for (const [key, raw] of Object.entries(pack as Record<string, unknown>)) {
-      if (!isPublicKey(key)) throw new SiteValidationError(`Unknown text: ${key}`)
-      if (typeof raw !== 'string') throw new SiteValidationError(`${key} must be text`)
-      const trimmed = raw.trim()
-      if (!trimmed) continue
-      if (trimmed.length > KEY_LIMIT[key]) throw new SiteValidationError(`${key} must be at most ${KEY_LIMIT[key]} characters`)
-      if (trimmed === bundledValue(code, key)) continue
-      strings[key] = trimmed
-    }
-    if (Object.keys(strings).length > 0) overrides[code] = strings
-  }
-
-  return { languages, fallback, detect: body.detect, overrides }
+  return { languages, fallback, detect: body.detect, texts }
 }
 
 export function validateSiteConfig(input: unknown, version: number): PublicSiteConfig {

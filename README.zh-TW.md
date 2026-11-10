@@ -34,7 +34,7 @@
 | 建置 | Vite 8 |
 | 樣式 | Tailwind CSS 4（`@tailwindcss/vite`）、Headless UI |
 | 動畫 | Motion |
-| 國際化 | i18next 27、react-i18next 18 |
+| 國際化 | 首頁文案在網站設定；後台文字在 `src/manage/copy.ts` |
 | 圖表 | Recharts |
 | 圖示 | simple-icons（完整圖庫，儲存時寫入 path） |
 | OG 圖片 | satori、@resvg/resvg-js（建置時期 + serverless） |
@@ -101,7 +101,7 @@ src/
       Dashboard.tsx        Redis 與 Umami 圖表
       LinkHeatmap.tsx      逐連結點擊對照
       clickCsv.ts          匯出 CSV
-  locales/                 翻譯檔案（en / ru / zh-TW）
+  manage/copy.ts           後台文案（en / ru / zh-TW）
   test/                    Vitest 單元與元件測試
 api/
   og.ts                    Serverless Function — 動態產生 OG 圖片（Web Standard API）
@@ -133,7 +133,7 @@ scripts/
 
 線上內容在 `/manage` 修改。`public/siteConfig.json` 是 Redis 沒有資料時的種子，也是 `index.html` 與建置的 `og-image.png` 的來源，這兩者要等下次部署。React 頁面、它的 meta 與 `/api/og` 會立刻採用新設定。
 
-「網站」分頁的顯示名稱用在分享圖與作者 metadata。首頁句子（含標題與副標）在「語言」分頁按語言修改。空白列沿用內建文字。後台本身仍使用 `src/locales/` 的檔案。由右至左的語言仍以由左至右顯示。
+「網站」分頁的顯示名稱用在分享圖與作者 metadata。首頁句子（含標題與副標）在「語言」分頁按語言修改，並存在網站設定裡。缺的句子使用預設語言。後台自己的文字在 `src/manage/copy.ts`。由右至左的語言仍以由左至右顯示。
 
 ```jsonc
 {
@@ -161,7 +161,7 @@ scripts/
 
 ### 翻譯
 
-編輯或新增 `src/locales/` 中的 JSON 檔案。
+首頁文案在「語言」分頁修改。後台文字在 `src/manage/copy.ts`。
 
 ### 分析工具
 

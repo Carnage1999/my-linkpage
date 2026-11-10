@@ -1,5 +1,5 @@
 import { m, useReducedMotion } from 'motion/react'
-import { useTranslation } from 'react-i18next'
+import { useManageCopy } from '../../manage/useManageCopy'
 import {
   Area,
   AreaChart,
@@ -29,7 +29,7 @@ export function LinkHeatmap({
   showProvider: boolean
   providerLabel: string
 }) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
   const prefersReduced = useReducedMotion()
   const maxClicks = Math.max(...links.map((link) => link.redisClicks), 0)
   const chartData = daily.map((day) => ({

@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useSiteConfig } from '../hooks/useSiteConfig'
+import { homepageText } from '../i18n/homepage'
+import { useUiLanguage } from '../i18n/language'
 import { safeLinkUrl } from '../lib/safeUrl'
 import type { SiteMetadata, SocialLinkEntry } from '../siteConfig'
 
@@ -24,11 +26,12 @@ export function SEO({
   ogImagePath: string
   languages: readonly string[]
 }) {
-  const { t, i18n } = useTranslation()
-  const pageTitle = String(t('pageTitle')) || 'Wang — Link Page'
-  const description = String(t('intro')) || 'Personal link page — find all my social profiles in one place.'
-  const currentLang = i18n.resolvedLanguage || i18n.language || 'en'
+  const config = useSiteConfig()
+  const [uiLanguage] = useUiLanguage()
   const enabled = languages.length > 0 ? languages : ['en']
+  const currentLang = enabled.includes(uiLanguage) ? uiLanguage : config.i18n.fallback || enabled[0] || 'en'
+  const pageTitle = homepageText(config.i18n, currentLang, 'pageTitle') || 'Wang — Link Page'
+  const description = homepageText(config.i18n, currentLang, 'intro') || 'Personal link page — find all my social profiles in one place.'
   
   // Use a fallback domain if window is not available (e.g. during SSR)
   const currentUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://link.w1999.me'

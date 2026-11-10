@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useManageCopy } from '../../manage/useManageCopy'
+import { notifySiteConfigSaved } from '../../siteSync'
 import type { SettingsPatch, SettingsView } from '../../../api/stats/_settings'
 import { VISITOR_PROVIDERS, type VisitorProviderId } from '../../../api/stats/_providers/types'
 
@@ -38,7 +39,7 @@ function ProviderForm({
   onSaved: () => void
   dirtyRef?: { current: boolean }
 }) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
   const [timezone, setTimezone] = useState(settings.timezone.value)
   const [defaultProvider, setDefaultProvider] = useState(settings.defaultProvider ?? '')
   const [inject, setInject] = useState(settings.inject)
@@ -93,6 +94,7 @@ function ProviderForm({
       setSecrets({})
       setCleared({})
       onSaved()
+      notifySiteConfigSaved(response.headers.get('x-site-purge') !== 'ok')
       setStatus(String(t('manageSaved')))
     } catch {
       setStatus(String(t('manageNetwork')))

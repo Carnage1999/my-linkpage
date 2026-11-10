@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useManageCopy } from '../../manage/useManageCopy'
 import { useSearchParams } from 'react-router-dom'
 import type { StatsRange } from '../../../api/stats/_dates'
 import type { VisitorProviderId } from '../../../api/stats/_providers/types'
 import { useDashboard, useVisitorReport, useVisitorSettings } from '../../hooks/useStats'
 import { useSiteConfig } from '../../hooks/useSiteConfig'
-import type { AppLanguageCode } from '../../i18n'
+import { MANAGE_LANGUAGES } from '../../manage/copy'
 import { buildClickCsv } from './clickCsv'
 import { preferredProvider, providerName } from './providers'
 import { AnalyticsTab } from './tabs/AnalyticsTab'
@@ -17,11 +17,6 @@ import { SiteTab } from './tabs/SiteTab'
 import { useSiteDraft } from './useSiteDraft'
 
 const RANGES: StatsRange[] = [7, 30, 90]
-const LANGUAGES: Array<{ code: AppLanguageCode; label: string }> = [
-  { code: 'en', label: 'EN' },
-  { code: 'zh-TW', label: '繁' },
-  { code: 'ru', label: 'РУ' },
-]
 const TABS = ['overview', 'site', 'languages', 'links', 'analytics', 'data'] as const
 type ManageTab = (typeof TABS)[number]
 
@@ -39,7 +34,7 @@ function isTab(value: string | null): value is ManageTab {
 }
 
 export function Dashboard({ token, logout }: { token: string; logout: () => void }) {
-  const { t, i18n: i18nInstance } = useTranslation()
+  const { t, language, setLanguage } = useManageCopy()
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab')
   const tab: ManageTab = isTab(rawTab) ? rawTab : 'overview'
@@ -173,19 +168,19 @@ export function Dashboard({ token, logout }: { token: string; logout: () => void
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-xl border border-slate-200 p-0.5 dark:border-slate-700">
-              {LANGUAGES.map((language) => (
+              {MANAGE_LANGUAGES.map((item) => (
                 <button
-                  key={language.code}
+                  key={item.code}
                   type="button"
-                  onClick={() => void i18nInstance.changeLanguage(language.code)}
+                  onClick={() => setLanguage(item.code)}
                   className={`rounded-lg px-2 py-1 text-xs font-semibold ${
-                    i18nInstance.language === language.code
+                    language === item.code
                       ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
                       : 'text-slate-500'
                   }`}
-                  aria-pressed={i18nInstance.language === language.code}
+                  aria-pressed={language === item.code}
                 >
-                  {language.label}
+                  {item.shortLabel}
                 </button>
               ))}
             </div>

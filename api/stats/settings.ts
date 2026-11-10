@@ -3,6 +3,7 @@
  * Authenticated. Secrets are write-only. Env vars lock their fields.
  */
 
+import { purgeSiteConfigCache } from './_cache'
 import { json, requireStatsToken } from './_http'
 import { bumpNamedLimit, hashClientIp, isRedisConfigured } from './_redis'
 import { loadEffective, saveSettings, SettingsError, type SettingsPatch } from './_settings'
@@ -31,7 +32,8 @@ export default async function handler(request: Request): Promise<Response> {
     if (attempts > WRITE_LIMIT) return json({ error: 'Too many attempts' }, 429)
     const patch = (await request.json()) as SettingsPatch
     const effective = await saveSettings(patch)
-    return json(effective.view)
+    const purge = await purgeSiteConfigCache()
+    return json(effective.view, 200, 'private, no-store', { 'x-site-purge': purge })
   } catch (error) {
     if (error instanceof SettingsError) return json({ error: error.message }, 400)
     console.error('Settings save error:', error)

@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useManageCopy } from '../../../manage/useManageCopy'
 import {
   Bar,
   BarChart,
@@ -31,7 +31,7 @@ function sumRecord(record: Record<string, number> | undefined): number {
 }
 
 function Delta({ current, previous }: { current: number; previous: number | null | undefined }) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
   if (previous == null) return null
   const change = percentChange(current, previous)
   if (change == null) {
@@ -111,7 +111,7 @@ function countText(value: number | null | undefined): string {
 }
 
 function VisitorCards({ report }: { report: VisitorReport }) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
   const totals = report.totals
   const previous = report.previous
   return (
@@ -126,7 +126,7 @@ function VisitorCards({ report }: { report: VisitorReport }) {
 }
 
 function VisitorBreakdowns({ report }: { report: VisitorReport }) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
   const series = report.timeseries
   return (
     <div className="space-y-4">
@@ -170,7 +170,7 @@ export function OverviewTab({
   providerLabel: string
   labels: Map<string, string>
 }) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
   const linkClicks = report?.linkClicks ?? {}
   const heatmapLinks = data.configuredIds.map((id) => ({
     id,

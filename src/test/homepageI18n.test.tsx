@@ -1,16 +1,13 @@
-import { readFileSync } from 'node:fs'
 import { render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import seedFile from '../../public/siteConfig.json'
-import enLocale from '../locales/en.json'
-import zhTWLocale from '../locales/zh-TW.json'
-import App from '../App'
 import { validateSiteConfig } from '../../api/stats/_site-schema'
 import { SEO } from '../components/SEO'
-import i18n from '../i18n'
-import { applyHomepageI18n, resetHomepageI18nForTests } from '../i18n/applyHomepage'
-import { canonicalLocale, DEFAULT_HOMEPAGE_I18N, mapDetected, shareSubtitle } from '../i18n/publicCopy'
+import App from '../App'
+import { setUiLanguage } from '../i18n/language'
+import { canonicalLocale, DEFAULT_HOMEPAGE_I18N, homepageText, mapDetected, shareSubtitle } from '../i18n/homepage'
 import { sitemapAlternates } from '../../scripts/update-sitemap-lastmod'
+import { readFileSync } from 'node:fs'
 
 const baseSite = {
   site: { name: 'Han-che Wang', tagline: 'Links & Socials', domain: 'link.w1999.me' },
@@ -18,11 +15,7 @@ const baseSite = {
   socials: [] as const,
 }
 
-afterEach(async () => {
-  resetHomepageI18nForTests()
-  applyHomepageI18n(DEFAULT_HOMEPAGE_I18N)
-  await i18n.changeLanguage('en')
-})
+const languages = DEFAULT_HOMEPAGE_I18N.languages
 
 describe('homepage languages', () => {
   it('accepts BCP 47 codes and rejects everything else', () => {
@@ -42,34 +35,54 @@ describe('homepage languages', () => {
     expect(mapDetected('zh-CN', ['en', 'zh-CN', 'zh-TW'], 'en')).toBe('zh-CN')
   })
 
-  it('stores only overrides and keeps an empty line on the bundled text', () => {
+  it('drops old overrides and fills every language from the seed', () => {
     const saved = validateSiteConfig(
       {
         ...baseSite,
         i18n: {
-          ...DEFAULT_HOMEPAGE_I18N,
-          overrides: {
-            en: { title: '  Hello  ', subtitle: 'Links & socials', intro: '' },
-            fr: { title: 'Bonjour' },
-          },
-          languages: [...DEFAULT_HOMEPAGE_I18N.languages, { code: 'fr', label: 'Français', shortLabel: 'FR' }],
+          languages,
+          fallback: 'en',
+          detect: true,
+          overrides: { en: { title: 'Han', pageTitle: 'lp' } },
         },
       },
-      2,
+      8,
     )
-    expect(saved.i18n.overrides.en).toEqual({ title: 'Hello' })
-    expect(saved.i18n.overrides.fr).toEqual({ title: 'Bonjour' })
-    expect(saved.i18n.detect).toBe(true)
+    expect(saved.i18n).not.toHaveProperty('overrides')
+    expect(saved.i18n.texts.en?.title).toBe("Hi, I'm Wang")
+    expect(saved.i18n.texts.en?.pageTitle).toBe('Wang — Link Page')
+    expect(saved.i18n.texts['zh-TW']?.title).toBe('嗨，我是 Wang')
+    expect(saved.i18n.texts.ru?.title).toBe('Привет, я Wang')
+  })
+
+  it('keeps an edited line and fills the rest from the seed', () => {
+    const saved = validateSiteConfig(
+      {
+        ...baseSite,
+        i18n: {
+          languages,
+          fallback: 'en',
+          detect: true,
+          texts: { en: { title: 'Hello there' } },
+          overrides: { en: { title: 'Han', pageTitle: 'lp' } },
+        },
+      },
+      9,
+    )
+    expect(saved.i18n.texts.en?.title).toBe('Hello there')
+    expect(saved.i18n.texts.en?.pageTitle).toBe('Wang — Link Page')
+    expect(saved.i18n.texts.en?.intro).toBe('I am Han-che Wang.')
+    expect(saved.i18n).not.toHaveProperty('overrides')
   })
 
   it('fills the default languages when a saved document has none', () => {
     const saved = validateSiteConfig(baseSite, 3)
     expect(saved.i18n.languages.map((language) => language.code)).toEqual(['en', 'ru', 'zh-TW'])
-    expect(saved.i18n.overrides).toEqual({})
+    expect(saved.i18n.texts.en?.title).toBe("Hi, I'm Wang")
     expect(saved.i18n.detect).toBe(true)
   })
 
-  it('rejects a legacy export name and a bad locale', () => {
+  it('rejects a bad locale, an unknown key, and a line that is too long', () => {
     expect(() =>
       validateSiteConfig(
         {
@@ -83,7 +96,7 @@ describe('homepage languages', () => {
       validateSiteConfig(
         {
           ...baseSite,
-          i18n: { ...DEFAULT_HOMEPAGE_I18N, overrides: { en: { manageTitle: 'Nope' } } },
+          i18n: { languages, fallback: 'en', detect: true, texts: { en: { manageTitle: 'Nope' } } },
         },
         1,
       ),
@@ -92,20 +105,29 @@ describe('homepage languages', () => {
       validateSiteConfig(
         {
           ...baseSite,
-          i18n: { ...DEFAULT_HOMEPAGE_I18N, overrides: { en: { intro: 'x'.repeat(501) } } },
+          i18n: { languages, fallback: 'en', detect: true, texts: { en: { intro: 'x'.repeat(501) } } },
         },
         1,
       ),
     ).toThrow(/500/)
-    expect(() =>
-      validateSiteConfig(
-        {
-          ...baseSite,
-          socials: [{ id: 'github', label: 'GitHub', url: 'https://github.com/example', iconSlug: 'siGithub', iconPath: 'M10 10' }],
+  })
+
+  it('copies the default language onto a new locale', () => {
+    const saved = validateSiteConfig(
+      {
+        ...baseSite,
+        i18n: {
+          languages: [...languages, { code: 'fr', label: 'Français', shortLabel: 'FR' }],
+          fallback: 'en',
+          detect: true,
+          texts: { fr: { title: 'Bonjour' } },
         },
-        1,
-      ),
-    ).toThrow(/Unknown icon/)
+      },
+      4,
+    )
+    expect(saved.i18n.texts.fr?.title).toBe('Bonjour')
+    expect(saved.i18n.texts.fr?.intro).toBe('I am Han-che Wang.')
+    expect(homepageText(saved.i18n, 'fr', 'pageTitle')).toBe('Wang — Link Page')
   })
 
   it('uses an edited subtitle on the share image and the saved tagline until then', () => {
@@ -119,60 +141,35 @@ describe('homepage languages', () => {
         legacyTagline: 'Links & Socials 123456',
       }),
     ).toBe('社群與連結')
-    const edited = {
-      ...DEFAULT_HOMEPAGE_I18N,
-      overrides: { en: { subtitle: 'Edited line' } },
-    }
+    const edited = structuredClone(DEFAULT_HOMEPAGE_I18N)
+    edited.texts.en = { ...edited.texts.en, subtitle: 'Edited line' }
     expect(shareSubtitle({ requested: 'en', i18n: edited, legacyTagline: 'Links & Socials 123456' })).toBe('Edited line')
   })
 
-  it('shows fetched overrides in the heading, title, and description', async () => {
-    expect(i18n.options.react).toMatchObject({ bindI18n: 'languageChanged', bindI18nStore: 'added removed' })
-    const config = structuredClone(seedFile) as typeof seedFile & {
-      i18n: { overrides: Record<string, Record<string, string>> }
-    }
-    config.i18n.overrides = {
-      en: { title: 'Han', pageTitle: 'lp', intro: 'Edited intro' },
-      'zh-TW': { title: '漢哲', pageTitle: '連結', intro: '編輯的介紹' },
-    }
+  it('shows fetched texts in the heading, title, and description', async () => {
+    const config = structuredClone(seedFile)
+    config.i18n.texts.en = { ...config.i18n.texts.en, title: 'Hello there', pageTitle: 'Hello — Page', intro: 'Edited intro' }
+    config.i18n.texts['zh-TW'] = { ...config.i18n.texts['zh-TW'], title: '漢哲', pageTitle: '連結', intro: '編輯的介紹' }
     vi.stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(config) })),
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: { get: () => '"site-test"' },
+          json: () => Promise.resolve(config),
+        }),
+      ),
     )
     render(<App />)
-    expect(await screen.findByRole('heading', { level: 1, name: 'Han' })).toBeInTheDocument()
-    expect(document.title).toBe('lp')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Hello there' })).toBeInTheDocument()
+    expect(document.title).toBe('Hello — Page')
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe('Edited intro')
-    expect(i18n.getResource('en', 'translation', 'title')).toBe('Han')
 
-    await i18n.changeLanguage('zh-TW')
+    setUiLanguage('zh-TW')
     expect(await screen.findByRole('heading', { level: 1, name: '漢哲' })).toBeInTheDocument()
     expect(document.title).toBe('連結')
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe('編輯的介紹')
-    expect(enLocale.title).toBe("Hi, I'm Wang")
-    expect(zhTWLocale.title).toBe('嗨，我是 Wang')
-  })
-
-  it('overrides a homepage string without changing the dashboard', () => {
-    applyHomepageI18n({
-      ...DEFAULT_HOMEPAGE_I18N,
-      overrides: { en: { title: 'Hello there', pageTitle: 'Hello — Page' } },
-    })
-    expect(i18n.t('title')).toBe('Hello there')
-    expect(i18n.t('pageTitle')).toBe('Hello — Page')
-    expect(i18n.t('manageTitle')).toBe('Admin')
-    expect(i18n.t('intro')).toBe('I am Han-che Wang.')
-  })
-
-  it('falls back to the default language for a new locale', async () => {
-    applyHomepageI18n({
-      ...DEFAULT_HOMEPAGE_I18N,
-      languages: [...DEFAULT_HOMEPAGE_I18N.languages, { code: 'fr', label: 'Français', shortLabel: 'FR' }],
-      overrides: { fr: { title: 'Bonjour' } },
-    })
-    await i18n.changeLanguage('fr')
-    expect(i18n.t('title')).toBe('Bonjour')
-    expect(i18n.t('intro')).toBe('I am Han-che Wang.')
   })
 
   it('uses the display name for the author and lists only enabled languages', () => {

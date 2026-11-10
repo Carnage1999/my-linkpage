@@ -28,7 +28,65 @@
     ],
     "fallback": "en",
     "detect": true,
-    "overrides": {}
+    "texts": {
+      "en": {
+        "title": "Hi, I'm Wang",
+        "subtitle": "Links & socials",
+        "aboutMe": "About me",
+        "intro": "I am Han-che Wang.",
+        "visit": "Visit",
+        "copy": "Copy",
+        "copied": "Copied",
+        "language": "Language",
+        "theme": "Theme",
+        "lightMode": "Light mode",
+        "darkMode": "Dark mode",
+        "builtWith": "Built with ♥",
+        "builtWithLabel": "Built with love",
+        "avatarAlt": "Photo of Han-che Wang",
+        "skipToContent": "Skip to content",
+        "opensInNewTab": "opens in new tab",
+        "pageTitle": "Wang — Link Page"
+      },
+      "ru": {
+        "title": "Привет, я Wang",
+        "subtitle": "Ссылки и соцсети",
+        "aboutMe": "Обо мне",
+        "intro": "Я Ханьчжэ Ван.",
+        "visit": "Перейти",
+        "copy": "Копировать",
+        "copied": "Скопировано",
+        "language": "Язык",
+        "theme": "Тема",
+        "lightMode": "Светлая тема",
+        "darkMode": "Тёмная тема",
+        "builtWith": "Сделано с ♥",
+        "builtWithLabel": "Сделано с любовью",
+        "avatarAlt": "Фото Ханьчжэ Вана",
+        "skipToContent": "Перейти к содержимому",
+        "opensInNewTab": "открывается в новой вкладке",
+        "pageTitle": "Wang — Страница ссылок"
+      },
+      "zh-TW": {
+        "title": "嗨，我是 Wang",
+        "subtitle": "社群與連結",
+        "aboutMe": "關於我",
+        "intro": "我是王瀚哲。",
+        "visit": "前往",
+        "copy": "複製",
+        "copied": "已複製",
+        "language": "語言",
+        "theme": "主題",
+        "lightMode": "淺色模式",
+        "darkMode": "深色模式",
+        "builtWith": "使用 ♥ 建置",
+        "builtWithLabel": "用愛建置",
+        "avatarAlt": "王瀚哲的照片",
+        "skipToContent": "跳到主要內容",
+        "opensInNewTab": "在新分頁中開啟",
+        "pageTitle": "Wang — 連結頁面"
+      }
+    }
   },
   "socials": [
     {

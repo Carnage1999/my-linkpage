@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import seedFile from '../../public/siteConfig.json'
 import { EMPTY_SCRIPTS, type ScriptBundle } from '../analytics/types'
-import { applyHomepageI18n } from '../i18n/applyHomepage'
-import { DEFAULT_HOMEPAGE_I18N, type HomepageI18n } from '../i18n/publicCopy'
+import { DEFAULT_HOMEPAGE_I18N, type HomepageI18n } from '../i18n/homepage'
 import { safeAvatarUrl } from '../lib/safeAvatarUrl'
 import { safeLinkUrl, safeScriptUrl, safeSvgPath, safeToken } from '../lib/safeUrl'
+import { SITE_CHANNEL, type SiteSavedMessage } from '../siteSync'
 import type { AnalyticsConfig, SiteConfig, SiteMetadata, SocialLinkEntry } from '../siteConfig'
 import { DEFAULT_PROFILE, DEFAULT_SITE } from '../siteConfig'
 
@@ -17,6 +17,7 @@ export interface SiteConfigState {
   ogImagePath: string
   scripts: ScriptBundle
   version: number
+  etag: string | null
   i18n: HomepageI18n
 }
 
@@ -58,18 +59,22 @@ function sanitizeScripts(bundle: ScriptBundle): ScriptBundle {
 }
 
 function readI18n(value: unknown): HomepageI18n {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return DEFAULT_HOMEPAGE_I18N
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return structuredClone(DEFAULT_HOMEPAGE_I18N)
   const body = value as Partial<HomepageI18n>
-  if (!Array.isArray(body.languages) || body.languages.length === 0) return DEFAULT_HOMEPAGE_I18N
+  if (!Array.isArray(body.languages) || body.languages.length === 0) return structuredClone(DEFAULT_HOMEPAGE_I18N)
   return {
     languages: body.languages,
     fallback: typeof body.fallback === 'string' ? body.fallback : body.languages[0].code,
     detect: body.detect !== false,
-    overrides: body.overrides ?? {},
+    texts: body.texts ?? {},
   }
 }
 
-function fromConfig(data: SiteConfig & { scripts?: ScriptBundle; version?: number; i18n?: HomepageI18n }, fallbackScripts: ScriptBundle): SiteConfigState {
+function fromConfig(
+  data: SiteConfig & { scripts?: ScriptBundle; version?: number; i18n?: HomepageI18n },
+  fallbackScripts: ScriptBundle,
+  etag: string | null,
+): SiteConfigState {
   return {
     loading: false,
     error: null,
@@ -82,29 +87,42 @@ function fromConfig(data: SiteConfig & { scripts?: ScriptBundle; version?: numbe
     ogImagePath: data.ogImagePath ?? DEFAULT_OG_PATH,
     scripts: sanitizeScripts(data.scripts ?? fallbackScripts),
     version: data.version ?? 0,
+    etag,
     i18n: readI18n(data.i18n),
   }
 }
 
 const seedScripts = scriptsFromAnalytics((seedFile as SiteConfig).analytics)
-let current = fromConfig(seedFile as SiteConfig & { i18n?: HomepageI18n }, seedScripts)
-applyHomepageI18n(current.i18n)
+let current = fromConfig(seedFile as SiteConfig & { i18n?: HomepageI18n }, seedScripts, null)
 const listeners = new Set<() => void>()
+let refresh: (bust?: boolean) => Promise<void> = async () => undefined
 
 function publish(next: SiteConfigState) {
   current = next
-  applyHomepageI18n(next.i18n)
   for (const listener of listeners) listener()
 }
 
 /** Drop the in-memory copy so the next read starts from the repo seed. */
 export function invalidateSiteConfig(): void {
-  publish(fromConfig(seedFile as SiteConfig, seedScripts))
+  publish(fromConfig(seedFile as SiteConfig, seedScripts, null))
 }
 
 export function replaceSiteConfig(data: SiteConfig & { scripts?: ScriptBundle; version?: number }): void {
-  publish(fromConfig(data, current.scripts))
+  publish(fromConfig(data, current.scripts, current.etag))
 }
+
+async function revalidate(bust = false) {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (!bust && current.etag) headers['If-None-Match'] = current.etag
+  const url = bust ? `/api/site-config?v=${current.version}` : '/api/site-config'
+  const response = await fetch(url, { headers, cache: 'no-cache' })
+  if (response.status === 304) return
+  if (!response.ok) return
+  const data = (await response.json()) as SiteConfig & { scripts?: ScriptBundle; version?: number }
+  publish(fromConfig(data, seedScripts, response.headers.get('etag')))
+}
+
+refresh = revalidate
 
 export function useSiteConfig(): SiteConfigState {
   const [state, setState] = useState(current)
@@ -113,19 +131,39 @@ export function useSiteConfig(): SiteConfigState {
     const sync = () => setState(current)
     listeners.add(sync)
     let cancelled = false
-    fetch('/api/site-config', { headers: { Accept: 'application/json' } })
-      .then(async (response) => {
-        if (!response.ok) return
-        const data = (await response.json()) as SiteConfig & { scripts?: ScriptBundle; version?: number }
-        if (cancelled) return
-        publish(fromConfig(data, seedScripts))
-      })
-      .catch(() => undefined)
+    void revalidate().catch(() => undefined)
+
+    const onFocus = () => {
+      if (!cancelled) void revalidate().catch(() => undefined)
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') onFocus()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+    let channel: BroadcastChannel | null = null
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        channel = new BroadcastChannel(SITE_CHANNEL)
+        channel.addEventListener('message', (event: MessageEvent<SiteSavedMessage>) => {
+          if (event.data?.type !== 'saved' || cancelled) return
+          void revalidate(Boolean(event.data.bust)).catch(() => undefined)
+        })
+      } catch {
+        channel = null
+      }
+    }
+
     return () => {
       cancelled = true
       listeners.delete(sync)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisible)
+      channel?.close()
     }
   }, [])
 
   return state
 }
+
+export { refresh as refreshSiteConfig }

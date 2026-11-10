@@ -1,11 +1,9 @@
 /**
- * Homepage copy that /manage can override. The dashboard labels stay in the
- * bundled locale files and are not in this list.
+ * Public homepage copy lives in the site config (`i18n.texts`).
+ * A missing line uses the default language. There is no locale JSON file.
  */
 
-import en from '../locales/en.json'
-import ru from '../locales/ru.json'
-import zhTW from '../locales/zh-TW.json'
+import seedFile from '../../public/siteConfig.json'
 
 export const PUBLIC_KEYS = [
   'pageTitle',
@@ -40,7 +38,6 @@ export const PERSONAL_KEYS: readonly PublicKey[] = [
   'builtWithLabel',
 ]
 
-/** Character caps. Empty means "use the bundled string". */
 export const KEY_LIMIT: Record<PublicKey, number> = {
   pageTitle: 120,
   title: 80,
@@ -67,28 +64,22 @@ export interface HomepageLanguage {
   shortLabel: string
 }
 
+export type HomepageTexts = Partial<Record<PublicKey, string>>
+
 export interface HomepageI18n {
   languages: HomepageLanguage[]
   fallback: string
   detect: boolean
-  overrides: Record<string, Record<string, string>>
+  texts: Record<string, HomepageTexts>
 }
+
+const seedI18n = (seedFile as { i18n: HomepageI18n }).i18n
 
 export const DEFAULT_HOMEPAGE_I18N: HomepageI18n = {
-  languages: [
-    { code: 'en', label: 'English', shortLabel: 'EN' },
-    { code: 'ru', label: 'Русский', shortLabel: 'РУ' },
-    { code: 'zh-TW', label: '正體中文', shortLabel: '國' },
-  ],
-  fallback: 'en',
-  detect: true,
-  overrides: {},
-}
-
-const PACKS: Record<string, Record<string, string>> = {
-  en: en as unknown as Record<string, string>,
-  ru: ru as unknown as Record<string, string>,
-  'zh-TW': zhTW as unknown as Record<string, string>,
+  languages: seedI18n.languages.map((language) => ({ ...language })),
+  fallback: seedI18n.fallback,
+  detect: seedI18n.detect,
+  texts: structuredClone(seedI18n.texts),
 }
 
 const BCP47 = /^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|\d{3}))?$/
@@ -116,21 +107,17 @@ export function canonicalLocale(value: string): string | null {
   return BCP47.test(code) ? code : null
 }
 
-export function bundledPack(code: string): Record<string, string> | null {
-  return PACKS[code] ?? null
-}
-
-export function bundledValue(code: string, key: string): string {
-  return PACKS[code]?.[key] ?? ''
+export function seedTextsFor(code: string): HomepageTexts {
+  return { ...(seedI18n.texts[code] ?? {}) }
 }
 
 /**
  * Map a browser or stored tag onto an enabled homepage language.
- * Chinese defaults to zh-TW when that is the only Chinese language enabled,
- * which matches the previous detector.
+ * Returns null when nothing enabled matches, so detection can try the next source.
+ * Chinese defaults to zh-TW when that is the only Chinese language enabled.
  */
-export function mapDetected(language: string | undefined, enabled: readonly string[], fallback: string): string {
-  if (!language) return fallback
+export function matchEnabled(language: string | undefined, enabled: readonly string[]): string | null {
+  if (!language) return null
   const lower = language.toLowerCase().replaceAll('_', '-')
   const exact = enabled.find((code) => code.toLowerCase() === lower)
   if (exact) return exact
@@ -155,25 +142,42 @@ export function mapDetected(language: string | undefined, enabled: readonly stri
     const candidate = code.toLowerCase()
     return candidate === primary || candidate.startsWith(`${primary}-`)
   })
-  return byPrimary ?? fallback
+  return byPrimary ?? null
+}
+
+export function mapDetected(language: string | undefined, enabled: readonly string[], fallback: string): string {
+  return matchEnabled(language, enabled) ?? fallback
+}
+
+export function fallbackCode(i18n: HomepageI18n): string {
+  const codes = i18n.languages.map((language) => language.code)
+  return codes.includes(i18n.fallback) ? i18n.fallback : (codes[0] ?? 'en')
+}
+
+/** The saved line, or the same line from the default language. */
+export function homepageText(i18n: HomepageI18n, code: string, key: PublicKey): string {
+  const direct = i18n.texts[code]?.[key]?.trim()
+  if (direct) return direct
+  const fallback = fallbackCode(i18n)
+  return i18n.texts[fallback]?.[key]?.trim() || seedI18n.texts[fallback]?.[key] || seedI18n.texts.en?.[key] || ''
 }
 
 /**
- * Share-image subtitle. An edited subtitle wins. The saved tagline is the
- * fallback language's line until that subtitle is edited. Other languages use
- * their bundled subtitle.
+ * Share-image subtitle. The homepage itself never uses the legacy tagline.
+ * Until the default language's subtitle is edited away from the seed, the
+ * share image still uses that saved tagline.
  */
 export function shareSubtitle(input: {
   requested: string | null
   i18n: HomepageI18n
   legacyTagline?: string
 }): string {
-  const codes = input.i18n.languages.map((language) => language.code)
-  const fallback = codes.includes(input.i18n.fallback) ? input.i18n.fallback : (codes[0] ?? 'en')
+  const fallback = fallbackCode(input.i18n)
   const requested = input.requested ? canonicalLocale(input.requested) : null
+  const codes = input.i18n.languages.map((language) => language.code)
   const code = requested && codes.includes(requested) ? requested : fallback
-  const override = input.i18n.overrides[code]?.subtitle?.trim()
-  if (override) return override
-  if (code === fallback && input.legacyTagline?.trim()) return input.legacyTagline.trim()
-  return bundledValue(code, 'subtitle') || bundledValue(fallback, 'subtitle') || input.legacyTagline?.trim() || 'Links & socials'
+  const subtitle = homepageText(input.i18n, code, 'subtitle')
+  const seedSubtitle = seedI18n.texts[code]?.subtitle ?? seedI18n.texts[fallback]?.subtitle
+  if (code === fallback && input.legacyTagline?.trim() && subtitle === seedSubtitle) return input.legacyTagline.trim()
+  return subtitle || input.legacyTagline?.trim() || 'Links & socials'
 }

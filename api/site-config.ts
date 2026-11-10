@@ -8,7 +8,7 @@
  * at save time. Vercel's CDN caches the GET. A hit does not call Redis.
  */
 
-import { publicCdnHeaders, purgeSiteConfigCache } from './stats/_cache'
+import { etagMatches, publicCdnHeaders, purgeSiteConfigCache } from './stats/_cache'
 import { json, requireStatsToken } from './stats/_http'
 import { bumpNamedLimit, hashClientIp, isRedisConfigured } from './stats/_redis'
 import { SiteValidationError, validateSiteConfig } from './stats/_site-schema'
@@ -18,20 +18,26 @@ import { __resetScriptCache, scriptPayload } from './stats/scripts'
 
 export const config = { runtime: 'edge' }
 
-function etag(version: number): string {
-  return `"site-${version}"`
+function etag(version: number, scripts: unknown): string {
+  const payload = `${version}:${JSON.stringify(scripts)}`
+  let hash = 2166136261
+  for (let i = 0; i < payload.length; i += 1) {
+    hash ^= payload.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `"site-${(hash >>> 0).toString(16)}"`
 }
 
 export default async function handler(request: Request): Promise<Response> {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
 
   if (request.method === 'GET') {
-    const site = await readRuntimeSite()
-    const tag = etag(site.version)
-    if (request.headers.get('if-none-match') === tag) {
+    const site = await readRuntimeSite({ fresh: true })
+    const scripts = await scriptPayload({ fresh: true })
+    const tag = etag(site.version, scripts)
+    if (etagMatches(request.headers.get('if-none-match'), tag)) {
       return new Response(null, { status: 304, headers: publicCdnHeaders(tag) })
     }
-    const scripts = await scriptPayload()
     return json({ ...site, scripts }, 200, undefined, publicCdnHeaders(tag))
   }
 
@@ -63,9 +69,9 @@ export default async function handler(request: Request): Promise<Response> {
       return json({ error: 'Method not allowed' }, 405)
     }
     __resetScriptCache()
-    await purgeSiteConfigCache()
-    const saved = await readRuntimeSite()
-    return json(saved, 200, 'private, no-store')
+    const purge = await purgeSiteConfigCache()
+    const saved = await readRuntimeSite({ fresh: true })
+    return json(saved, 200, 'private, no-store', { 'x-site-purge': purge })
   } catch (error) {
     if (error instanceof SiteValidationError) return json({ error: error.message }, 400)
     console.error('Site config save error:', error)

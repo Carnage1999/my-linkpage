@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useManageCopy } from '../../manage/useManageCopy'
 import type { AuthError } from '../../hooks/useStats'
 import { useStatsAuth } from '../../hooks/useStats'
 import { useSiteConfig } from '../../hooks/useSiteConfig'
@@ -37,7 +37,7 @@ function LoginForm({
   loading: boolean
   error: AuthError
 }) {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
   const [password, setPassword] = useState('')
   const message =
     error === 'bad-password'
@@ -95,7 +95,7 @@ function LoginForm({
 }
 
 export function ManagePage() {
-  const { t } = useTranslation()
+  const { t } = useManageCopy()
   useNoIndex(String(t('manageTitle')))
   useThemeSync()
   const { loading: configLoading } = useSiteConfig()
