@@ -13,7 +13,7 @@
 - **Динамическое OG-изображение** — серверный endpoint (`/api/og`) генерирует превью 1200×630 на базе Web Standard API, всегда актуальное
 - **Мультиязычность** — EN / RU / ZH-TW с автоопределением языка браузера (упрощённый китайский → традиционный китайский)
 - **Тёмная / светлая тема** — следует системным настройкам; пользовательский выбор сохраняется в `localStorage`
-- **Анимации** — входные переходы Framer Motion с поддержкой `prefers-reduced-motion`
+- **Анимации** — входные переходы Motion с поддержкой `prefers-reduced-motion`
 - **Самостоятельно размещённые шрифты** — переменные шрифты Manrope и Space Grotesk через `@fontsource-variable`
 - **Аналитика и тепловая карта кликов** — Plausible / Umami (настраивается); локальная тепловая карта кликов с графиками трендов за день/неделю — всё в `localStorage`, без cookies
 - **Панель статистики** — опциональная защищённая паролем страница `/stats` с серверным отслеживанием кликов через Upstash Redis; 30-дневный график трендов, статистика по ссылкам, встроенный Umami/Plausible — полностью опционально через переменные окружения
@@ -24,7 +24,7 @@
 - **Производительность** — tree-shaking LazyMotion, ручное разделение чанков Vite
 - **Тестирование** — юнит-тесты Vitest + Testing Library; E2E-тесты Playwright (Chromium, Firefox, WebKit) + аудит доступности axe-core
 - **CI/CD** — двухэтапный пайплайн GitHub Actions: lint → typecheck → test → build, затем E2E и аудит доступности
-- **Качество кода** — TypeScript strict mode, ESLint 9, Prettier, пайплайн `pnpm check`
+- **Качество кода** — TypeScript 6 strict mode, ESLint 10, Prettier, пайплайн `pnpm check`
 
 ## Технологический стек
 
@@ -33,21 +33,26 @@
 | Фреймворк | React 19, TypeScript 6 |
 | Маршрутизация | react-router-dom 7 |
 | Сборка | Vite 8 |
-| Стилизация | Tailwind CSS 3, Headless UI |
-| Анимации | Framer Motion |
-| i18n | i18next, react-i18next |
+| Стилизация | Tailwind CSS 4 (`@tailwindcss/vite`), Headless UI |
+| Анимации | Motion |
+| i18n | i18next 27, react-i18next 18 |
 | Графики | Recharts |
 | Иконки | simple-icons (48 платформ) |
 | OG-изображение | satori, @resvg/resvg-js (сборка + serverless) |
 | Бэкенд статистики | Upstash Redis (REST API, без SDK) |
 | Шрифты | @fontsource-variable (Manrope, Space Grotesk) |
-| Тестирование | Vitest, Testing Library, Playwright, axe-core |
-| Линтинг | ESLint 9, Prettier |
-| CI | GitHub Actions |
+| Тестирование | Vitest 5, Testing Library, Playwright, axe-core |
+| Линтинг | ESLint 10, Prettier |
+| Менеджер пакетов | pnpm 12 (закреплён как `pnpm@12.18.0` в `packageManager`) |
+| CI | GitHub Actions (Node 22) |
 
 ## Начало работы
 
+Нужен Node.js 22 (эту версию использует CI). Версия pnpm закреплена в поле `packageManager`. Corepack, который поставляется с Node 22, ставит именно её:
+
 ```bash
+corepack enable
+corepack install   # активирует pnpm 12.18.0 из packageManager
 pnpm install
 pnpm dev        # сервер разработки
 pnpm build      # обновление sitemap + OG-изображение + production-сборка

@@ -18,7 +18,7 @@
     "format": "prettier . --write",
     "preview": "vite preview"
   },
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@12.18.0",
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",
     "@fontsource-variable/space-grotesk": "^5.3.0",

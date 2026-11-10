@@ -13,7 +13,7 @@ A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind
 - **Dynamic OG image** — serverless endpoint (`/api/og`) generates a 1200×630 social preview at request time using Web Standard APIs, always reflecting the latest config
 - **Multilingual** — EN / RU / ZH-TW with automatic browser language detection (Simplified Chinese → Traditional Chinese)
 - **Dark / light mode** — follows system preference; user toggle persists via `localStorage`
-- **Animations** — Framer Motion entrance transitions with `prefers-reduced-motion` support
+- **Animations** — Motion entrance transitions with `prefers-reduced-motion` support
 - **Self-hosted fonts** — Manrope & Space Grotesk variable fonts via `@fontsource-variable`
 - **Analytics & click heatmap** — Plausible / Umami (configurable); local per-link click heatmap with daily/weekly trend chart — all `localStorage`, no cookies
 - **Stats dashboard** — optional password-protected `/stats` page with server-side click tracking via Upstash Redis; 30-day trend chart, per-link breakdown, Umami/Plausible embed — fully opt-in via environment variables
@@ -24,30 +24,35 @@ A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind
 - **Performance** — LazyMotion tree-shaking, Vite manual chunk splitting
 - **Testing** — Vitest + Testing Library unit tests; Playwright E2E (Chromium, Firefox, WebKit) + axe-core accessibility audit
 - **CI/CD** — GitHub Actions two-stage pipeline: lint → typecheck → test → build, then E2E & accessibility tests
-- **Code quality** — TypeScript strict mode, ESLint 9, Prettier, `pnpm check` pipeline
+- **Code quality** — TypeScript 6 strict mode, ESLint 10, Prettier, `pnpm check` pipeline
 
 ## Tech Stack
 
 | Category | Tools |
 |---|---|
 | Framework | React 19, TypeScript 6 |
-| Routing | react-router-dom 7 |
+| Routing | react-router 7 |
 | Build | Vite 8 |
-| Styling | Tailwind CSS 3, Headless UI |
-| Animation | Framer Motion |
-| i18n | i18next, react-i18next |
-| Charts | Recharts |
-| Icons | simple-icons (48 platforms) |
+| Styling | Tailwind CSS 4 (`@tailwindcss/vite`), Headless UI |
+| Animation | Motion |
+| i18n | i18next 27, react-i18next 18 |
+| Charts | Recharts 3 |
+| Icons | simple-icons 16 (48 platforms) |
 | OG image | satori, @resvg/resvg-js (build-time + serverless) |
 | Stats backend | Upstash Redis (REST API, no SDK) |
 | Fonts | @fontsource-variable (Manrope, Space Grotesk) |
-| Testing | Vitest, Testing Library, Playwright, axe-core |
-| Linting | ESLint 9, Prettier |
-| CI | GitHub Actions |
+| Testing | Vitest 5, Testing Library, Playwright, axe-core |
+| Linting | ESLint 10, Prettier |
+| Package manager | pnpm 12 (pinned as `pnpm@12.18.0` in `packageManager`) |
+| CI | GitHub Actions (Node 22) |
 
 ## Getting Started
 
+Node.js 22 (the version CI uses). pnpm is pinned in `package.json` via the `packageManager` field. [Corepack](https://nodejs.org/api/corepack.html), which ships with Node 22, installs that exact pnpm:
+
 ```bash
+corepack enable
+corepack install   # activates pnpm 12.18.0 from packageManager
 pnpm install
 pnpm dev        # development server
 pnpm build      # sitemap update + OG image + production build

@@ -13,7 +13,7 @@
 - **動態 OG 圖片** — Serverless 端點（`/api/og`）使用 Web Standard API 依請求即時產生 1200×630 社群預覽圖，始終反映最新設定
 - **多語系** — EN / RU / ZH-TW，自動偵測瀏覽器語言（簡體中文 → 正體中文）
 - **深色 / 淺色模式** — 跟隨系統偏好；使用者的切換選擇透過 `localStorage` 保存
-- **動畫效果** — Framer Motion 進場過渡動畫，支援 `prefers-reduced-motion`
+- **動畫效果** — Motion 進場過渡動畫，支援 `prefers-reduced-motion`
 - **自託管字型** — 透過 `@fontsource-variable` 提供 Manrope 與 Space Grotesk 可變字型
 - **分析與點擊熱力圖** — 可設定 Plausible / Umami 分析工具；本機端逐連結點擊熱力圖含每日/每週趨勢圖 — 全部使用 `localStorage`，無 Cookie
 - **統計儀表板** — 選擇性啟用的密碼保護 `/stats` 頁面，透過 Upstash Redis 實現伺服器端點擊追蹤；30 天趨勢圖、逐連結統計、Umami/Plausible 嵌入 — 完全透過環境變數選擇性啟用
@@ -24,7 +24,7 @@
 - **效能** — LazyMotion tree-shaking、Vite 手動 chunk 分割
 - **測試** — Vitest + Testing Library 單元測試；Playwright E2E 測試（Chromium、Firefox、WebKit）+ axe-core 無障礙稽核
 - **CI/CD** — GitHub Actions 兩階段流水線：lint → typecheck → test → build，接著 E2E 與無障礙測試
-- **程式碼品質** — TypeScript strict mode、ESLint 9、Prettier、`pnpm check` 流水線
+- **程式碼品質** — TypeScript 6 strict mode、ESLint 10、Prettier、`pnpm check` 流水線
 
 ## 技術堆疊
 
@@ -33,21 +33,26 @@
 | 框架 | React 19、TypeScript 6 |
 | 路由 | react-router-dom 7 |
 | 建置 | Vite 8 |
-| 樣式 | Tailwind CSS 3、Headless UI |
-| 動畫 | Framer Motion |
-| 國際化 | i18next、react-i18next |
+| 樣式 | Tailwind CSS 4（`@tailwindcss/vite`）、Headless UI |
+| 動畫 | Motion |
+| 國際化 | i18next 27、react-i18next 18 |
 | 圖表 | Recharts |
 | 圖示 | simple-icons（48 平台） |
 | OG 圖片 | satori、@resvg/resvg-js（建置時期 + serverless） |
 | 統計後端 | Upstash Redis（REST API，無需 SDK） |
 | 字型 | @fontsource-variable（Manrope、Space Grotesk） |
-| 測試 | Vitest、Testing Library、Playwright、axe-core |
-| 程式碼檢查 | ESLint 9、Prettier |
-| CI | GitHub Actions |
+| 測試 | Vitest 5、Testing Library、Playwright、axe-core |
+| 程式碼檢查 | ESLint 10、Prettier |
+| 套件管理器 | pnpm 12（在 `packageManager` 釘選為 `pnpm@12.18.0`） |
+| CI | GitHub Actions（Node 22） |
 
 ## 快速開始
 
+需要 Node.js 22（CI 使用的版本）。pnpm 版本釘選在 `package.json` 的 `packageManager`。Node 22 內建的 Corepack 會安裝這個確切版本：
+
 ```bash
+corepack enable
+corepack install   # 依 packageManager 啟用 pnpm 12.18.0
 pnpm install
 pnpm dev        # 開發伺服器
 pnpm build      # 更新 sitemap + 產生 OG 圖片 + 正式環境建置

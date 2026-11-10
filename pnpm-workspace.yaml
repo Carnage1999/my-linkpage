@@ -1,2 +1,9 @@
-onlyBuiltDependencies:
-  - esbuild
+# pnpm 11+ replaced onlyBuiltDependencies with allowBuilds.
+# esbuild is the only dependency whose install scripts this app runs.
+allowBuilds:
+  esbuild: true
+
+# pnpm 12 checks every locked package against a release-age policy and
+# rejects versions published inside the window. This repo already locks
+# current releases, so keep the pnpm 10 behavior of installing them.
+minimumReleaseAge: 0
