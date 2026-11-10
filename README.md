@@ -154,7 +154,6 @@ The Site tab’s display name is the share-image name and the author metadata. H
 {
   "site": {
     "name": "Your Name",
-    "tagline": "Links & Socials",
     "domain": "your-domain.com",
     "twitterHandle": "@your_handle"    // optional
   },

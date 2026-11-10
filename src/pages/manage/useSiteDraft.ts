@@ -32,7 +32,6 @@ function rowsFrom(socials: readonly { id: string; label: string; url: string; ic
 
 interface DraftState {
   name: string
-  tagline: string
   domain: string
   handle: string
   avatarPath: string
@@ -55,7 +54,6 @@ function draftFrom(config: ReturnType<typeof useSiteConfig>): DraftState {
   const avatar = config.profile.avatar
   return {
     name: config.site.name,
-    tagline: config.site.tagline,
     domain: config.site.domain,
     handle: config.site.twitterHandle ?? '',
     avatarPath: avatar.startsWith('/') ? avatar : '/avatar.jpg',
@@ -130,7 +128,6 @@ export function useSiteDraft(token: string) {
       }
       const next: DraftState = {
         name: site.name,
-        tagline: site.tagline ?? '',
         domain: site.domain,
         handle: site.twitterHandle ?? '',
         avatarPath: payload.profile.avatar.startsWith('/') ? payload.profile.avatar : '/avatar.jpg',
@@ -169,7 +166,7 @@ export function useSiteDraft(token: string) {
       try {
         const socials = await socialsForSave()
         await send('PUT', {
-          site: { name: state.name, tagline: state.tagline, domain: state.domain, twitterHandle: state.handle },
+          site: { name: state.name, domain: state.domain, twitterHandle: state.handle },
           profile: { avatar: state.avatarUrl.trim() || state.avatarPath },
           socials,
           i18n: state.i18n,
@@ -182,7 +179,7 @@ export function useSiteDraft(token: string) {
 
   function exportJson() {
     const body = {
-      site: { name: state.name, tagline: state.tagline, domain: state.domain, twitterHandle: state.handle },
+      site: { name: state.name, domain: state.domain, twitterHandle: state.handle },
       profile: { avatar: state.avatarUrl.trim() || state.avatarPath },
       socials: state.rows.map((row) => ({
         id: row.id,

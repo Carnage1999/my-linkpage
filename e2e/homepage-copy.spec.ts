@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 
 const seed = JSON.parse(readFileSync(new URL('../public/siteConfig.json', import.meta.url), 'utf8')) as {
-  site: { name: string; tagline: string; domain: string; twitterHandle?: string }
+  site: { name: string; domain: string; twitterHandle?: string }
   profile: { avatar: string }
   socials: unknown[]
   i18n: {

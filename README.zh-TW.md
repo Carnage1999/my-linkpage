@@ -139,7 +139,6 @@ scripts/
 {
   "site": {
     "name": "你的名字",
-    "tagline": "社群與連結",
     "domain": "your-domain.com",
     "twitterHandle": "@your_handle"    // 選填
   },

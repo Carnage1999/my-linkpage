@@ -11,7 +11,6 @@ const seed = seedFile as {
 const TEST_SITE_CONFIG = {
   site: {
     name: 'Han-che Wang',
-    tagline: 'Links & Socials',
     domain: 'link.w1999.me',
     twitterHandle: '@wang_hanzhe',
   },

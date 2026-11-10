@@ -1,21 +1,25 @@
 /**
- * Serverless Function — generates an Open Graph image (1200×630 PNG)
- * dynamically from the runtime site config, falling back to public/siteConfig.json.
+ * Node.js Function — generates an Open Graph image (1200×630 PNG)
+ * from the runtime site config, falling back to public/siteConfig.json.
  *
  * Endpoint:  GET /api/og
  *
- * Uses Web Standard Request/Response — works on Vercel Edge, Cloudflare,
- * Netlify, and any platform supporting @resvg/resvg-js.
- *
- * This means the OG image always reflects the latest config —
- * no redeploy needed when social links change.
+ * The renderer is a native addon, so this stays on the Node.js runtime.
+ * The Linux glibc binary is required explicitly: @resvg/resvg-js loads it
+ * with a dynamic require that the file tracer does not follow.
  */
 
-import { Resvg } from '@resvg/resvg-js'
+import { createRequire } from 'node:module'
 import satori from 'satori'
 import { shareSubtitle } from '../src/i18n/homepage'
 import { SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE } from './stats/_cache'
 import { readRuntimeSite } from './stats/_site-store'
+
+const nativeRequire = createRequire(import.meta.url)
+if (process.platform === 'linux' && process.arch === 'x64') {
+  nativeRequire('@resvg/resvg-js-linux-x64-gnu')
+}
+const { Resvg } = nativeRequire('@resvg/resvg-js') as typeof import('@resvg/resvg-js')
 
 // ─── Types (mirroring siteConfig.ts) ─────────────────────
 
@@ -273,11 +277,7 @@ export default async function handler(request: Request): Promise<Response> {
 
     const name = config.site?.name ?? 'Han-che Wang'
     const requested = new URL(request.url).searchParams.get('lng')
-    const tagline = shareSubtitle({
-      requested,
-      i18n: config.i18n,
-      legacyTagline: config.site?.tagline,
-    })
+    const tagline = shareSubtitle({ requested, i18n: config.i18n })
     const domain = config.site?.domain ?? 'link.w1999.me'
     const markup = buildMarkup(config.socials, name, tagline, domain)
 

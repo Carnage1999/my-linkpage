@@ -1,5 +1,10 @@
 {
   "installCommand": "corepack enable && corepack install && pnpm install --frozen-lockfile",
+  "functions": {
+    "api/og.ts": {
+      "includeFiles": "{node_modules/@resvg/resvg-js-linux-x64-gnu/**,node_modules/.pnpm/@resvg+resvg-js-linux-x64-gnu@*/node_modules/@resvg/resvg-js-linux-x64-gnu/**}"
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",

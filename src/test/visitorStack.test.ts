@@ -90,7 +90,7 @@ describe('avatar and request parsing', () => {
 
   it('rejects a site config whose avatar is not bundled', () => {
     expect(() =>
-      validateSiteConfig({ site: { name: 'A', tagline: 'B', domain: 'example.com' }, profile: { avatar: '/secret.png' }, socials: [] }, 1),
+      validateSiteConfig({ site: { name: 'A', domain: 'example.com' }, profile: { avatar: '/secret.png' }, socials: [] }, 1),
     ).toThrow(/shipped/)
   })
 
@@ -98,7 +98,7 @@ describe('avatar and request parsing', () => {
     expect(() =>
       validateSiteConfig(
         {
-          site: { name: 'A', tagline: 'B', domain: 'example.com' },
+          site: { name: 'A', domain: 'example.com' },
           profile: { avatar: '/avatar.jpg' },
           socials: [{ id: 'github', label: 'GitHub', url: 'https://github.com/x', iconSlug: 'siGithub', iconPath: 'M0 0' }],
         },

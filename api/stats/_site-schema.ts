@@ -19,8 +19,6 @@ export { DEFAULT_AVATAR }
 
 export interface PublicSite {
   name: string
-  /** Legacy share-image subtitle. The homepage subtitle is `i18n.texts`. */
-  tagline?: string
   domain: string
   twitterHandle?: string
 }
@@ -188,9 +186,6 @@ export function validateSiteConfig(input: unknown, version: number): PublicSiteC
     throw new SiteValidationError('Provide between 0 and 40 links')
   }
 
-  let tagline: string | undefined
-  if (typeof site.tagline === 'string' && site.tagline.trim()) tagline = text(site.tagline, 160, 'Tagline')
-
   const domain = text(site.domain, 253, 'Domain').toLowerCase()
   if (!DOMAIN.test(domain) || domain.includes('..')) throw new SiteValidationError('Domain is invalid')
 
@@ -234,7 +229,6 @@ export function validateSiteConfig(input: unknown, version: number): PublicSiteC
     version,
     site: {
       name: text(site.name, 80, 'Name'),
-      ...(tagline ? { tagline } : {}),
       domain,
       ...(twitterHandle ? { twitterHandle } : {}),
     },

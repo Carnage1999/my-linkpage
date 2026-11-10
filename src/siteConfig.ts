@@ -38,7 +38,6 @@ export interface SocialLinkEntry {
 
 export interface SiteMetadata {
   readonly name: string
-  readonly tagline: string
   readonly domain: string
   readonly twitterHandle?: string
 }
@@ -58,7 +57,6 @@ export interface SiteConfig {
 
 export const DEFAULT_SITE: SiteMetadata = {
   name: 'Han-che Wang',
-  tagline: 'Links & Socials',
   domain: 'link.w1999.me',
 } as const
 

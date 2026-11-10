@@ -162,22 +162,11 @@ export function homepageText(i18n: HomepageI18n, code: string, key: PublicKey): 
   return i18n.texts[fallback]?.[key]?.trim() || seedI18n.texts[fallback]?.[key] || seedI18n.texts.en?.[key] || ''
 }
 
-/**
- * Share-image subtitle. The homepage itself never uses the legacy tagline.
- * Until the default language's subtitle is edited away from the seed, the
- * share image still uses that saved tagline.
- */
-export function shareSubtitle(input: {
-  requested: string | null
-  i18n: HomepageI18n
-  legacyTagline?: string
-}): string {
+/** Share-image line. It is the requested language's subtitle, then the default language. */
+export function shareSubtitle(input: { requested: string | null; i18n: HomepageI18n }): string {
   const fallback = fallbackCode(input.i18n)
   const requested = input.requested ? canonicalLocale(input.requested) : null
   const codes = input.i18n.languages.map((language) => language.code)
   const code = requested && codes.includes(requested) ? requested : fallback
-  const subtitle = homepageText(input.i18n, code, 'subtitle')
-  const seedSubtitle = seedI18n.texts[code]?.subtitle ?? seedI18n.texts[fallback]?.subtitle
-  if (code === fallback && input.legacyTagline?.trim() && subtitle === seedSubtitle) return input.legacyTagline.trim()
-  return subtitle || input.legacyTagline?.trim() || 'Links & socials'
+  return homepageText(input.i18n, code, 'subtitle')
 }

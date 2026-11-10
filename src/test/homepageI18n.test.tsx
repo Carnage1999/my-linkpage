@@ -10,7 +10,7 @@ import { sitemapAlternates } from '../../scripts/update-sitemap-lastmod'
 import { readFileSync } from 'node:fs'
 
 const baseSite = {
-  site: { name: 'Han-che Wang', tagline: 'Links & Socials', domain: 'link.w1999.me' },
+  site: { name: 'Han-che Wang', domain: 'link.w1999.me' },
   profile: { avatar: '/avatar.jpg' },
   socials: [] as const,
 }
@@ -130,20 +130,27 @@ describe('homepage languages', () => {
     expect(homepageText(saved.i18n, 'fr', 'pageTitle')).toBe('Wang — Link Page')
   })
 
-  it('uses an edited subtitle on the share image and the saved tagline until then', () => {
-    expect(shareSubtitle({ requested: null, i18n: DEFAULT_HOMEPAGE_I18N, legacyTagline: 'Links & Socials 123456' })).toBe(
-      'Links & Socials 123456',
+  it('drops a stored tagline and keeps the seed subtitles', () => {
+    const saved = validateSiteConfig(
+      {
+        ...baseSite,
+        site: { ...baseSite.site, tagline: 'Links & Socials 123456' },
+      },
+      8,
     )
-    expect(
-      shareSubtitle({
-        requested: 'zh-TW',
-        i18n: DEFAULT_HOMEPAGE_I18N,
-        legacyTagline: 'Links & Socials 123456',
-      }),
-    ).toBe('社群與連結')
+    expect(saved.site).not.toHaveProperty('tagline')
+    expect(saved.i18n.texts.en?.subtitle).toBe('Links & socials')
+    expect(saved.i18n.texts.ru?.subtitle).toBe('Ссылки и соцсети')
+    expect(saved.i18n.texts['zh-TW']?.subtitle).toBe('社群與連結')
+    expect(JSON.stringify(saved)).not.toContain('123456')
+  })
+
+  it('uses the requested language subtitle on the share image', () => {
+    expect(shareSubtitle({ requested: null, i18n: DEFAULT_HOMEPAGE_I18N })).toBe('Links & socials')
+    expect(shareSubtitle({ requested: 'zh-TW', i18n: DEFAULT_HOMEPAGE_I18N })).toBe('社群與連結')
     const edited = structuredClone(DEFAULT_HOMEPAGE_I18N)
     edited.texts.en = { ...edited.texts.en, subtitle: 'Edited line' }
-    expect(shareSubtitle({ requested: 'en', i18n: edited, legacyTagline: 'Links & Socials 123456' })).toBe('Edited line')
+    expect(shareSubtitle({ requested: 'en', i18n: edited })).toBe('Edited line')
   })
 
   it('shows fetched texts in the heading, title, and description', async () => {
@@ -175,7 +182,7 @@ describe('homepage languages', () => {
   it('uses the display name for the author and lists only enabled languages', () => {
     const view = render(
       <SEO
-        site={{ name: 'Han-che Wang', tagline: 'Links & Socials', domain: 'link.w1999.me' }}
+        site={{ name: 'Han-che Wang', domain: 'link.w1999.me' }}
         socials={[]}
         ogImagePath="/api/og"
         languages={['en', 'ru']}
