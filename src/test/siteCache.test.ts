@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
-import siteConfig from '../../api/site-config'
+import handler from '../../api/site-config'
 import { SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE, publicCdnHeaders } from '../../api/stats/_cache'
 import { __resetSiteCache } from '../../api/stats/_site-store'
 import { __resetScriptCache } from '../../api/stats/scripts'
@@ -36,7 +36,7 @@ describe('site config CDN cache', () => {
     delete process.env.UPSTASH_REDIS_REST_TOKEN
     __resetSiteCache()
     __resetScriptCache()
-    const response = await siteConfig.fetch(new Request('https://link.example/api/site-config'))
+    const response = await handler(new Request('https://link.example/api/site-config'))
     expect(response.status).toBe(200)
     expect(response.headers.get('Cache-Control')).toBe('public, max-age=30')
     expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe(SITE_CDN_CACHE)

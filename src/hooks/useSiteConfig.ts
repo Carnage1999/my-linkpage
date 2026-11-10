@@ -19,9 +19,16 @@ export interface SiteConfigState {
 
 const DEFAULT_OG_PATH = '/api/og'
 
+const seedIconPaths = new Map(
+  ((seedFile as SiteConfig).socials ?? []).flatMap((link) => {
+    const path = safeSvgPath(link.iconPath)
+    return path ? [[link.url, path] as const] : []
+  }),
+)
+
 function normalizeSocials(raw: readonly SocialLinkEntry[]): SocialLinkEntry[] {
   return raw.map((entry) => {
-    const iconPath = safeSvgPath(entry.iconPath) ?? undefined
+    const iconPath = safeSvgPath(entry.iconPath) ?? seedIconPaths.get(entry.url)
     return { ...entry, ...(iconPath ? { iconPath } : { iconPath: undefined }) }
   })
 }
