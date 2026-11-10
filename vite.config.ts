@@ -1,9 +1,10 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [tailwindcss(), react()],
   server: {
     headers: {
       'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
@@ -29,7 +30,12 @@ export default defineConfig({
           if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
             return 'react-vendor'
           }
-          if (id.includes('node_modules/framer-motion')) {
+          if (
+            id.includes('/motion/') ||
+            id.includes('framer-motion') ||
+            id.includes('motion-dom') ||
+            id.includes('motion-utils')
+          ) {
             return 'motion'
           }
           if (id.includes('node_modules/i18next') || id.includes('node_modules/react-i18next')) {

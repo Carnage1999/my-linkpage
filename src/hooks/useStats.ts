@@ -64,34 +64,51 @@ export function useStatsData(token: string | null) {
   const [data, setData] = useState<StatsData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [requestKey, setRequestKey] = useState(0)
+  const requestId = `${token ?? ''}:${requestKey}`
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
-    if (!token) return
+  if (token && activeRequestId !== requestId) {
+    setActiveRequestId(requestId)
     setLoading(true)
     setError(null)
-    try {
-      const res = await fetch('/api/stats/data', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) {
-        const body = (await res.json()) as { error?: string }
-        setError(body.error ?? 'Failed to fetch stats')
-        return
-      }
-      const body = (await res.json()) as StatsData
-      setData(body)
-    } catch {
-      setError('Network error')
-    } finally {
-      setLoading(false)
-    }
-  }, [token])
+  }
+
+  const refetch = useCallback(() => {
+    setRequestKey((key) => key + 1)
+  }, [])
 
   useEffect(() => {
-    void fetchData()
-  }, [fetchData])
+    if (!token) return
 
-  return { data, loading, error, refetch: fetchData }
+    let cancelled = false
+
+    fetch('/api/stats/data', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        if (cancelled) return
+        if (!res.ok) {
+          const body = (await res.json()) as { error?: string }
+          setError(body.error ?? 'Failed to fetch stats')
+          return
+        }
+        const body = (await res.json()) as StatsData
+        setData(body)
+      })
+      .catch(() => {
+        if (!cancelled) setError('Network error')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [token, requestKey])
+
+  return { data, loading, error, refetch }
 }
 
 export function useStatsEnabled() {

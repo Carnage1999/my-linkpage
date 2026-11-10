@@ -17,11 +17,8 @@
     "src",
     "scripts",
     "vite.config.ts",
-    "tailwind.config.ts",
     "eslint.config.ts",
-    "postcss.config.ts",
     "prettier.config.ts",
-    "playwright.config.ts",
-    "eslint-plugin-tailwindcss.d.ts"
+    "playwright.config.ts"
   ]
 }

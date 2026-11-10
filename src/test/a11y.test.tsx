@@ -6,8 +6,9 @@ import App from '../App'
 import '../i18n'
 
 declare module 'vitest' {
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  interface Assertion<T> extends matchers.AxeMatchers {}
+  interface Matchers<R, T> {
+    toHaveNoViolations: () => R
+  }
 }
 
 expect.extend(matchers)
