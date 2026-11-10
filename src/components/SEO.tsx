@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { safeLinkUrl } from '../lib/safeUrl'
 import type { SiteMetadata, SocialLinkEntry } from '../siteConfig'
 
 const LOCALE_MAP: Record<string, string> = {
@@ -31,7 +32,10 @@ export function SEO({ site, socials, ogImagePath }: { site: SiteMetadata; social
     "description": description,
     "image": ogImageUrl,
     "url": origin,
-    "sameAs": socials.map(social => social.url)
+    "sameAs": socials.flatMap((social) => {
+      const href = safeLinkUrl(social.url)
+      return href ? [href] : []
+    })
   }), [t, description, ogImageUrl, origin, socials])
 
   const ogLocale = LOCALE_MAP[currentLang] ?? 'en_US'

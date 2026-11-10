@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import publicImages from '../../generated/public-images.json'
 import { ICON_SLUGS } from '../../iconRegistry'
 import { replaceSiteConfig, useSiteConfig } from '../../hooks/useSiteConfig'
+import { safeAvatarUrl } from '../../lib/safeAvatarUrl'
 import { DEFAULT_PROFILE } from '../../siteConfig'
 
 interface Row {
@@ -43,7 +44,7 @@ export function SiteEditor({ token }: { token: string }) {
   const [status, setStatus] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const preview = avatarUrl.trim() || avatarPath
+  const preview = safeAvatarUrl(avatarUrl.trim() ? avatarUrl : avatarPath)
 
   function updateRow(key: string, patch: Partial<Row>) {
     setRows((current) => current.map((row) => (row.key === key ? { ...row, ...patch } : row)))

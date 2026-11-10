@@ -7,6 +7,7 @@
  */
 
 import seedFile from '../../public/siteConfig.json'
+import { safeHostname, safeScriptUrl, safeToken } from '../../src/lib/safeUrl'
 import type { AnalyticsConfig } from '../../src/siteConfig'
 import { decryptJson, encryptJson, secretKeyMaterial } from './_crypto'
 import { DEFAULT_STATS_TIMEZONE } from './_dates'
@@ -152,13 +153,21 @@ export function normalizeGoatcounterSite(input: string): string {
   return trimmed.toLowerCase()
 }
 
+const UMAMI_CLOUD_SCRIPT = 'https://cloud.umami.is/script.js'
+
 /** Cloud script host is not the API host. https://docs.umami.is/docs/api */
 export function umamiScriptSrc(apiUrl: string): string {
-  if (!apiUrl || apiUrl.includes('api.umami.is') || apiUrl.includes('cloud.umami.is')) {
-    return 'https://cloud.umami.is/script.js'
+  const fallback = safeScriptUrl(UMAMI_CLOUD_SCRIPT) ?? UMAMI_CLOUD_SCRIPT
+  if (!apiUrl.trim()) return fallback
+  let url: URL
+  try {
+    url = new URL(apiUrl)
+  } catch {
+    return fallback
   }
-  const origin = apiUrl.replace(/\/$/, '').replace(/\/(api|v1)$/, '')
-  return `${origin}/script.js`
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || url.hostname === '') return fallback
+  if (url.hostname === 'api.umami.is' || url.hostname === 'cloud.umami.is') return fallback
+  return safeScriptUrl(`${url.origin}/script.js`) ?? fallback
 }
 
 function umamiApiBase(apiUrl: string, mode: 'key' | 'login'): string {
@@ -405,24 +414,23 @@ export function publicScriptsFrom(effective: EffectiveSettings): PublicScripts {
   const analytics = (seedFile as { analytics?: AnalyticsConfig | null }).analytics ?? null
   let plausible: PublicScripts['plausible'] = null
   if (analytics?.provider === 'plausible' && analytics.plausibleDomain) {
-    const src = analytics.plausibleHost
-      ? `${analytics.plausibleHost.replace(/\/$/, '')}/js/script.js`
-      : 'https://plausible.io/js/script.js'
-    plausible = { domain: analytics.plausibleDomain, src }
+    const domain = safeHostname(analytics.plausibleDomain)
+    const src = safeScriptUrl(
+      analytics.plausibleHost
+        ? `${analytics.plausibleHost.replace(/\/$/, '')}/js/script.js`
+        : 'https://plausible.io/js/script.js',
+    )
+    if (domain && src) plausible = { domain, src }
   }
 
-  const websiteId = effective.view.umami.websiteId.value
-  const site = effective.view.goatcounter.site.value
-  const siteTag = effective.view.cloudflare.siteTag.value
+  const websiteId = safeToken(effective.view.umami.websiteId.value)
+  const site = safeToken(effective.view.goatcounter.site.value)
+  const siteTag = safeToken(effective.view.cloudflare.siteTag.value)
+  const umamiSrc = safeScriptUrl(umamiScriptSrc(effective.view.umami.apiUrl.value))
+  const goatEndpoint = site ? safeScriptUrl(`https://${site}.goatcounter.com/count`) : null
   return {
-    umami:
-      effective.inject.umami && websiteId
-        ? { websiteId, src: umamiScriptSrc(effective.view.umami.apiUrl.value) }
-        : null,
-    goatcounter:
-      effective.inject.goatcounter && site
-        ? { endpoint: `https://${site}.goatcounter.com/count` }
-        : null,
+    umami: effective.inject.umami && websiteId && umamiSrc ? { websiteId, src: umamiSrc } : null,
+    goatcounter: effective.inject.goatcounter && goatEndpoint ? { endpoint: goatEndpoint } : null,
     cloudflare: effective.inject.cloudflare && siteTag ? { token: siteTag } : null,
     plausible,
   }

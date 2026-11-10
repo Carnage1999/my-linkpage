@@ -1,8 +1,8 @@
 import type { SocialLinkEntry } from '../../src/siteConfig'
-import publicImages from '../../src/generated/public-images.json'
+import { DEFAULT_AVATAR, safeAvatarUrl } from '../../src/lib/safeAvatarUrl'
+import { safeLinkUrl } from '../../src/lib/safeUrl'
 
-export const DEFAULT_AVATAR = '/avatar.jpg'
-const BUNDLED_IMAGES = new Set<string>(publicImages)
+export { DEFAULT_AVATAR }
 
 export interface PublicSite {
   name: string
@@ -40,38 +40,40 @@ function text(value: unknown, max: number, field: string): string {
 }
 
 export function validateLinkUrl(value: string): string {
-  let url: URL
+  if (value.length > 500) throw new SiteValidationError('Link URL is too long')
+  const trimmed = value.trim()
+  let parsed: URL
   try {
-    url = new URL(value)
+    parsed = new URL(trimmed)
   } catch {
     throw new SiteValidationError('Link URL is invalid')
   }
-  if (!URL_PROTOCOLS.has(url.protocol)) {
+  if (!URL_PROTOCOLS.has(parsed.protocol)) {
     throw new SiteValidationError('Link URL must use http, https, mailto, tg, tel, or sms')
   }
-  if (value.length > 500) throw new SiteValidationError('Link URL is too long')
-  return value.trim()
+  const safe = safeLinkUrl(trimmed)
+  if (!safe) throw new SiteValidationError('Link URL is invalid')
+  return safe
 }
 
 /**
  * A bundled public/ image served from this site, or an https URL.
  * There is no binary upload. The default is /avatar.jpg.
+ * The same `safeAvatarUrl` check is used for the preview and the homepage.
  */
 export function validateAvatar(value: string): string {
-  const trimmed = value.trim() || DEFAULT_AVATAR
-  if (trimmed.length > 500) throw new SiteValidationError('Avatar URL is too long')
-  if (trimmed.startsWith('/')) {
-    if (BUNDLED_IMAGES.has(trimmed)) return trimmed
-    throw new SiteValidationError('Choose an image shipped with the site')
-  }
-  let url: URL
-  try {
-    url = new URL(trimmed)
-  } catch {
+  if (value.length > 500) throw new SiteValidationError('Avatar URL is too long')
+  const trimmed = value.trim()
+  if (!trimmed) return DEFAULT_AVATAR
+  const safe = safeAvatarUrl(trimmed)
+  if (safe === DEFAULT_AVATAR && trimmed !== DEFAULT_AVATAR) {
+    if (trimmed.startsWith('/')) throw new SiteValidationError('Choose an image shipped with the site')
+    if (!trimmed.toLowerCase().startsWith('https:')) {
+      throw new SiteValidationError('A custom avatar URL must use https')
+    }
     throw new SiteValidationError('Avatar must be a bundled image or an https URL')
   }
-  if (url.protocol !== 'https:') throw new SiteValidationError('A custom avatar URL must use https')
-  return trimmed
+  return safe
 }
 
 export function validateSiteConfig(input: unknown, version: number): PublicSiteConfig {

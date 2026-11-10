@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { EMPTY_SCRIPTS, type ScriptBundle } from '../analytics/types'
+import { safeHostname, safeScriptUrl, safeToken } from '../lib/safeUrl'
 
 interface PlausibleFn {
   (event: string, options?: { props?: Record<string, string> }): void
@@ -35,40 +36,51 @@ function appendScript(key: string, setup: (script: HTMLScriptElement) => void): 
 
 export function injectScripts(bundle: ScriptBundle): void {
   if (bundle.plausible) {
-    const { domain, src } = bundle.plausible
-    window.plausible =
-      window.plausible ??
-      Object.assign((...args: unknown[]) => {
-        ;(window.plausible!.q = window.plausible!.q ?? []).push(args)
-      }, { q: [] as unknown[][] }) as PlausibleFn
-    appendScript(`plausible:${domain}`, (script) => {
-      script.src = src
-      script.setAttribute('data-domain', domain)
-    })
+    const domain = safeHostname(bundle.plausible.domain)
+    const src = safeScriptUrl(bundle.plausible.src)
+    if (domain && src) {
+      window.plausible =
+        window.plausible ??
+        Object.assign((...args: unknown[]) => {
+          ;(window.plausible!.q = window.plausible!.q ?? []).push(args)
+        }, { q: [] as unknown[][] }) as PlausibleFn
+      appendScript(`plausible:${domain}`, (script) => {
+        script.src = src
+        script.setAttribute('data-domain', domain)
+      })
+    }
   }
 
   if (bundle.umami) {
-    const { websiteId, src } = bundle.umami
-    appendScript(`umami:${websiteId}`, (script) => {
-      script.src = src
-      script.setAttribute('data-website-id', websiteId)
-    })
+    const websiteId = safeToken(bundle.umami.websiteId)
+    const src = safeScriptUrl(bundle.umami.src)
+    if (websiteId && src) {
+      appendScript(`umami:${websiteId}`, (script) => {
+        script.src = src
+        script.setAttribute('data-website-id', websiteId)
+      })
+    }
   }
 
   if (bundle.goatcounter) {
-    const { endpoint } = bundle.goatcounter
-    appendScript(`goatcounter:${endpoint}`, (script) => {
-      script.src = 'https://gc.zgo.at/count.js'
-      script.setAttribute('data-goatcounter', endpoint)
-    })
+    const endpoint = safeScriptUrl(bundle.goatcounter.endpoint)
+    if (endpoint) {
+      appendScript(`goatcounter:${endpoint}`, (script) => {
+        script.src = 'https://gc.zgo.at/count.js'
+        script.setAttribute('data-goatcounter', endpoint)
+      })
+    }
   }
 
   if (bundle.cloudflare) {
-    const { token } = bundle.cloudflare
-    appendScript(`cloudflare:${token}`, (script) => {
-      script.src = 'https://static.cloudflareinsights.com/beacon.min.js'
-      script.setAttribute('data-cf-beacon', JSON.stringify({ token, spa: false }))
-    })
+    const token = safeToken(bundle.cloudflare.token)
+    const src = safeScriptUrl('https://static.cloudflareinsights.com/beacon.min.js')
+    if (token && src) {
+      appendScript(`cloudflare:${token}`, (script) => {
+        script.src = src
+        script.setAttribute('data-cf-beacon', JSON.stringify({ token, spa: false }))
+      })
+    }
   }
 }
 

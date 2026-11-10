@@ -1,4 +1,5 @@
 import { FALLBACK_ICON_PATH, ICON_MAP } from './iconRegistry'
+import { safeSvgPath } from './lib/safeUrl'
 
 export function SocialIcon({
   slug,
@@ -8,8 +9,9 @@ export function SocialIcon({
   className?: string
 }) {
   const icon = slug ? ICON_MAP[slug] : undefined
+  const path = safeSvgPath(icon?.path)
 
-  if (icon) {
+  if (path) {
     return (
       <svg
         viewBox="0 0 24 24"
@@ -18,7 +20,7 @@ export function SocialIcon({
         aria-hidden="true"
         focusable="false"
       >
-        <path d={icon.path} />
+        <path d={path} />
       </svg>
     )
   }

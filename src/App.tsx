@@ -19,6 +19,8 @@ import { SocialIcon } from './SocialIcon'
 import { SEO } from './components/SEO'
 import { useAnalytics } from './hooks/useAnalytics'
 import { useSiteConfig } from './hooks/useSiteConfig'
+import { safeAvatarUrl } from './lib/safeAvatarUrl'
+import { safeLinkUrl } from './lib/safeUrl'
 import { recordLinkClick, recordPageview, useStatsEnabled } from './hooks/useStats'
 
 interface LanguageOption {
@@ -382,7 +384,7 @@ export default function App() {
 
                 <div className="space-y-4">
                   <m.img
-                    src={profile.avatar}
+                    src={safeAvatarUrl(profile.avatar)}
                     alt={String(t('avatarAlt'))}
                     width={96}
                     height={96}
@@ -448,7 +450,9 @@ export default function App() {
             </div>
 
             <ul className="grid min-w-0 gap-4" aria-label={String(t('subtitle'))} id="social-links">
-              {socials.map((social, index) => (
+              {socials.map((social, index) => {
+                const href = safeLinkUrl(social.url)
+                return (
                 <li key={social.id} className="block w-full min-w-0">
                   <m.div
                     className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5 sm:p-5 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10"
@@ -477,17 +481,19 @@ export default function App() {
                   <div className="absolute inset-y-0 left-0 w-1 -translate-x-full bg-linear-to-b from-amber-300 via-orange-400 to-rose-400 transition duration-300 group-hover:translate-x-0 dark:from-cyan-300 dark:via-sky-400 dark:to-indigo-500" />
                   <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center xl:gap-5">
                     <div className="relative flex min-w-0 items-center gap-3 sm:gap-4">
-                      <a
-                        href={social.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="absolute inset-0 rounded-[1.25rem] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 dark:focus-visible:ring-cyan-400"
-                        aria-label={`${social.label} (${String(t('opensInNewTab'))})`}
-                        onClick={() => {
-                          trackLinkClick(social.id, social.label, social.url)
-                          if (statsEnabled) recordLinkClick(social.id)
-                        }}
-                      />
+                      {href ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="absolute inset-0 rounded-[1.25rem] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 dark:focus-visible:ring-cyan-400"
+                          aria-label={`${social.label} (${String(t('opensInNewTab'))})`}
+                          onClick={() => {
+                            trackLinkClick(social.id, social.label, href)
+                            if (statsEnabled) recordLinkClick(social.id)
+                          }}
+                        />
+                      ) : null}
                       <span className="pointer-events-none flex size-14 shrink-0 items-center justify-center rounded-[1.25rem] bg-slate-950 text-white shadow-lg shadow-slate-900/20 transition group-hover:scale-105 group-hover:rotate-3 dark:bg-white dark:text-slate-950">
                         <SocialIcon slug={social.iconSlug} />
                       </span>
@@ -496,7 +502,7 @@ export default function App() {
                           {social.label}
                         </span>
                         <span className="block truncate text-sm leading-6 whitespace-nowrap text-slate-600 dark:text-slate-400">
-                          {social.url}
+                          {href ?? ''}
                         </span>
                       </span>
                     </div>
@@ -509,7 +515,10 @@ export default function App() {
                             ? 'border-emerald-500 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
                             : 'border-slate-200 text-slate-700 hover:border-slate-950 hover:bg-slate-950 hover:text-white dark:border-slate-700 dark:text-slate-200 dark:hover:border-white dark:hover:bg-white dark:hover:text-slate-950'
                         } focus-visible:ring-amber-400 dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-950`}
-                        onClick={() => copyLink(social.url, social.id)}
+                        onClick={() => {
+                          if (href) copyLink(href, social.id)
+                        }}
+                        disabled={!href}
                         aria-label={`${String(t('copy'))} ${social.label}`}
                       >
                         <span className="invisible col-start-1 row-start-1">{String(t('copy'))}</span>
@@ -534,7 +543,8 @@ export default function App() {
                   </div>
                   </m.div>
                 </li>
-              ))}
+                )
+              })}
             </ul>
 
             <div className="flex min-h-7 flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
