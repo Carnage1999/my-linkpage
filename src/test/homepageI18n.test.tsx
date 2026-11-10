@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs'
-import { render } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import seedFile from '../../public/siteConfig.json'
+import enLocale from '../locales/en.json'
+import zhTWLocale from '../locales/zh-TW.json'
+import App from '../App'
 import { validateSiteConfig } from '../../api/stats/_site-schema'
 import { SEO } from '../components/SEO'
 import i18n from '../i18n'
@@ -120,6 +124,33 @@ describe('homepage languages', () => {
       overrides: { en: { subtitle: 'Edited line' } },
     }
     expect(shareSubtitle({ requested: 'en', i18n: edited, legacyTagline: 'Links & Socials 123456' })).toBe('Edited line')
+  })
+
+  it('shows fetched overrides in the heading, title, and description', async () => {
+    expect(i18n.options.react).toMatchObject({ bindI18n: 'languageChanged', bindI18nStore: 'added removed' })
+    const config = structuredClone(seedFile) as typeof seedFile & {
+      i18n: { overrides: Record<string, Record<string, string>> }
+    }
+    config.i18n.overrides = {
+      en: { title: 'Han', pageTitle: 'lp', intro: 'Edited intro' },
+      'zh-TW': { title: '漢哲', pageTitle: '連結', intro: '編輯的介紹' },
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(config) })),
+    )
+    render(<App />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Han' })).toBeInTheDocument()
+    expect(document.title).toBe('lp')
+    expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe('Edited intro')
+    expect(i18n.getResource('en', 'translation', 'title')).toBe('Han')
+
+    await i18n.changeLanguage('zh-TW')
+    expect(await screen.findByRole('heading', { level: 1, name: '漢哲' })).toBeInTheDocument()
+    expect(document.title).toBe('連結')
+    expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe('編輯的介紹')
+    expect(enLocale.title).toBe("Hi, I'm Wang")
+    expect(zhTWLocale.title).toBe('嗨，我是 Wang')
   })
 
   it('overrides a homepage string without changing the dashboard', () => {

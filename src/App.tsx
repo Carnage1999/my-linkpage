@@ -176,8 +176,18 @@ export default function App() {
   useEffect(() => {
     try {
       const lang = i18n.resolvedLanguage ?? i18n.language
+      const pageTitle = String(t('pageTitle')) || 'Wang — Link Page'
+      const description = String(t('intro'))
       document.documentElement.lang = lang
-      document.title = String(t('pageTitle'))
+      document.title = pageTitle
+      // index.html ships a static title and description for crawlers. React 19
+      // hoists its own tags beside those, so drop the ones that are now stale.
+      for (const node of document.querySelectorAll('title')) {
+        if (node.textContent !== pageTitle) node.remove()
+      }
+      for (const node of document.querySelectorAll('meta[name="description"]')) {
+        if (node.getAttribute('content') !== description) node.remove()
+      }
     } catch {
       return undefined
     }

@@ -1,13 +1,19 @@
 /**
  * Merge homepage overrides into the shared i18next instance.
  *
- * i18next-browser-languagedetector reads `detection.order`. Its default order
- * includes `navigator` (the browser's languages). This app keeps a saved
- * choice in `localStorage` (`i18nextLng`) first, then `?lng=`, and adds
- * `navigator` only when auto-detect is on. The detector's cache is why a
- * language chosen once wins over a later browser setting.
+ * i18next-browser-languagedetector's default order is querystring, cookie,
+ * localStorage, sessionStorage, navigator, htmlTag. This app uses querystring
+ * (`?lng=`), then localStorage (`i18nextLng`), and adds navigator only when
+ * auto-detect is on. A link such as `?lng=zh-TW` therefore beats the browser
+ * language. The detector then caches that choice, which is why it wins on the
+ * next visit with no query string.
  * https://github.com/i18next/i18next-browser-languageDetector#detector-options
  * https://www.i18next.com/how-to/faq
+ *
+ * react-i18next re-renders on `languageChanged` and, with bindI18nStore set,
+ * on resource-store `added` / `removed`. The store binding defaults to empty,
+ * so writing a bundle without one of those events leaves the old string on screen.
+ * https://github.com/i18next/react-i18next/blob/master/src/defaults.js
  *
  * Only public homepage keys are replaced. Dashboard strings stay on the
  * bundled locale files. A language with no file falls back to `fallbackLng`.
@@ -55,8 +61,13 @@ export function applyHomepageI18n(settings: HomepageI18n): void {
     if (!supported.includes(code)) i18n.removeResourceBundle(code, 'translation')
   }
   for (const code of supported) {
+    if (code === 'cimode') continue
     const overrides = enabled.includes(code) ? settings.overrides[code] : undefined
-    i18n.removeResourceBundle(code, 'translation')
+    // The store starts as the imported locale module. addResourceBundle's deep
+    // extend writes into that object, which would change the bundled defaults.
+    // Remove first, then add a copy. Both events are synchronous, and
+    // useTranslation reads the store only after this function returns.
+    if (i18n.hasResourceBundle(code, 'translation')) i18n.removeResourceBundle(code, 'translation')
     i18n.addResourceBundle(code, 'translation', bundleFor(code, overrides), true, true)
   }
 
@@ -64,7 +75,7 @@ export function applyHomepageI18n(settings: HomepageI18n): void {
   detector?.init(
     i18n.services,
     {
-      order: settings.detect ? ['localStorage', 'navigator', 'querystring'] : ['localStorage', 'querystring'],
+      order: settings.detect ? ['querystring', 'localStorage', 'navigator'] : ['querystring', 'localStorage'],
       caches: ['localStorage'],
       lookupQuerystring: 'lng',
       lookupLocalStorage: 'i18nextLng',
@@ -74,11 +85,10 @@ export function applyHomepageI18n(settings: HomepageI18n): void {
   )
 
   const current = i18n.resolvedLanguage || i18n.language
-  if (current && !supported.includes(current)) {
-    void i18n.changeLanguage(fallback)
-    return
-  }
-  i18n.emit('languageChanged', i18n.language)
+  const nextLanguage = current && supported.includes(current) ? current : fallback
+  // changeLanguage emits languageChanged after the translator points at the
+  // updated store, which is what useTranslation subscribes to by default.
+  void i18n.changeLanguage(nextLanguage)
 }
 
 export function resetHomepageI18nForTests(): void {

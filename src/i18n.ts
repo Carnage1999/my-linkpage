@@ -26,9 +26,21 @@ i18n
     defaultNS,
     fallbackLng: 'en',
     supportedLngs: Object.keys(resources) as AppLanguageCode[],
+    // Store updates must re-render. bindI18nStore defaults to '' so
+    // addResourceBundle alone does not refresh useTranslation.
+    // https://github.com/i18next/react-i18next/blob/master/src/defaults.js
+    react: {
+      bindI18n: 'languageChanged',
+      bindI18nStore: 'added removed',
+    },
+    // Official detector order checks the query string before localStorage and
+    // navigator, so ?lng= on a hreflang link wins.
+    // https://github.com/i18next/i18next-browser-languageDetector#detector-options
     detection: {
-      order: ['localStorage', 'navigator', 'path', 'querystring'],
+      order: ['querystring', 'localStorage', 'navigator'],
       caches: ['localStorage'],
+      lookupQuerystring: 'lng',
+      lookupLocalStorage: 'i18nextLng',
       convertDetectedLanguage: (language: string) =>
         mapDetected(language, initialLanguages, DEFAULT_HOMEPAGE_I18N.fallback),
     },

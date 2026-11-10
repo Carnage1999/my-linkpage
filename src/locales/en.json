@@ -106,7 +106,7 @@
   "manageLangLead": "These settings change the public homepage only. This dashboard keeps its own language files.",
   "manageLangRtl": "Right-to-left languages stay left to right. This page does not set dir=\"rtl\".",
   "manageLangDetect": "Detect the browser language",
-  "manageLangDetectHint": "When this is off, a saved choice and a ?lng= link still apply. The browser language is ignored. i18next checks localStorage before navigator.",
+  "manageLangDetectHint": "A ?lng= link wins, then a saved choice, then the browser language. Turn this off to ignore the browser. That is the i18next detector order.",
   "manageLangFallback": "Default",
   "manageLangAdd": "Add language",
   "manageLangCode": "Locale code",

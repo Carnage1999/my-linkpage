@@ -106,7 +106,7 @@
   "manageLangLead": "這些設定只影響公開首頁。這個管理畫面繼續使用內建的語言檔。",
   "manageLangRtl": "由右至左的語言仍會由左至右排列。這個頁面不會設定 dir=\"rtl\"。",
   "manageLangDetect": "依瀏覽器語言自動選擇",
-  "manageLangDetectHint": "關閉後，已儲存的選擇與 ?lng= 連結仍然有效，不會讀取瀏覽器語言。i18next 會先看 localStorage，再看 navigator。",
+  "manageLangDetectHint": "?lng= 連結優先，其次是已儲存的選擇，再來是瀏覽器語言。關閉後不會讀取瀏覽器語言。這是 i18next 偵測器的順序。",
   "manageLangFallback": "預設",
   "manageLangAdd": "新增語言",
   "manageLangCode": "語言代碼",
