@@ -111,6 +111,37 @@ test('logs in with the mocked API and shows Redis beside Umami', async ({ page }
   await expect(page.getByText('github.com')).toBeVisible()
 })
 
+test('opens each section from the tab bar and keeps unsaved edits', async ({ page }) => {
+  await installApi(page)
+  await page.goto('/manage')
+  await page.getByLabel('Password').fill('correct')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByRole('tab', { name: 'Overview', selected: true })).toBeVisible()
+  await expect(page.getByText('Clicks this period')).toBeVisible()
+
+  await page.getByRole('tab', { name: 'Site' }).click()
+  await expect(page).toHaveURL(/tab=site/)
+  await expect(page.getByLabel('Name')).toBeVisible()
+  await expect(page.getByText('Clicks this period')).toHaveCount(0)
+  await page.getByLabel('Name').fill('Changed name')
+  page.once('dialog', (dialog) => dialog.dismiss())
+  await page.getByRole('tab', { name: 'Links' }).click()
+  await expect(page.getByLabel('Name')).toHaveValue('Changed name')
+
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('tab', { name: 'Links' }).click()
+  await expect(page).toHaveURL(/tab=links/)
+  await expect(page.getByLabel('url').first()).toBeVisible()
+
+  await page.goto('/manage?tab=analytics')
+  await expect(page.getByRole('tab', { name: 'Analytics', selected: true })).toBeVisible()
+  await expect(page.getByText('Providers')).toBeVisible()
+
+  await page.goto('/manage?tab=data')
+  await expect(page.getByRole('button', { name: 'Export JSON' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Import seed' })).toBeVisible()
+})
+
 test('returns to the login form when the session is rejected', async ({ page }) => {
   await installApi(page, 401)
   await page.goto('/manage')

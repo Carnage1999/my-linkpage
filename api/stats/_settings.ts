@@ -6,9 +6,7 @@
  * secrets unreadable. Re-enter them on /manage.
  */
 
-import seedFile from '../../public/siteConfig.json'
-import { safeHostname, safeScriptUrl, safeToken } from '../../src/lib/safeUrl'
-import type { AnalyticsConfig } from '../../src/siteConfig'
+import { safeScriptUrl, safeToken } from '../../src/lib/safeUrl'
 import { decryptJson, encryptJson, secretKeyMaterial } from './_crypto'
 import { DEFAULT_STATS_TIMEZONE } from './_dates'
 import { isRedisConfigured, redisCommand } from './_redis'
@@ -94,7 +92,6 @@ export interface PublicScripts {
   umami: { websiteId: string; src: string } | null
   goatcounter: { endpoint: string } | null
   cloudflare: { token: string } | null
-  plausible: { domain: string; src: string } | null
 }
 
 export interface SettingsPatch {
@@ -411,18 +408,6 @@ function assignSecret(bag: SecretBag, key: keyof SecretBag, value: string | null
 }
 
 export function publicScriptsFrom(effective: EffectiveSettings): PublicScripts {
-  const analytics = (seedFile as { analytics?: AnalyticsConfig | null }).analytics ?? null
-  let plausible: PublicScripts['plausible'] = null
-  if (analytics?.provider === 'plausible' && analytics.plausibleDomain) {
-    const domain = safeHostname(analytics.plausibleDomain)
-    const src = safeScriptUrl(
-      analytics.plausibleHost
-        ? `${analytics.plausibleHost.replace(/\/$/, '')}/js/script.js`
-        : 'https://plausible.io/js/script.js',
-    )
-    if (domain && src) plausible = { domain, src }
-  }
-
   const websiteId = safeToken(effective.view.umami.websiteId.value)
   const site = safeToken(effective.view.goatcounter.site.value)
   const siteTag = safeToken(effective.view.cloudflare.siteTag.value)
@@ -432,7 +417,6 @@ export function publicScriptsFrom(effective: EffectiveSettings): PublicScripts {
     umami: effective.inject.umami && websiteId && umamiSrc ? { websiteId, src: umamiSrc } : null,
     goatcounter: effective.inject.goatcounter && goatEndpoint ? { endpoint: goatEndpoint } : null,
     cloudflare: effective.inject.cloudflare && siteTag ? { token: siteTag } : null,
-    plausible,
   }
 }
 

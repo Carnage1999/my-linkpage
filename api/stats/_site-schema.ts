@@ -1,6 +1,7 @@
-import type { SocialLinkEntry } from '../../src/siteConfig'
+import { resolveStoredIcon } from '../../src/icons/catalog'
 import { DEFAULT_AVATAR, safeAvatarUrl } from '../../src/lib/safeAvatarUrl'
-import { safeLinkUrl } from '../../src/lib/safeUrl'
+import { safeLinkUrl, safeSvgPath } from '../../src/lib/safeUrl'
+import type { SocialLinkEntry } from '../../src/siteConfig'
 
 export { DEFAULT_AVATAR }
 
@@ -105,8 +106,21 @@ export function validateSiteConfig(input: unknown, version: number): PublicSiteC
     seen.add(id)
     const label = text(row.label, 80, 'Link label')
     const url = validateLinkUrl(text(row.url, 500, 'Link URL'))
-    const iconSlug = typeof row.iconSlug === 'string' && row.iconSlug.trim() ? row.iconSlug.trim().slice(0, 40) : undefined
-    return { id, label, url, ...(iconSlug ? { iconSlug } : {}) }
+    const requested = typeof row.iconSlug === 'string' ? row.iconSlug.trim().slice(0, 64) : undefined
+    let icon: { iconSlug?: string; iconPath?: string }
+    try {
+      icon = resolveStoredIcon({ url, iconSlug: requested })
+    } catch (error) {
+      throw new SiteValidationError(error instanceof Error ? error.message : 'Unknown icon')
+    }
+    const iconPath = icon.iconPath ? (safeSvgPath(icon.iconPath) ?? undefined) : undefined
+    return {
+      id,
+      label,
+      url,
+      ...(icon.iconSlug ? { iconSlug: icon.iconSlug } : {}),
+      ...(iconPath ? { iconPath } : {}),
+    }
   })
 
   return {

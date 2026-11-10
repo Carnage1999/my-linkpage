@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import seedFile from '../../public/siteConfig.json'
 import { EMPTY_SCRIPTS, type ScriptBundle } from '../analytics/types'
-import { resolveIconSlug } from '../iconRegistry'
 import { safeAvatarUrl } from '../lib/safeAvatarUrl'
-import { safeHostname, safeLinkUrl, safeScriptUrl, safeToken } from '../lib/safeUrl'
+import { safeLinkUrl, safeScriptUrl, safeSvgPath, safeToken } from '../lib/safeUrl'
 import type { AnalyticsConfig, SiteConfig, SiteMetadata, SocialLinkEntry } from '../siteConfig'
 import { DEFAULT_PROFILE, DEFAULT_SITE } from '../siteConfig'
 
@@ -21,10 +20,10 @@ export interface SiteConfigState {
 const DEFAULT_OG_PATH = '/api/og'
 
 function normalizeSocials(raw: readonly SocialLinkEntry[]): SocialLinkEntry[] {
-  return raw.map((entry) => ({
-    ...entry,
-    iconSlug: entry.iconSlug ?? resolveIconSlug(entry.url) ?? undefined,
-  }))
+  return raw.map((entry) => {
+    const iconPath = safeSvgPath(entry.iconPath) ?? undefined
+    return { ...entry, ...(iconPath ? { iconPath } : { iconPath: undefined }) }
+  })
 }
 
 function scriptFrom(value: string | undefined, fallback: string): string | null {
@@ -32,14 +31,6 @@ function scriptFrom(value: string | undefined, fallback: string): string | null 
 }
 
 function scriptsFromAnalytics(analytics: AnalyticsConfig | null | undefined): ScriptBundle {
-  if (analytics?.provider === 'plausible' && analytics.plausibleDomain) {
-    const domain = safeHostname(analytics.plausibleDomain)
-    const src = scriptFrom(
-      analytics.plausibleHost ? `${analytics.plausibleHost.replace(/\/$/, '')}/js/script.js` : undefined,
-      'https://plausible.io/js/script.js',
-    )
-    if (domain && src) return { ...EMPTY_SCRIPTS, plausible: { domain, src } }
-  }
   if (analytics?.provider === 'umami' && analytics.umamiWebsiteId) {
     const websiteId = safeToken(analytics.umamiWebsiteId)
     const src = scriptFrom(
@@ -56,13 +47,10 @@ function sanitizeScripts(bundle: ScriptBundle): ScriptBundle {
   const umamiId = bundle.umami ? safeToken(bundle.umami.websiteId) : null
   const goat = bundle.goatcounter ? safeScriptUrl(bundle.goatcounter.endpoint) : null
   const cloudflare = bundle.cloudflare ? safeToken(bundle.cloudflare.token) : null
-  const plausibleSrc = bundle.plausible ? safeScriptUrl(bundle.plausible.src) : null
-  const plausibleDomain = bundle.plausible ? safeHostname(bundle.plausible.domain) : null
   return {
     umami: umamiSrc && umamiId ? { websiteId: umamiId, src: umamiSrc } : null,
     goatcounter: goat ? { endpoint: goat } : null,
     cloudflare: cloudflare ? { token: cloudflare } : null,
-    plausible: plausibleSrc && plausibleDomain ? { domain: plausibleDomain, src: plausibleSrc } : null,
   }
 }
 

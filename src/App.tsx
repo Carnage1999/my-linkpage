@@ -495,7 +495,7 @@ export default function App() {
                         />
                       ) : null}
                       <span className="pointer-events-none flex size-14 shrink-0 items-center justify-center rounded-[1.25rem] bg-slate-950 text-white shadow-lg shadow-slate-900/20 transition group-hover:scale-105 group-hover:rotate-3 dark:bg-white dark:text-slate-950">
-                        <SocialIcon slug={social.iconSlug} />
+                        <SocialIcon path={social.iconPath} />
                       </span>
                       <span className="pointer-events-none min-w-0 flex-1 space-y-1">
                         <span className="block text-lg font-semibold text-slate-950 dark:text-white">

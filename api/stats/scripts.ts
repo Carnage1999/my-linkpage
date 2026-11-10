@@ -3,6 +3,7 @@
  * Public, non-secret tracker ids. Cached so a visit does not read Redis.
  */
 
+import { publicCdnHeaders } from './_cache'
 import { json } from './_http'
 import { loadEffective, publicScriptsFrom } from './_settings'
 
@@ -24,5 +25,5 @@ export async function scriptPayload() {
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405)
   const body = await scriptPayload()
-  return json(body, 200, 'public, max-age=30, s-maxage=60, stale-while-revalidate=300')
+  return json(body, 200, undefined, publicCdnHeaders())
 }

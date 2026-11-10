@@ -47,6 +47,9 @@ export default defineConfig({
           if (id.includes('node_modules/react-router')) {
             return 'router'
           }
+          if (id.includes('node_modules/simple-icons')) {
+            return 'simple-icons'
+          }
         },
       },
     },

@@ -8,12 +8,8 @@
 // ─── Analytics (privacy-friendly) ────────────────────────
 
 export interface AnalyticsConfig {
-  /** Which analytics provider to use */
-  readonly provider: 'plausible' | 'umami'
-  /** Plausible: your domain (e.g. "link.w1999.me") */
-  readonly plausibleDomain?: string
-  /** Plausible: self-hosted URL (omit for plausible.io cloud) */
-  readonly plausibleHost?: string
+  /** Seed-file fallback only. Live scripts are chosen on /manage. */
+  readonly provider: 'umami'
   /** Umami: the website-id shown in Umami dashboard */
   readonly umamiWebsiteId?: string
   /** Umami: self-hosted URL (omit for cloud.umami.is) */
@@ -23,18 +19,20 @@ export interface AnalyticsConfig {
 // ─── Social links ────────────────────────────────────────
 
 export interface SocialLinkEntry {
-  /** Unique identifier — also used as the simple-icons slug */
+  /** Stable id for click stats. Renaming it starts a new series. */
   readonly id: string
   /** Display label shown in the UI */
   readonly label: string
   /** Full URL to your profile */
   readonly url: string
   /**
-   * Icon slug from simple-icons (https://simpleicons.org).
-   * Optional — auto-detected from URL when omitted.
-   * Must match the exported name: e.g. "siGithub", "siX", "siLinkedin".
+   * Manual icon override: a simple-icons slug such as "github", or a legacy
+   * export name such as "siGithub". Omit it and the hostname picks the icon.
+   * This is not the link id.
    */
   readonly iconSlug?: string
+  /** SVG path filled in by /api/site-config so the homepage does not load simple-icons. */
+  readonly iconPath?: string
 }
 
 // ─── Site metadata ───────────────────────────────────────

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { SettingsPatch, SettingsView } from '../../../api/stats/_settings'
 import { VISITOR_PROVIDERS, type VisitorProviderId } from '../../../api/stats/_providers/types'
@@ -16,23 +16,27 @@ export function ProviderSettings({
   token,
   settings,
   onSaved,
+  dirtyRef,
 }: {
   token: string
   settings: SettingsView | null
   onSaved: () => void
+  dirtyRef?: { current: boolean }
 }) {
   if (!settings) return null
-  return <ProviderForm key={JSON.stringify(settings)} token={token} settings={settings} onSaved={onSaved} />
+  return <ProviderForm key={JSON.stringify(settings)} token={token} settings={settings} onSaved={onSaved} dirtyRef={dirtyRef} />
 }
 
 function ProviderForm({
   token,
   settings,
   onSaved,
+  dirtyRef,
 }: {
   token: string
   settings: SettingsView
   onSaved: () => void
+  dirtyRef?: { current: boolean }
 }) {
   const { t } = useTranslation()
   const [timezone, setTimezone] = useState(settings.timezone.value)
@@ -114,6 +118,21 @@ function ProviderForm({
 
   const managed = String(t('manageManagedByEnv'))
   const unset = String(t('manageSecretUnset'))
+  const dirty =
+    timezone !== settings.timezone.value ||
+    defaultProvider !== (settings.defaultProvider ?? '') ||
+    JSON.stringify(inject) !== JSON.stringify(settings.inject) ||
+    goatSite !== settings.goatcounter.site.value ||
+    cfAccount !== settings.cloudflare.accountId.value ||
+    cfTag !== settings.cloudflare.siteTag.value ||
+    umamiUrl !== settings.umami.apiUrl.value ||
+    umamiId !== settings.umami.websiteId.value ||
+    umamiUser !== settings.umami.username.value ||
+    Object.values(secrets).some((value) => value.trim() !== '') ||
+    Object.values(cleared).some(Boolean)
+  useEffect(() => {
+    if (dirtyRef) dirtyRef.current = dirty
+  })
 
   return (
     <section className="space-y-4 rounded-2xl border border-slate-200/60 bg-white p-4 dark:border-slate-800/60 dark:bg-slate-900/80">

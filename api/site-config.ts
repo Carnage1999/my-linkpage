@@ -6,6 +6,7 @@
  * Cached at the edge. A homepage visit should not call Redis.
  */
 
+import { publicCdnHeaders, purgeSiteConfigCache } from './stats/_cache'
 import { json, requireStatsToken } from './stats/_http'
 import { bumpNamedLimit, hashClientIp, isRedisConfigured } from './stats/_redis'
 import { SiteValidationError, validateSiteConfig } from './stats/_site-schema'
@@ -14,8 +15,6 @@ import { isStatsEnabled } from './stats/_token'
 import { __resetScriptCache, scriptPayload } from './stats/scripts'
 
 export const config = { runtime: 'edge' }
-
-const PUBLIC_CACHE = 'public, max-age=30, s-maxage=60, stale-while-revalidate=300'
 
 function etag(version: number): string {
   return `"site-${version}"`
@@ -28,10 +27,10 @@ export default async function handler(request: Request): Promise<Response> {
     const site = await readRuntimeSite()
     const tag = etag(site.version)
     if (request.headers.get('if-none-match') === tag) {
-      return new Response(null, { status: 304, headers: { ETag: tag, 'Cache-Control': PUBLIC_CACHE } })
+      return new Response(null, { status: 304, headers: publicCdnHeaders(tag) })
     }
     const scripts = await scriptPayload()
-    return json({ ...site, scripts }, 200, PUBLIC_CACHE, { ETag: tag })
+    return json({ ...site, scripts }, 200, undefined, publicCdnHeaders(tag))
   }
 
   if (!isStatsEnabled()) return json({ error: 'Stats not enabled' }, 501)
@@ -61,8 +60,9 @@ export default async function handler(request: Request): Promise<Response> {
       return json({ error: 'Method not allowed' }, 405)
     }
     __resetScriptCache()
+    await purgeSiteConfigCache()
     const saved = await readRuntimeSite()
-    return json(saved)
+    return json(saved, 200, 'private, no-store')
   } catch (error) {
     if (error instanceof SiteValidationError) return json({ error: error.message }, 400)
     console.error('Site config save error:', error)

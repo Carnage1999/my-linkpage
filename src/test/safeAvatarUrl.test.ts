@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { validateAvatar, validateLinkUrl } from '../../api/stats/_site-schema'
-import { FALLBACK_ICON_PATH, ICON_MAP } from '../iconRegistry'
+import { FALLBACK_ICON_PATH, LINKEDIN_PATH } from '../icons/paths'
 import { DEFAULT_AVATAR, safeAvatarUrl } from '../lib/safeAvatarUrl'
 import {
   safeHttpsUrl,
@@ -87,9 +87,7 @@ describe('safeLinkUrl and safeScriptUrl', () => {
 describe('safeSvgPath', () => {
   it('keeps the bundled icon paths and rejects markup', () => {
     expect(safeSvgPath(FALLBACK_ICON_PATH)).toBe(FALLBACK_ICON_PATH)
-    for (const [slug, icon] of Object.entries(ICON_MAP)) {
-      expect(safeSvgPath(icon.path), slug).toBe(icon.path)
-    }
+    expect(safeSvgPath(LINKEDIN_PATH)).toBe(LINKEDIN_PATH)
     expect(safeSvgPath('M0 0"><script>alert(1)</script>')).toBeNull()
     expect(safeSvgPath('')).toBeNull()
   })

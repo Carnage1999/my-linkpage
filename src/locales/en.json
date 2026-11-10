@@ -90,5 +90,15 @@
   "manageDisabled": "The dashboard is not enabled.",
   "manageNetwork": "Something went wrong. Try again.",
   "manageTimezone": "Day boundaries",
-  "manageLink": "Link"
+  "manageLink": "Link",
+  "manageTabs": "Dashboard sections",
+  "manageTabOverview": "Overview",
+  "manageTabSite": "Site",
+  "manageTabLinks": "Links",
+  "manageTabAnalytics": "Analytics",
+  "manageTabData": "Data",
+  "manageUnsaved": "You have unsaved changes. Switch tabs anyway?",
+  "manageIconManual": "Manual",
+  "manageIconReset": "Reset to auto",
+  "manageIconSearch": "Search icons"
 }

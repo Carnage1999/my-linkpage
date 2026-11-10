@@ -4,7 +4,6 @@ import { EMPTY_SCRIPTS } from '../analytics/types'
 import { useAnalytics } from '../hooks/useAnalytics'
 
 const UMAMI = { ...EMPTY_SCRIPTS, umami: { websiteId: 'test-id', src: 'https://cloud.umami.is/script.js' } }
-const PLAUSIBLE = { ...EMPTY_SCRIPTS, plausible: { domain: 'test.example.com', src: 'https://plausible.io/js/script.js' } }
 
 describe('useAnalytics', () => {
   it('returns trackEvent and trackLinkClick functions', () => {
@@ -18,17 +17,6 @@ describe('useAnalytics', () => {
     expect(() => {
       result.current.trackLinkClick('github', 'GitHub', 'https://github.com/test')
     }).not.toThrow()
-  })
-
-  it('calls plausible when that script is enabled', () => {
-    const plausibleSpy = vi.fn()
-    window.plausible = plausibleSpy as never
-
-    const { result } = renderHook(() => useAnalytics(PLAUSIBLE))
-    result.current.trackEvent('Test Event', { key: 'value' })
-
-    expect(plausibleSpy).toHaveBeenCalledWith('Test Event', { props: { key: 'value' } })
-    delete window.plausible
   })
 
   it('calls umami when that script is enabled', () => {

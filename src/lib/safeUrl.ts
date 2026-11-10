@@ -90,7 +90,7 @@ const SVG_PATH = /^[MmZzLlHhVvCcSsQqTtAaEe0-9\s,.\-+]+$/
  * attribute or the element.
  */
 export function safeSvgPath(value: unknown): string | null {
-  if (typeof value !== 'string' || value.length === 0 || value.length > 12000)
+  if (typeof value !== 'string' || value.length === 0 || value.length > 60_000)
     return null
   const match = SVG_PATH.exec(value)
   if (!match) return null

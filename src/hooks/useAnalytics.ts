@@ -1,11 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { EMPTY_SCRIPTS, type ScriptBundle } from '../analytics/types'
-import { safeHostname, safeScriptUrl, safeToken } from '../lib/safeUrl'
-
-interface PlausibleFn {
-  (event: string, options?: { props?: Record<string, string> }): void
-  q?: unknown[][]
-}
+import { safeScriptUrl, safeToken } from '../lib/safeUrl'
 
 interface UmamiTracker {
   track(event: string, data?: Record<string, string | number>): void
@@ -17,7 +12,6 @@ interface GoatCounter {
 
 declare global {
   interface Window {
-    plausible?: PlausibleFn
     umami?: UmamiTracker
     goatcounter?: GoatCounter
   }
@@ -35,22 +29,6 @@ function appendScript(key: string, setup: (script: HTMLScriptElement) => void): 
 }
 
 export function injectScripts(bundle: ScriptBundle): void {
-  if (bundle.plausible) {
-    const domain = safeHostname(bundle.plausible.domain)
-    const src = safeScriptUrl(bundle.plausible.src)
-    if (domain && src) {
-      window.plausible =
-        window.plausible ??
-        Object.assign((...args: unknown[]) => {
-          ;(window.plausible!.q = window.plausible!.q ?? []).push(args)
-        }, { q: [] as unknown[][] }) as PlausibleFn
-      appendScript(`plausible:${domain}`, (script) => {
-        script.src = src
-        script.setAttribute('data-domain', domain)
-      })
-    }
-  }
-
   if (bundle.umami) {
     const websiteId = safeToken(bundle.umami.websiteId)
     const src = safeScriptUrl(bundle.umami.src)
@@ -85,7 +63,6 @@ export function injectScripts(bundle: ScriptBundle): void {
 }
 
 export function trackScripts(bundle: ScriptBundle, name: string, props?: Record<string, string>): void {
-  if (bundle.plausible) window.plausible?.(name, props ? { props } : undefined)
   if (bundle.umami) window.umami?.track(name, props)
   if (bundle.goatcounter && props?.id) {
     window.goatcounter?.count({ path: `link:${props.id}`, title: props.label ?? name, event: true })

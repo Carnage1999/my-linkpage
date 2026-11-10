@@ -90,5 +90,15 @@
   "manageDisabled": "儀表板尚未啟用。",
   "manageNetwork": "發生錯誤，請再試一次。",
   "manageTimezone": "日期界線",
-  "manageLink": "連結"
+  "manageLink": "連結",
+  "manageTabs": "管理分頁",
+  "manageTabOverview": "總覽",
+  "manageTabSite": "網站",
+  "manageTabLinks": "連結",
+  "manageTabAnalytics": "分析",
+  "manageTabData": "資料",
+  "manageUnsaved": "有尚未儲存的變更。要離開這個分頁嗎？",
+  "manageIconManual": "手動",
+  "manageIconReset": "恢復自動",
+  "manageIconSearch": "搜尋圖示"
 }

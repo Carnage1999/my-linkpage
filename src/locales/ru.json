@@ -90,5 +90,15 @@
   "manageDisabled": "Панель не включена.",
   "manageNetwork": "Что-то пошло не так. Попробуйте ещё раз.",
   "manageTimezone": "Границы дней",
-  "manageLink": "Ссылка"
+  "manageLink": "Ссылка",
+  "manageTabs": "Разделы панели",
+  "manageTabOverview": "Обзор",
+  "manageTabSite": "Сайт",
+  "manageTabLinks": "Ссылки",
+  "manageTabAnalytics": "Аналитика",
+  "manageTabData": "Данные",
+  "manageUnsaved": "Есть несохранённые изменения. Перейти на другую вкладку?",
+  "manageIconManual": "Вручную",
+  "manageIconReset": "Снова автоматически",
+  "manageIconSearch": "Найти иконку"
 }

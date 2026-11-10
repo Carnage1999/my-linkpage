@@ -3,12 +3,10 @@ export interface ScriptBundle {
   umami: { websiteId: string; src: string } | null
   goatcounter: { endpoint: string } | null
   cloudflare: { token: string } | null
-  plausible: { domain: string; src: string } | null
 }
 
 export const EMPTY_SCRIPTS: ScriptBundle = {
   umami: null,
   goatcounter: null,
   cloudflare: null,
-  plausible: null,
 }

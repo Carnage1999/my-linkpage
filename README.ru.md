@@ -9,13 +9,13 @@
 ## Возможности
 
 - **Правки на /manage** — профиль, ссылки и аналитика сохраняются в Redis. `public/siteConfig.json` — запасной файл, если Redis пуст. `index.html` и собранная OG-картинка меняются при следующем деплое
-- **Автоопределение иконок** — иконки автоматически подбираются по URL через [simple-icons](https://simpleicons.org) (48 платформ); при необходимости можно указать `iconSlug` вручную
+- **Автоопределение иконок** — иконка берётся из полного набора [simple-icons](https://simpleicons.org) по имени хоста. На `/manage` её можно выбрать вручную. Главная хранит SVG path и не включает весь пакет. LinkedIn — отдельный знак: simple-icons его больше не поставляет
 - **Динамическое OG-изображение** — серверный endpoint (`/api/og`) генерирует превью 1200×630 на базе Web Standard API, всегда актуальное
 - **Мультиязычность** — EN / RU / ZH-TW с автоопределением языка браузера (упрощённый китайский → традиционный китайский)
 - **Тёмная / светлая тема** — следует системным настройкам; пользовательский выбор сохраняется в `localStorage`
 - **Анимации** — входные переходы Motion с поддержкой `prefers-reduced-motion`
 - **Самостоятельно размещённые шрифты** — переменные шрифты Manrope и Space Grotesk через `@fontsource-variable`
-- **Аналитика** — Upstash, GoatCounter, Cloudflare Web Analytics или Umami на `/manage`. Plausible по-прежнему можно подключить из файла-заготовки. Клики пишутся в Upstash Redis и не зависят от скрипта аналитики.
+- **Аналитика** — Upstash, GoatCounter, Cloudflare Web Analytics или Umami на `/manage`. Клики пишутся в Upstash Redis и не зависят от скрипта аналитики.
 - **SEO** — динамические мета-теги/OG/Twitter, JSON-LD Person schema, hreflang, канонический URL
 - **Доступность** — skip-ссылка, семантический HTML, ARIA-метки, `aria-live` обратная связь, WCAG контраст; аудит axe-core в E2E
 - **Обработка ошибок** — аварийный fallback верхнего уровня с кнопкой перезагрузки
@@ -36,7 +36,7 @@
 | Анимации | Motion |
 | i18n | i18next 27, react-i18next 18 |
 | Графики | Recharts |
-| Иконки | simple-icons (48 платформ) |
+| Иконки | simple-icons (полный набор, path сохраняется) |
 | OG-изображение | satori, @resvg/resvg-js (сборка + serverless) |
 | Бэкенд статистики | Upstash Redis (REST API, без SDK) |
 | Шрифты | @fontsource-variable (Manrope, Space Grotesk) |
@@ -85,7 +85,7 @@ src/
   main.tsx                 Точка входа (обёрнута в ErrorBoundary)
   router.tsx               Клиентская маршрутизация (/, /manage)
   SocialIcon.tsx           Компонент иконок (simple-icons + автоопределение)
-  iconRegistry.ts          Реестр иконок 48 платформ с автоматическим сопоставлением URL → иконка
+  icons/                   Каталог simple-icons (только /manage и API) и запасная иконка LinkedIn
   i18n.ts                  Определение языка и настройка i18n
   index.css                Глобальные стили и точка входа Tailwind
   components/
@@ -145,14 +145,14 @@ scripts/
     "avatar": "/avatar.jpg"
   },
   "analytics": {                        // необязательно — уберите для отключения
-    "provider": "umami",                // "umami" или "plausible"
+    "provider": "umami",
     "umamiWebsiteId": "xxxxxxxx-..."
   },
   "socials": [
     { "id": "github", "label": "GitHub", "url": "https://github.com/you" },
     { "id": "x", "label": "X", "url": "https://x.com/you" }
-    // Иконки определяются автоматически по URL — iconSlug не нужен
-    // Для ручного указания: "iconSlug": "siGithub"
+    // Иконка подбирается по URL. Для замены укажите iconSlug, например "github".
+    // "siGithub" тоже принимается. id ссылки — не иконка.
   ]
 }
 ```
@@ -163,7 +163,7 @@ scripts/
 
 ### Аналитика
 
-Источники посещений настраиваются на `/manage` или переменными окружения ниже. Переменные перекрывают сохранённые значения. Plausible по-прежнему можно включить блоком `analytics` в файле-заготовке; в переключателе его нет. Аватар выбирается из картинок в `public/` (по умолчанию `/avatar.jpg`) или указывается как https URL. Загрузки файла нет.
+Источники посещений настраиваются на `/manage` или переменными окружения ниже. Переменные перекрывают сохранённые значения. Аватар выбирается из картинок в `public/` (по умолчанию `/avatar.jpg`) или указывается как https URL. Загрузки файла нет.
 
 ### OG-изображение
 

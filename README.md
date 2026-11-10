@@ -9,13 +9,13 @@ A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind
 ## Features
 
 - **Updates from /manage** — profile, links, and analytics are saved in Redis. `public/siteConfig.json` is the seed when Redis is empty. `index.html` and the built OG image change on the next deploy
-- **Auto icon detection** — icons resolved automatically from link URLs via [simple-icons](https://simpleicons.org) (48 platforms); override with `iconSlug` when needed
+- **Auto icon detection** — icons resolved from the link hostname against the full [simple-icons](https://simpleicons.org) set. `/manage` can override the icon. The homepage stores the SVG path and does not bundle the icon package. LinkedIn is a custom mark because simple-icons no longer ships it.
 - **Dynamic OG image** — serverless endpoint (`/api/og`) generates a 1200×630 social preview at request time using Web Standard APIs, always reflecting the latest config
 - **Multilingual** — EN / RU / ZH-TW with automatic browser language detection (Simplified Chinese → Traditional Chinese)
 - **Dark / light mode** — follows system preference; user toggle persists via `localStorage`
 - **Animations** — Motion entrance transitions with `prefers-reduced-motion` support
 - **Self-hosted fonts** — Manrope & Space Grotesk variable fonts via `@fontsource-variable`
-- **Analytics** — Upstash, GoatCounter, Cloudflare Web Analytics, or Umami on `/manage`. Plausible can still be injected from the seed file. Click recording uses Upstash Redis and does not depend on the analytics script.
+- **Analytics** — Upstash, GoatCounter, Cloudflare Web Analytics, or Umami on `/manage`. Click recording uses Upstash Redis and does not depend on the analytics script.
 - **SEO** — dynamic meta/OG/Twitter tags, JSON-LD Person schema, hreflang, canonical link
 - **Accessibility** — skip link, semantic HTML, ARIA labels, `aria-live` feedback, WCAG contrast; dedicated axe-core audit in E2E
 - **Error boundary** — top-level crash fallback with reload button
@@ -36,7 +36,7 @@ A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind
 | Animation | Motion |
 | i18n | i18next 27, react-i18next 18 |
 | Charts | Recharts 3 |
-| Icons | simple-icons 16 (48 platforms) |
+| Icons | simple-icons 16 (full set, path stored at save) |
 | OG image | satori, @resvg/resvg-js (build-time + serverless) |
 | Stats backend | Upstash Redis (REST API, no SDK) |
 | Fonts | @fontsource-variable (Manrope, Space Grotesk) |
@@ -87,8 +87,8 @@ src/
   App.tsx                  Main page UI
   main.tsx                 Entry point (wrapped in ErrorBoundary)
   router.tsx               Client-side routing (/, /manage)
-  SocialIcon.tsx           Brand icon component (simple-icons + auto-detection)
-  iconRegistry.ts          48-platform icon registry with URL → icon auto-matching
+  SocialIcon.tsx           Draws a stored SVG path, or a generic link icon
+  icons/                   simple-icons catalog (manage + API only) and the LinkedIn fallback
   i18n.ts                  Language detection and i18n setup
   index.css                Global styles and Tailwind entry
   components/
@@ -101,8 +101,8 @@ src/
   pages/
     manage/                Password-protected dashboard at /manage
       ManagePage.tsx       Login gate
-      Dashboard.tsx        Clicks, visitor source, site editor
-      SiteEditor.tsx       Profile, avatar picker, links
+      Dashboard.tsx        Tab shell (overview, site, links, analytics, data)
+      tabs/                One panel per tab, including the icon picker
       ProviderSettings.tsx Provider credentials and script toggles
       LinkHeatmap.tsx      Per-link click comparison
       clickCsv.ts          CSV export
@@ -161,15 +161,13 @@ Change the live site at `/manage`. `public/siteConfig.json` is the seed when Red
   "socials": [
     { "id": "github", "label": "GitHub", "url": "https://github.com/you" },
     { "id": "x", "label": "X", "url": "https://x.com/you" }
-    // Icons are auto-detected from URLs — no iconSlug needed
-    // Add iconSlug manually to override: "iconSlug": "siGithub"
+    // Icons are matched from the URL. Set iconSlug to override, e.g. "github".
+    // "siGithub" still works. The link id is not the icon.
   ]
 }
 ```
 
 The avatar picker lists images shipped in `public/` (jpg, png, webp, svg), skipping the OG image and the Vite placeholder. `scripts/generate-public-images.ts` writes that list at build time. The default is `/avatar.jpg`. An optional https URL is allowed. There is no upload, and the URL is never a `raw.githubusercontent.com` link.
-
-Plausible can still be injected from an `analytics` block in the seed file. It is not one of the dashboard providers.
 
 ### Translations
 
@@ -177,7 +175,7 @@ Edit or add JSON files in `src/locales/`.
 
 ### Analytics
 
-Configure visitor sources on `/manage`, or with the environment variables below. Environment variables override the saved values. Enabled scripts (Umami, GoatCounter, Cloudflare Web Analytics) load on the homepage from the public site config. Plausible stays a seed-file option only.
+Configure visitor sources on `/manage`, or with the environment variables below. Environment variables override the saved values. Enabled scripts (Umami, GoatCounter, Cloudflare Web Analytics) load on the homepage from the public site config.
 
 ### OG image
 

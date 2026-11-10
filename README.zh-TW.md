@@ -9,13 +9,13 @@
 ## 功能特色
 
 - **從 /manage 更新** — 個人資料、連結與分析設定存在 Redis。`public/siteConfig.json` 是 Redis 沒有資料時的種子。`index.html` 與建置的 OG 圖片要等下次部署才會變
-- **自動偵測圖示** — 透過 [simple-icons](https://simpleicons.org) 根據連結網址自動匹配圖示（支援 48 平台）；需要時可用 `iconSlug` 手動覆寫
+- **自動偵測圖示** — 用連結網址對完整的 [simple-icons](https://simpleicons.org) 圖示庫匹配。`/manage` 可以改選。首頁只存 SVG path，不會把整個圖示套件打進首頁。LinkedIn 是自訂圖示，因為 simple-icons 已移除它
 - **動態 OG 圖片** — Serverless 端點（`/api/og`）使用 Web Standard API 依請求即時產生 1200×630 社群預覽圖，始終反映最新設定
 - **多語系** — EN / RU / ZH-TW，自動偵測瀏覽器語言（簡體中文 → 正體中文）
 - **深色 / 淺色模式** — 跟隨系統偏好；使用者的切換選擇透過 `localStorage` 保存
 - **動畫效果** — Motion 進場過渡動畫，支援 `prefers-reduced-motion`
 - **自託管字型** — 透過 `@fontsource-variable` 提供 Manrope 與 Space Grotesk 可變字型
-- **分析** — `/manage` 可選 Upstash、GoatCounter、Cloudflare Web Analytics 或 Umami。Plausible 仍可從種子檔注入。點擊紀錄寫入 Upstash Redis，不依賴分析腳本。
+- **分析** — `/manage` 可選 Upstash、GoatCounter、Cloudflare Web Analytics 或 Umami。點擊紀錄寫入 Upstash Redis，不依賴分析腳本。
 - **SEO** — 動態 meta/OG/Twitter 標籤、JSON-LD Person schema、hreflang、canonical 連結
 - **無障礙** — skip link、語意化 HTML、ARIA 標籤、`aria-live` 回饋、WCAG 對比度；E2E 中包含 axe-core 無障礙稽核
 - **錯誤邊界** — 頂層崩潰備援 UI，附重新載入按鈕
@@ -36,7 +36,7 @@
 | 動畫 | Motion |
 | 國際化 | i18next 27、react-i18next 18 |
 | 圖表 | Recharts |
-| 圖示 | simple-icons（48 平台） |
+| 圖示 | simple-icons（完整圖庫，儲存時寫入 path） |
 | OG 圖片 | satori、@resvg/resvg-js（建置時期 + serverless） |
 | 統計後端 | Upstash Redis（REST API，無需 SDK） |
 | 字型 | @fontsource-variable（Manrope、Space Grotesk） |
@@ -85,7 +85,7 @@ src/
   main.tsx                 進入點（包裹於 ErrorBoundary）
   router.tsx               客戶端路由（/、/manage）
   SocialIcon.tsx           品牌圖示元件（simple-icons + 自動偵測）
-  iconRegistry.ts          48 平台圖示註冊表，URL → 圖示自動匹配
+  icons/                   simple-icons 圖庫（只給 /manage 與 API）與 LinkedIn 備用圖
   i18n.ts                  語言偵測與 i18n 設定
   index.css                全域樣式與 Tailwind 進入點
   components/
@@ -145,14 +145,14 @@ scripts/
     "avatar": "/avatar.jpg"
   },
   "analytics": {                        // 選填 — 移除以停用
-    "provider": "umami",                // "umami" 或 "plausible"
+    "provider": "umami",
     "umamiWebsiteId": "xxxxxxxx-..."
   },
   "socials": [
     { "id": "github", "label": "GitHub", "url": "https://github.com/you" },
     { "id": "x", "label": "X", "url": "https://x.com/you" }
-    // 圖示會自動依 URL 偵測 — 不需要 iconSlug
-    // 手動覆寫請加入："iconSlug": "siGithub"
+    // 圖示依網址匹配。要指定時加 iconSlug，例如 "github"。
+    // "siGithub" 仍可用。連結 id 不是圖示。
   ]
 }
 ```
@@ -163,7 +163,7 @@ scripts/
 
 ### 分析工具
 
-訪客來源在 `/manage` 設定，或用下方的環境變數。環境變數會覆寫已儲存的值。Plausible 仍可從種子檔的 `analytics` 區塊注入，但不會出現在切換器。頭像從 `public/` 的圖片挑選（預設 `/avatar.jpg`），或填一個 https 網址。沒有檔案上傳。
+訪客來源在 `/manage` 設定，或用下方的環境變數。環境變數會覆寫已儲存的值。頭像從 `public/` 的圖片挑選（預設 `/avatar.jpg`），或填一個 https 網址。沒有檔案上傳。
 
 ### OG 圖片
 
