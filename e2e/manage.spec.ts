@@ -11,22 +11,35 @@ const DATA = {
   removed: [{ id: 'retired', total: 4, period: 1 }],
 }
 
-const UMAMI = {
+const VISITORS = {
+  provider: 'umami',
   configured: true,
-  pageviews: 20,
-  visitors: 8,
-  visits: 10,
-  bounces: 3,
-  totaltime: 100,
-  bounceRate: 0.3,
-  avgDuration: 10,
-  previous: { pageviews: 10, visitors: 4, visits: 5, bounces: 2, totaltime: 40, bounceRate: 0.4, avgDuration: 8 },
+  totals: { pageviews: 20, visitors: 8, visits: 10, bounceRate: 0.3, avgDuration: 10 },
+  previous: { pageviews: 10, visitors: 4, visits: 5, bounceRate: 0.4, avgDuration: 8 },
+  timeseries: [{ date: '2026-11-10', pageviews: 20, visitors: 8 }],
   referrers: [{ name: 'github.com', count: 4 }],
   countries: [{ name: 'TW', count: 6 }],
   devices: [{ name: 'desktop', count: 7 }],
   browsers: [{ name: 'chrome', count: 5 }],
+  os: [],
   linkClicks: { github: 2 },
-  pageviewsSeries: [{ date: '2026-11-10', pageviews: 20, visitors: 8 }],
+}
+
+const secret = { state: 'unset', hint: null, locked: false }
+const text = (value = '') => ({ value, locked: false })
+const SETTINGS = {
+  timezone: { value: 'Asia/Taipei', locked: true },
+  defaultProvider: 'umami',
+  inject: { umami: true, goatcounter: false, cloudflare: false },
+  umami: { apiUrl: text(), websiteId: text('site'), username: text(), apiKey: { state: 'env', hint: null, locked: true }, password: secret },
+  goatcounter: { site: text(), apiKey: secret },
+  cloudflare: { accountId: text(), siteTag: text(), apiToken: secret },
+  providers: [
+    { id: 'upstash', configured: false, missing: ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'] },
+    { id: 'goatcounter', configured: false, missing: ['GOATCOUNTER_SITE', 'GOATCOUNTER_API_KEY'] },
+    { id: 'cloudflare', configured: false, missing: ['CLOUDFLARE_ACCOUNT_ID'] },
+    { id: 'umami', configured: true, missing: [] },
+  ],
 }
 
 async function installApi(page: Page, dataStatus = 200) {
@@ -45,12 +58,19 @@ async function installApi(page: Page, dataStatus = 200) {
     }
     await route.fulfill({ status: dataStatus, json: dataStatus === 200 ? DATA : { error: 'Invalid or expired token' } })
   })
-  await page.route('**/api/stats/umami**', async (route) => {
+  await page.route('**/api/stats/visitors**', async (route) => {
     if (route.request().headers().authorization !== 'Bearer test-token') {
       await route.fulfill({ status: 401, json: { error: 'Invalid or expired token' } })
       return
     }
-    await route.fulfill({ json: UMAMI })
+    await route.fulfill({ json: VISITORS })
+  })
+  await page.route('**/api/stats/settings**', async (route) => {
+    if (route.request().headers().authorization !== 'Bearer test-token') {
+      await route.fulfill({ status: 401, json: { error: 'Invalid or expired token' } })
+      return
+    }
+    await route.fulfill({ json: SETTINGS })
   })
 }
 

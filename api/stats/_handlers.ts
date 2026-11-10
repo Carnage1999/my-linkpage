@@ -11,9 +11,11 @@ import {
   RETENTION_DAYS,
   dateKeyInTimeZone,
 } from './_dates'
-import { acceptLinkId, configuredLinkIds, statsTimeZone } from './_links'
-import { fetchUmamiReport } from './_umami'
-import { createToken, isStatsEnabled, verifyPassword, verifyToken } from './_token'
+import { json, requireStatsToken } from './_http'
+import { acceptLinkId } from './_links'
+import { runtimeLinkIds } from './_site-store'
+import { resolveTimeZone } from './_settings'
+import { createToken, isStatsEnabled, verifyPassword } from './_token'
 import {
   bumpAuthLimit,
   hashClientIp,
@@ -32,12 +34,6 @@ export function __resetResponseCache(): void {
   responseCache.clear()
 }
 
-function json(data: unknown, status = 200, cacheControl?: string): Response {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (cacheControl) headers['Cache-Control'] = cacheControl
-  return new Response(JSON.stringify(data), { status, headers })
-}
-
 function readCache(key: string): unknown | undefined {
   const entry = responseCache.get(key)
   if (!entry) return undefined
@@ -50,15 +46,6 @@ function readCache(key: string): unknown | undefined {
 
 function writeCache(key: string, body: unknown) {
   responseCache.set(key, { at: Date.now(), body })
-}
-
-async function requireToken(request: Request): Promise<Response | null> {
-  const auth = request.headers.get('authorization')
-  if (!auth?.startsWith('Bearer ')) return json({ error: 'Missing token' }, 401)
-  if (!(await verifyToken(auth.slice(7)))) {
-    return json({ error: 'Invalid or expired token' }, 401)
-  }
-  return null
 }
 
 function parseDays(request: Request): number {
@@ -111,11 +98,11 @@ export async function handleRecord(request: Request): Promise<Response> {
     return json({ error: 'Invalid JSON' }, 400)
   }
 
-  const linkId = acceptLinkId(body.linkId, configuredLinkIds())
+  const linkId = acceptLinkId(body.linkId, await runtimeLinkIds())
   if (!linkId) return json({ error: 'Invalid linkId' }, 400)
 
   try {
-    const timeZone = statsTimeZone()
+    const timeZone = await resolveTimeZone()
     const now = new Date()
     const outcome = await recordClick({
       ipHash: await hashClientIp(request),
@@ -136,11 +123,11 @@ export async function handleData(request: Request): Promise<Response> {
   if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405)
   if (!isStatsEnabled() || !isRedisConfigured()) return json({ error: 'Stats not enabled' }, 501)
 
-  const denied = await requireToken(request)
+  const denied = await requireStatsToken(request)
   if (denied) return denied
 
   const days = parseDays(request)
-  const timeZone = statsTimeZone()
+  const timeZone = await resolveTimeZone()
   const cacheKey = `data:${timeZone}:${days}`
   const cached = readCache(cacheKey)
   if (cached) return json(cached, 200, PRIVATE_CACHE)
@@ -154,7 +141,7 @@ export async function handleData(request: Request): Promise<Response> {
       dayFields: parseRedisHash(hashes.days),
       currentDates: range.currentDates,
       previousDates: range.previousDates,
-      configuredIds: [...configuredLinkIds()],
+      configuredIds: [...(await runtimeLinkIds())],
     })
     const body = { timezone: timeZone, days, ...report }
     writeCache(cacheKey, body)
@@ -162,35 +149,5 @@ export async function handleData(request: Request): Promise<Response> {
   } catch (error) {
     console.error('Stats data error:', error)
     return json({ error: 'Internal error' }, 500)
-  }
-}
-
-export async function handleUmami(request: Request): Promise<Response> {
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
-  if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405)
-  if (!isStatsEnabled()) return json({ error: 'Stats not enabled' }, 501)
-
-  const denied = await requireToken(request)
-  if (denied) return denied
-
-  const days = parseDays(request)
-  const timeZone = statsTimeZone()
-  const cacheKey = `umami:${timeZone}:${days}`
-  const cached = readCache(cacheKey)
-  if (cached) return json(cached, 200, PRIVATE_CACHE)
-
-  try {
-    const range = periodRange(new Date(), days, timeZone)
-    const report = await fetchUmamiReport({
-      startAt: range.startAt,
-      endAt: range.endAt,
-      timeZone,
-      dates: range.currentDates,
-    })
-    if (report.configured && !report.unavailable) writeCache(cacheKey, report)
-    return json(report, 200, PRIVATE_CACHE)
-  } catch (error) {
-    console.error('Umami stats error:', error)
-    return json({ configured: true, unavailable: true }, 200, 'private, max-age=5')
   }
 }

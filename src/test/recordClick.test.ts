@@ -34,8 +34,8 @@ describe('buildClickCsv', () => {
   it('marks removed links and keeps umami counts in their own column', () => {
     const csv = buildClickCsv(
       [
-        { id: 'github', label: 'GitHub', status: 'active', redisClicks: 5, umamiClicks: 2 },
-        { id: 'old', label: 'old', status: 'removed', redisClicks: 1, umamiClicks: null },
+        { id: 'github', label: 'GitHub', status: 'active', redisClicks: 5, providerClicks: 2 },
+        { id: 'old', label: 'old', status: 'removed', redisClicks: 1, providerClicks: null },
       ],
       [{ date: '2026-11-10', id: 'github', label: 'GitHub', redisClicks: 5 }],
     )

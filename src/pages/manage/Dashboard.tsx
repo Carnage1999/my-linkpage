@@ -10,9 +10,11 @@ import {
   YAxis,
 } from 'recharts'
 import { percentChange, type StatsRange } from '../../../api/stats/_dates'
-import type { UmamiMetric, UmamiReport } from '../../../api/stats/_umami'
-import { useDashboard } from '../../hooks/useStats'
+import type { VisitorMetric, VisitorProviderId, VisitorReport } from '../../../api/stats/_providers/types'
+import { useDashboard, useVisitorReport, useVisitorSettings } from '../../hooks/useStats'
 import { useSiteConfig } from '../../hooks/useSiteConfig'
+import { ProviderSettings } from './ProviderSettings'
+import { SiteEditor } from './SiteEditor'
 import type { AppLanguageCode } from '../../i18n'
 import { buildClickCsv } from './clickCsv'
 import { LinkHeatmap } from './LinkHeatmap'
@@ -87,7 +89,7 @@ function StatCard({
   )
 }
 
-function MetricList({ title, metrics }: { title: string; metrics: readonly UmamiMetric[] }) {
+function MetricList({ title, metrics }: { title: string; metrics: readonly VisitorMetric[] }) {
   const max = Math.max(...metrics.map((metric) => metric.count), 1)
   return (
     <section className="rounded-2xl border border-slate-200/60 bg-white p-4 dark:border-slate-800/60 dark:bg-slate-900/80">
@@ -116,23 +118,29 @@ function MetricList({ title, metrics }: { title: string; metrics: readonly Umami
   )
 }
 
-function UmamiCards({ report }: { report: UmamiReport }) {
+function countText(value: number | null | undefined): string {
+  if (value == null) return '—'
+  return value.toLocaleString()
+}
+
+function VisitorCards({ report }: { report: VisitorReport }) {
   const { t } = useTranslation()
+  const totals = report.totals
   const previous = report.previous
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-      <StatCard label={String(t('managePageviews'))} value={(report.pageviews ?? 0).toLocaleString()} current={report.pageviews} previous={previous?.pageviews} />
-      <StatCard label={String(t('manageVisitors'))} value={(report.visitors ?? 0).toLocaleString()} current={report.visitors} previous={previous?.visitors} />
-      <StatCard label={String(t('manageVisits'))} value={(report.visits ?? 0).toLocaleString()} current={report.visits} previous={previous?.visits} />
-      <StatCard label={String(t('manageBounce'))} value={formatRate(report.bounceRate)} current={report.bounceRate ?? undefined} previous={previous?.bounceRate} />
-      <StatCard label={String(t('manageAvgTime'))} value={formatDuration(report.avgDuration)} />
+      <StatCard label={String(t('managePageviews'))} value={countText(totals?.pageviews)} current={totals?.pageviews ?? undefined} previous={previous?.pageviews} />
+      <StatCard label={String(t('manageVisitors'))} value={countText(totals?.visitors)} current={totals?.visitors ?? undefined} previous={previous?.visitors} />
+      <StatCard label={String(t('manageVisits'))} value={countText(totals?.visits)} current={totals?.visits ?? undefined} previous={previous?.visits} />
+      <StatCard label={String(t('manageBounce'))} value={formatRate(totals?.bounceRate)} current={totals?.bounceRate ?? undefined} previous={previous?.bounceRate} />
+      <StatCard label={String(t('manageAvgTime'))} value={formatDuration(totals?.avgDuration)} />
     </div>
   )
 }
 
-function UmamiBreakdowns({ report }: { report: UmamiReport }) {
+function VisitorBreakdowns({ report }: { report: VisitorReport }) {
   const { t } = useTranslation()
-  const series = report.pageviewsSeries ?? []
+  const series = report.timeseries
   return (
     <div className="space-y-4">
       {series.length > 0 ? (
@@ -165,20 +173,50 @@ function UmamiBreakdowns({ report }: { report: UmamiReport }) {
         <MetricList title={String(t('manageCountries'))} metrics={report.countries ?? []} />
         <MetricList title={String(t('manageDevices'))} metrics={report.devices ?? []} />
         <MetricList title={String(t('manageBrowsers'))} metrics={report.browsers ?? []} />
+        <MetricList title={String(t('manageOs'))} metrics={report.os ?? []} />
       </div>
     </div>
   )
 }
 
+const PROVIDER_ORDER: VisitorProviderId[] = ['upstash', 'goatcounter', 'cloudflare', 'umami']
+
+function preferredProvider(settings: { providers: Array<{ id: VisitorProviderId; configured: boolean }>; defaultProvider: VisitorProviderId | null } | null): VisitorProviderId | null {
+  if (!settings) return null
+  const configured = new Set(settings.providers.filter((item) => item.configured).map((item) => item.id))
+  let saved: string | null = null
+  try {
+    saved = localStorage.getItem('manage-visitor-provider')
+  } catch {
+    /* localStorage can be blocked */
+  }
+  return (
+    [saved, settings.defaultProvider, ...PROVIDER_ORDER].find(
+      (id): id is VisitorProviderId => Boolean(id && configured.has(id as VisitorProviderId)),
+    ) ?? null
+  )
+}
+
+function providerName(id: VisitorProviderId, translate: (key: 'manageUpstash' | 'manageGoatcounter' | 'manageCloudflare' | 'manageUmami') => string): string {
+  if (id === 'upstash') return translate('manageUpstash')
+  if (id === 'goatcounter') return translate('manageGoatcounter')
+  if (id === 'cloudflare') return translate('manageCloudflare')
+  return translate('manageUmami')
+}
+
 export function Dashboard({ token, logout }: { token: string; logout: () => void }) {
   const { t, i18n: i18nInstance } = useTranslation()
-  const { socials } = useSiteConfig()
+  const { socials, version } = useSiteConfig()
   const [days, setDays] = useState<StatsRange>(30)
-  const { data, umami, loading, error, unauthorized, refetch } = useDashboard(token, days)
+  const [chosen, setChosen] = useState<VisitorProviderId | null>(null)
+  const { data, loading, error, unauthorized, refetch } = useDashboard(token, days)
+  const { settings, unauthorized: settingsDenied, reload } = useVisitorSettings(token)
+  const provider = chosen ?? preferredProvider(settings)
+  const { report, unauthorized: visitorDenied } = useVisitorReport(token, days, provider)
 
   useEffect(() => {
-    if (unauthorized) logout()
-  }, [unauthorized, logout])
+    if (unauthorized || settingsDenied || visitorDenied) logout()
+  }, [unauthorized, settingsDenied, visitorDenied, logout])
 
   const labels = useMemo(() => new Map(socials.map((social) => [social.id, social.label])), [socials])
 
@@ -203,18 +241,19 @@ export function Dashboard({ token, logout }: { token: string; logout: () => void
     )
   }
 
-  const showUmami = Boolean(umami?.configured && !umami.unavailable)
-  const linkClicks = umami?.linkClicks ?? {}
+  const showProvider = Boolean(report?.configured && !report.unavailable && report.linkClicks)
+  const linkClicks = report?.linkClicks ?? {}
+  const providerLabel = provider ? providerName(provider, (key) => String(t(key))) : ''
   const heatmapLinks = data.configuredIds.map((id) => ({
     id,
     label: labels.get(id) ?? id,
     redisClicks: data.periodTotals[id] ?? 0,
-    umamiClicks: showUmami ? (linkClicks[id] ?? 0) : null,
+    providerClicks: showProvider ? (linkClicks[id] ?? 0) : null,
   }))
-  const report = data
-  const periodClicks = sumRecord(report.periodTotals)
-  const previousClicks = sumRecord(report.previousPeriodTotals)
-  const today = report.daily[report.daily.length - 1]
+  const clicks = data
+  const periodClicks = sumRecord(clicks.periodTotals)
+  const previousClicks = sumRecord(clicks.previousPeriodTotals)
+  const today = clicks.daily[clicks.daily.length - 1]
   const todayClicks = sumRecord(today?.clicks)
 
   function exportCsv() {
@@ -225,24 +264,32 @@ export function Dashboard({ token, logout }: { token: string; logout: () => void
           label: link.label,
           status: 'active' as const,
           redisClicks: link.redisClicks,
-          umamiClicks: link.umamiClicks,
+          providerClicks: link.providerClicks,
         })),
-        ...report.removed.map((link) => ({
+        ...clicks.removed.map((link) => ({
           id: link.id,
           label: link.id,
           status: 'removed' as const,
           redisClicks: link.period,
-          umamiClicks: showUmami ? (linkClicks[link.id] ?? 0) : null,
+          providerClicks: showProvider ? (linkClicks[link.id] ?? 0) : null,
         })),
       ],
-      report.daily.flatMap((day) =>
-        report.configuredIds.map((id) => ({
+      clicks.daily.flatMap((day) =>
+        clicks.configuredIds.map((id) => ({
           date: day.date,
           id,
           label: labels.get(id) ?? id,
           redisClicks: day.clicks[id] ?? 0,
         })),
       ),
+      report && provider
+        ? {
+            provider,
+            rows: (['referrers', 'countries', 'devices', 'browsers', 'os'] as const).flatMap((kind) =>
+              (report[kind] ?? []).map((row) => ({ kind, name: row.name, count: row.count })),
+            ),
+          }
+        : undefined,
     )
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -334,12 +381,52 @@ export function Dashboard({ token, logout }: { token: string; logout: () => void
           </p>
         ) : null}
 
-        {showUmami && umami ? <UmamiCards report={umami} /> : null}
-        {umami?.configured && umami.unavailable ? (
-          <p className="text-sm text-slate-500">{String(t('manageUmamiUnavailable'))}</p>
+        <div className="flex flex-wrap gap-2" role="group" aria-label={String(t('manageProvider'))}>
+          {PROVIDER_ORDER.map((id) => {
+            const status = settings?.providers.find((item) => item.id === id)
+            const enabled = Boolean(status?.configured)
+            return (
+              <button
+                key={id}
+                type="button"
+                disabled={!enabled}
+                title={enabled ? undefined : status?.missing.join(', ')}
+                onClick={() => {
+                  setChosen(id)
+                  try {
+                    localStorage.setItem('manage-visitor-provider', id)
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+                className={`rounded-xl border px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
+                  provider === id
+                    ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
+                    : 'border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300'
+                }`}
+                aria-pressed={provider === id}
+              >
+                {providerName(id, (key) => String(t(key)))}
+              </button>
+            )
+          })}
+        </div>
+        {settings?.providers.some((item) => !item.configured) ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {String(t('manageMissing'))}:{' '}
+            {settings.providers
+              .filter((item) => !item.configured)
+              .map((item) => `${providerName(item.id, (key) => String(t(key)))} (${item.missing.join(', ')})`)
+              .join(' · ')}
+          </p>
         ) : null}
 
-        <LinkHeatmap links={heatmapLinks} daily={data.daily} showUmami={showUmami} />
+        {report?.configured && !report.unavailable ? <VisitorCards report={report} /> : null}
+        {report?.configured && report.unavailable ? (
+          <p className="text-sm text-slate-500">{String(t('manageUnavailable'))}</p>
+        ) : null}
+
+        <LinkHeatmap links={heatmapLinks} daily={data.daily} showProvider={showProvider} providerLabel={providerLabel} />
 
         {data.removed.length > 0 ? (
           <section className="rounded-2xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
@@ -357,7 +444,9 @@ export function Dashboard({ token, logout }: { token: string; logout: () => void
           </section>
         ) : null}
 
-        {showUmami && umami ? <UmamiBreakdowns report={umami} /> : null}
+        {report?.configured && !report.unavailable ? <VisitorBreakdowns report={report} /> : null}
+        <SiteEditor key={version} token={token} />
+        <ProviderSettings token={token} settings={settings} onSaved={() => void reload()} />
       </div>
     </div>
   )

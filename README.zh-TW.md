@@ -8,14 +8,14 @@
 
 ## 功能特色
 
-- **零部署更新** — 編輯 `public/siteConfig.json` 即可新增、移除或調整社群連結、個人資料或分析工具，無需重新建置
+- **從 /manage 更新** — 個人資料、連結與分析設定存在 Redis。`public/siteConfig.json` 是 Redis 沒有資料時的種子。`index.html` 與建置的 OG 圖片要等下次部署才會變
 - **自動偵測圖示** — 透過 [simple-icons](https://simpleicons.org) 根據連結網址自動匹配圖示（支援 48 平台）；需要時可用 `iconSlug` 手動覆寫
 - **動態 OG 圖片** — Serverless 端點（`/api/og`）使用 Web Standard API 依請求即時產生 1200×630 社群預覽圖，始終反映最新設定
 - **多語系** — EN / RU / ZH-TW，自動偵測瀏覽器語言（簡體中文 → 正體中文）
 - **深色 / 淺色模式** — 跟隨系統偏好；使用者的切換選擇透過 `localStorage` 保存
 - **動畫效果** — Motion 進場過渡動畫，支援 `prefers-reduced-motion`
 - **自託管字型** — 透過 `@fontsource-variable` 提供 Manrope 與 Space Grotesk 可變字型
-- **分析** — 公開頁面可使用 Plausible 或 Umami。管理後台的點擊紀錄寫入 Upstash Redis，不依賴分析腳本。
+- **分析** — `/manage` 可選 Upstash、GoatCounter、Cloudflare Web Analytics 或 Umami。Plausible 仍可從種子檔注入。點擊紀錄寫入 Upstash Redis，不依賴分析腳本。
 - **SEO** — 動態 meta/OG/Twitter 標籤、JSON-LD Person schema、hreflang、canonical 連結
 - **無障礙** — skip link、語意化 HTML、ARIA 標籤、`aria-live` 回饋、WCAG 對比度；E2E 中包含 axe-core 無障礙稽核
 - **錯誤邊界** — 頂層崩潰備援 UI，附重新載入按鈕
@@ -108,7 +108,7 @@ api/
   stats/
     _handlers.ts           auth、record、data 與 Umami 處理器
     _redis.ts              Upstash Redis REST 輔助函式
-    _umami.ts              伺服器端 Umami 用戶端
+    _providers/            Upstash、GoatCounter、Cloudflare、Umami
     _dates.ts              時區日界
     _aggregate.ts          所選期間的點擊合計
     _links.ts              siteConfig 中允許的連結 id
@@ -131,7 +131,7 @@ scripts/
 
 ### 社群連結、個人資料與網站中繼資料
 
-編輯 `public/siteConfig.json` — 這是**唯一需要修改的檔案**。無需重新建置或部署。
+線上內容在 `/manage` 修改。`public/siteConfig.json` 是 Redis 沒有資料時的種子，也是 `index.html` 與建置的 `og-image.png` 的來源，這兩者要等下次部署。React 頁面、它的 meta 與 `/api/og` 會立刻採用新設定。
 
 ```jsonc
 {
@@ -163,17 +163,7 @@ scripts/
 
 ### 分析工具
 
-在 `public/siteConfig.json` 中設定：
-
-```jsonc
-// Plausible
-"analytics": { "provider": "plausible", "plausibleDomain": "link.example.com" }
-
-// Umami
-"analytics": { "provider": "umami", "umamiWebsiteId": "xxxxxxxx-…" }
-
-// 停用（移除 "analytics" 鍵）
-```
+訪客來源在 `/manage` 設定，或用下方的環境變數。環境變數會覆寫已儲存的值。Plausible 仍可從種子檔的 `analytics` 區塊注入，但不會出現在切換器。頭像從 `public/` 的圖片挑選（預設 `/avatar.jpg`），或填一個 https 網址。沒有檔案上傳。
 
 ### OG 圖片
 
@@ -189,7 +179,7 @@ OG 圖片透過 `/api/og` **動態產生**，每次請求時讀取 `siteConfig.j
 | `STATS_TIMEZONE` | 日界使用的 IANA 時區，預設 `Asia/Taipei`。 |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL（[主控台](https://console.upstash.com) → 資料庫 → REST API） |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST 權杖 |
-| `UMAMI_WEBSITE_ID` | 網站 id。未設定時改用 `siteConfig.json` 的 `umamiWebsiteId`。 |
+| `UMAMI_WEBSITE_ID` | Umami 網站 id。會覆寫 `/manage` 裡儲存的值。 |
 | `UMAMI_API_URL` | Umami 來源位址。留空則使用雲端 `https://api.umami.is`。 |
 | `UMAMI_API_KEY` | 雲端或自架的 API 金鑰。雲端：Settings → API keys。 |
 | `UMAMI_USERNAME` / `UMAMI_PASSWORD` | 沒有 API 金鑰時的自架登入。工作階段權杖只留在伺服器。 |

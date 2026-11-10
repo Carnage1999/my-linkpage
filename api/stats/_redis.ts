@@ -130,6 +130,59 @@ export async function readClickHashes(): Promise<{
   return { totals: results[0]?.result, days: results[1]?.result }
 }
 
+const PAGEVIEW_SCRIPT = `
+local ok = redis.call('SET', KEYS[1], '1', 'NX', 'EX', ARGV[1])
+if not ok then
+  return 0
+end
+local ttl = redis.call('TTL', KEYS[2])
+for i = 3, #ARGV do
+  redis.call('HINCRBY', KEYS[2], ARGV[i], 1)
+end
+if ttl < 0 then
+  redis.call('EXPIRE', KEYS[2], ARGV[2])
+end
+return 1
+`
+
+/** One pageview. Rejected duplicates are a single SET. Accepted writes are HINCRBY fields plus EXPIRE once per day. */
+export async function recordPageview(input: {
+  ipHash: string
+  today: string
+  fields: readonly string[]
+}): Promise<'ok' | 'limited'> {
+  const response = await redisCommand([
+    'EVAL',
+    PAGEVIEW_SCRIPT,
+    '2',
+    `rl:pv:${input.ipHash}`,
+    `pv:${input.today}`,
+    '30',
+    '15552000',
+    ...input.fields,
+  ])
+  return Number(response.result) === 1 ? 'ok' : 'limited'
+}
+
+export async function readPageviewDays(dates: readonly string[]): Promise<unknown[]> {
+  if (dates.length === 0) return []
+  const results = await redisPipeline(dates.map((date) => ['HGETALL', `pv:${date}`]))
+  return results.map((entry) => entry?.result)
+}
+
+export async function bumpNamedLimit(name: string, ipHash: string, ttlSeconds = 900): Promise<number> {
+  const results = await redisPipeline([
+    ['INCR', `rl:${name}:${ipHash}`],
+    ['EXPIRE', `rl:${name}:${ipHash}`, String(ttlSeconds)],
+  ])
+  return Number(results[0]?.result ?? 0)
+}
+
+export async function redisPing(): Promise<boolean> {
+  const response = await redisCommand(['PING'])
+  return response.result === 'PONG'
+}
+
 export async function hashClientIp(request: Request): Promise<string> {
   const forwarded = request.headers.get('x-forwarded-for')
   const ip =

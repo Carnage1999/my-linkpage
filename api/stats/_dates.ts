@@ -111,6 +111,11 @@ export interface PeriodRange {
   endAt: number
 }
 
+/** UTC timestamp of 00:00 on a `YYYY-MM-DD` key in `timeZone`. */
+export function startOfDateKey(key: string, timeZone: string): number {
+  return startOfZonedDay(instantOnDate(key, timeZone), timeZone)
+}
+
 export function periodRange(now: Date, days: number, timeZone: string): PeriodRange {
   const currentDates = recentDateKeys(now, days, timeZone)
   const oldestStart = startOfZonedDay(instantOnDate(currentDates[0], timeZone), timeZone)

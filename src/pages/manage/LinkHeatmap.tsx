@@ -15,17 +15,19 @@ export interface HeatmapLink {
   id: string
   label: string
   redisClicks: number
-  umamiClicks: number | null
+  providerClicks: number | null
 }
 
 export function LinkHeatmap({
   links,
   daily,
-  showUmami,
+  showProvider,
+  providerLabel,
 }: {
   links: readonly HeatmapLink[]
   daily: readonly DailyClicks[]
-  showUmami: boolean
+  showProvider: boolean
+  providerLabel: string
 }) {
   const { t } = useTranslation()
   const prefersReduced = useReducedMotion()
@@ -41,7 +43,7 @@ export function LinkHeatmap({
         <p className="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
           {String(t('clickHeatmap'))}
         </p>
-        {showUmami ? (
+        {showProvider ? (
           <p className="max-w-md text-right text-xs text-slate-500 dark:text-slate-400">
             {String(t('manageCompareNote'))}
           </p>
@@ -54,8 +56,8 @@ export function LinkHeatmap({
             <tr className="border-b border-slate-200/60 text-xs tracking-wide text-slate-500 uppercase dark:border-slate-800/60 dark:text-slate-400">
               <th className="p-2 font-semibold">{String(t('manageLink'))}</th>
               <th className="p-2 text-right font-semibold">{String(t('manageRedis'))}</th>
-              {showUmami ? (
-                <th className="p-2 text-right font-semibold">{String(t('manageUmami'))}</th>
+              {showProvider ? (
+                <th className="p-2 text-right font-semibold">{providerLabel}</th>
               ) : null}
             </tr>
           </thead>
@@ -86,9 +88,9 @@ export function LinkHeatmap({
                   <td className="px-2 py-3 text-right font-mono text-slate-700 tabular-nums dark:text-slate-200">
                     {link.redisClicks.toLocaleString()}
                   </td>
-                  {showUmami ? (
+                  {showProvider ? (
                     <td className="px-2 py-3 text-right font-mono text-slate-700 tabular-nums dark:text-slate-200">
-                      {(link.umamiClicks ?? 0).toLocaleString()}
+                      {(link.providerClicks ?? 0).toLocaleString()}
                     </td>
                   ) : null}
                 </tr>

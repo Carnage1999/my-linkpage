@@ -19,7 +19,7 @@ import { SocialIcon } from './SocialIcon'
 import { SEO } from './components/SEO'
 import { useAnalytics } from './hooks/useAnalytics'
 import { useSiteConfig } from './hooks/useSiteConfig'
-import { recordLinkClick, useStatsEnabled } from './hooks/useStats'
+import { recordLinkClick, recordPageview, useStatsEnabled } from './hooks/useStats'
 
 interface LanguageOption {
   code: AppLanguageCode
@@ -130,11 +130,11 @@ function MoonIcon() {
 
 export default function App() {
   const { t, i18n } = useTranslation()
-  const { loading, site, profile, analytics, socials, ogImagePath } = useSiteConfig()
+  const { loading, site, profile, scripts, socials, ogImagePath } = useSiteConfig()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [isDark, setIsDark] = useState<boolean>(getInitialTheme)
   const copyTimeoutRef = useRef<number | null>(null)
-  const { trackLinkClick } = useAnalytics(analytics)
+  const { trackLinkClick } = useAnalytics(scripts)
   const statsEnabled = useStatsEnabled()
   const activeLanguage =
     LANGUAGES.find(
@@ -146,6 +146,10 @@ export default function App() {
 
     return undefined
   }, [isDark])
+
+  useEffect(() => {
+    if (statsEnabled) recordPageview()
+  }, [statsEnabled])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -256,7 +260,7 @@ export default function App() {
         },
       }
 
-  if (loading) {
+  if (loading && socials.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="size-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300" />

@@ -3,7 +3,7 @@ export interface CsvLinkRow {
   label: string
   status: 'active' | 'removed'
   redisClicks: number
-  umamiClicks: number | null
+  providerClicks: number | null
 }
 
 export interface CsvDayRow {
@@ -19,8 +19,12 @@ function cell(value: string | number): string {
   return text
 }
 
-export function buildClickCsv(links: readonly CsvLinkRow[], days: readonly CsvDayRow[]): string {
-  const header = ['section', 'date', 'id', 'label', 'status', 'redis_clicks', 'umami_clicks']
+export function buildClickCsv(
+  links: readonly CsvLinkRow[],
+  days: readonly CsvDayRow[],
+  visitors?: { provider: string; rows: Array<{ kind: string; name: string; count: number }> },
+): string {
+  const header = ['section', 'date', 'id', 'label', 'status', 'redis_clicks', 'provider_clicks']
   const lines = [header.join(',')]
   for (const link of links) {
     lines.push(
@@ -31,7 +35,7 @@ export function buildClickCsv(links: readonly CsvLinkRow[], days: readonly CsvDa
         link.label,
         link.status,
         link.redisClicks,
-        link.umamiClicks ?? '',
+        link.providerClicks ?? '',
       ]
         .map(cell)
         .join(','),
@@ -41,6 +45,11 @@ export function buildClickCsv(links: readonly CsvLinkRow[], days: readonly CsvDa
     lines.push(
       ['day', day.date, day.id, day.label, 'active', day.redisClicks, ''].map(cell).join(','),
     )
+  }
+  if (visitors) {
+    for (const row of visitors.rows) {
+      lines.push(['visitor', visitors.provider, row.kind, row.name, '', row.count, ''].map(cell).join(','))
+    }
   }
   return `${lines.join('\n')}\n`
 }

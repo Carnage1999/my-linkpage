@@ -1,6 +1,6 @@
 /**
  * Serverless Function — generates an Open Graph image (1200×630 PNG)
- * dynamically by reading the current /siteConfig.json at request time.
+ * dynamically from the runtime site config, falling back to public/siteConfig.json.
  *
  * Endpoint:  GET /api/og
  *
@@ -13,6 +13,7 @@
 
 import { Resvg } from '@resvg/resvg-js'
 import satori from 'satori'
+import { readRuntimeSite } from './stats/_site-store'
 
 // ─── Types (mirroring siteConfig.ts) ─────────────────────
 
@@ -77,10 +78,9 @@ async function loadFonts() {
 
 // ─── Config loader ───────────────────────────────────────
 
-async function loadConfig(origin: string): Promise<SiteConfig> {
-  const res = await fetch(`${origin}/siteConfig.json`, { cache: 'no-cache' })
-  if (!res.ok) throw new Error(`Config fetch failed: ${res.status}`)
-  return res.json() as Promise<SiteConfig>
+async function loadConfig(): Promise<SiteConfig> {
+  const site = await readRuntimeSite()
+  return { site: site.site, profile: site.profile, socials: site.socials }
 }
 
 // ─── OG Layout (satori JSX-like object tree) ─────────────
@@ -281,10 +281,7 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
 
 export default async function handler(request: Request): Promise<Response> {
   try {
-    const url = new URL(request.url)
-    const origin = url.origin
-
-    const [config, fonts] = await Promise.all([loadConfig(origin), loadFonts()])
+    const [config, fonts] = await Promise.all([loadConfig(), loadFonts()])
 
     const name = config.site?.name ?? 'Han-che Wang'
     const tagline = config.site?.tagline ?? 'Links & Socials'

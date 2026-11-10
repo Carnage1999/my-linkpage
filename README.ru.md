@@ -8,14 +8,14 @@
 
 ## Возможности
 
-- **Обновление без деплоя** — отредактируйте `public/siteConfig.json`, чтобы добавить, удалить или изменить ссылки, профиль или аналитику — пересборка не требуется
+- **Правки на /manage** — профиль, ссылки и аналитика сохраняются в Redis. `public/siteConfig.json` — запасной файл, если Redis пуст. `index.html` и собранная OG-картинка меняются при следующем деплое
 - **Автоопределение иконок** — иконки автоматически подбираются по URL через [simple-icons](https://simpleicons.org) (48 платформ); при необходимости можно указать `iconSlug` вручную
 - **Динамическое OG-изображение** — серверный endpoint (`/api/og`) генерирует превью 1200×630 на базе Web Standard API, всегда актуальное
 - **Мультиязычность** — EN / RU / ZH-TW с автоопределением языка браузера (упрощённый китайский → традиционный китайский)
 - **Тёмная / светлая тема** — следует системным настройкам; пользовательский выбор сохраняется в `localStorage`
 - **Анимации** — входные переходы Motion с поддержкой `prefers-reduced-motion`
 - **Самостоятельно размещённые шрифты** — переменные шрифты Manrope и Space Grotesk через `@fontsource-variable`
-- **Аналитика** — Plausible или Umami на публичной странице. Запись кликов для админки идёт в Upstash Redis и не зависит от скрипта аналитики.
+- **Аналитика** — Upstash, GoatCounter, Cloudflare Web Analytics или Umami на `/manage`. Plausible по-прежнему можно подключить из файла-заготовки. Клики пишутся в Upstash Redis и не зависят от скрипта аналитики.
 - **SEO** — динамические мета-теги/OG/Twitter, JSON-LD Person schema, hreflang, канонический URL
 - **Доступность** — skip-ссылка, семантический HTML, ARIA-метки, `aria-live` обратная связь, WCAG контраст; аудит axe-core в E2E
 - **Обработка ошибок** — аварийный fallback верхнего уровня с кнопкой перезагрузки
@@ -108,7 +108,7 @@ api/
   stats/
     _handlers.ts           Обработчики auth, record, data и Umami
     _redis.ts              Upstash Redis REST-хелперы
-    _umami.ts              Серверный клиент Umami
+    _providers/            Upstash, GoatCounter, Cloudflare, Umami
     _dates.ts              Границы дней по часовому поясу
     _aggregate.ts          Итоги кликов за выбранный период
     _links.ts              Разрешённые id ссылок из siteConfig
@@ -131,7 +131,7 @@ scripts/
 
 ### Социальные ссылки, профиль и метаданные сайта
 
-Отредактируйте `public/siteConfig.json` — это **единственный файл**, который нужно изменить. Пересборка или повторный деплой не требуются.
+Живой сайт меняется на `/manage`. `public/siteConfig.json` используется, когда в Redis ничего нет, а также для `index.html` и собранного `og-image.png` — они обновляются при следующем деплое. Страница React, её мета-теги и `/api/og` следуют за сохранением сразу.
 
 ```jsonc
 {
@@ -163,17 +163,7 @@ scripts/
 
 ### Аналитика
 
-Настройте в `public/siteConfig.json`:
-
-```jsonc
-// Plausible
-"analytics": { "provider": "plausible", "plausibleDomain": "link.example.com" }
-
-// Umami
-"analytics": { "provider": "umami", "umamiWebsiteId": "xxxxxxxx-…" }
-
-// Отключить (уберите ключ "analytics")
-```
+Источники посещений настраиваются на `/manage` или переменными окружения ниже. Переменные перекрывают сохранённые значения. Plausible по-прежнему можно включить блоком `analytics` в файле-заготовке; в переключателе его нет. Аватар выбирается из картинок в `public/` (по умолчанию `/avatar.jpg`) или указывается как https URL. Загрузки файла нет.
 
 ### OG-изображение
 
@@ -189,7 +179,7 @@ OG-изображение генерируется **динамически** п
 | `STATS_TIMEZONE` | Часовой пояс границ дня. По умолчанию `Asia/Taipei`. |
 | `UPSTASH_REDIS_REST_URL` | REST URL Upstash Redis ([консоль](https://console.upstash.com) → база → REST API) |
 | `UPSTASH_REDIS_REST_TOKEN` | REST-токен Upstash Redis |
-| `UMAMI_WEBSITE_ID` | Id сайта. Если пусто, берётся `umamiWebsiteId` из `siteConfig.json`. |
+| `UMAMI_WEBSITE_ID` | Id сайта Umami. Перекрывает значение, сохранённое на `/manage`. |
 | `UMAMI_API_URL` | Origin Umami. Пустое значение — облако (`https://api.umami.is`). |
 | `UMAMI_API_KEY` | Ключ API облака или своего сервера. В облаке: Settings → API keys. |
 | `UMAMI_USERNAME` / `UMAMI_PASSWORD` | Вход на свой сервер, если ключа нет. Токен сессии остаётся на сервере. |

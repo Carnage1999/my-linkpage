@@ -167,6 +167,8 @@ const HOST_TO_SLUG: [pattern: RegExp, slug: string][] = [
  * Infer the simple-icons slug from a URL.
  * Returns the matched slug or `null` if the URL doesn't match any known pattern.
  */
+export const ICON_SLUGS = Object.keys(ICON_MAP)
+
 export function resolveIconSlug(url: string): string | null {
   try {
     const hostname = new URL(url).hostname

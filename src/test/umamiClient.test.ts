@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { __resetUmamiAuth, fetchUmamiReport, toLinkClicks, toMetrics, toTotals } from '../../api/stats/_umami'
+import { __resetUmamiAuth, fetchUmamiReport, toLinkClicks, toMetrics, toTotals } from '../../api/stats/_providers/umami'
 
 const calls: Array<{ url: string; headers: Headers }> = []
 
@@ -41,7 +41,7 @@ describe('umami client', () => {
       timeZone: 'Asia/Taipei',
       dates: ['2026-11-10'],
     })
-    expect(report).toEqual({ configured: false })
+    expect(report.configured).toBe(false)
     expect(fetch).not.toHaveBeenCalled()
   })
 
@@ -79,7 +79,7 @@ describe('umami client', () => {
     })
 
     expect(report.configured).toBe(true)
-    expect(report.pageviews).toBe(8)
+    expect(report.totals?.pageviews).toBe(8)
     expect(report.previous?.pageviews).toBe(2)
     expect(report.linkClicks).toEqual({ github: 6 })
     expect(calls.every((call) => call.url.startsWith('https://api.umami.is/v1/websites/site-1/'))).toBe(true)

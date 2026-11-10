@@ -1,8 +1,8 @@
 /**
  * Site-wide configuration types and build-time fallbacks.
  *
- * Runtime data is loaded from /siteConfig.json via the useSiteConfig hook.
- * Edit public/siteConfig.json to update links without redeploying.
+ * The homepage renders this file immediately, then hydrates from /api/site-config.
+ * Edit the live site at /manage. This file remains the seed when Redis is empty.
  */
 
 // ─── Analytics (privacy-friendly) ────────────────────────

@@ -8,10 +8,6 @@
   "profile": {
     "avatar": "/avatar.jpg"
   },
-  "analytics": {
-    "provider": "umami",
-    "umamiWebsiteId": "b6e3dfdc-afb4-4586-b39c-4a1e0826748a"
-  },
   "socials": [
     {
       "id": "github",

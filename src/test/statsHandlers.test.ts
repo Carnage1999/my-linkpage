@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { __resetResponseCache, handleAuth, handleData, handleRecord } from '../../api/stats/_handlers'
+import { __resetSiteCache } from '../../api/stats/_site-store'
 import { dateKeyInTimeZone } from '../../api/stats/_dates'
 
 const calls: Array<{ url: string; body: unknown }> = []
@@ -18,6 +19,7 @@ beforeEach(() => {
   authAttempts = 1
   evalResult = 1
   __resetResponseCache()
+  __resetSiteCache()
   process.env.STATS_PASSWORD = 'secret'
   process.env.STATS_TIMEZONE = 'Asia/Taipei'
   process.env.UPSTASH_REDIS_REST_URL = 'https://redis.example'
@@ -49,6 +51,7 @@ afterEach(() => {
   delete process.env.UPSTASH_REDIS_REST_URL
   delete process.env.UPSTASH_REDIS_REST_TOKEN
   __resetResponseCache()
+  __resetSiteCache()
   vi.unstubAllGlobals()
 })
 
@@ -62,7 +65,7 @@ describe('stats handlers', () => {
       }),
     )
     expect(response.status).toBe(400)
-    expect(calls).toHaveLength(0)
+    expect(calls.some((call) => Array.isArray(call.body) && call.body[0] === 'EVAL')).toBe(false)
   })
 
   it('records a configured link with one rate-limited script', async () => {
@@ -74,8 +77,8 @@ describe('stats handlers', () => {
       }),
     )
     expect(response.status).toBe(200)
-    const command = calls[0]?.body as string[]
-    expect(command[0]).toBe('EVAL')
+    const command = calls.map((call) => call.body as string[]).find((body) => body[0] === 'EVAL')
+    if (!command) throw new Error('missing EVAL')
     expect(command).toContain('github')
     expect(command.some((part) => part.startsWith('rl:rec:'))).toBe(true)
     expect(command).toContain('clicks:total')

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ClickReport } from '../../api/stats/_aggregate'
-import type { UmamiReport } from '../../api/stats/_umami'
 import type { StatsRange } from '../../api/stats/_dates'
+import type { VisitorProviderId, VisitorReport } from '../../api/stats/_providers/types'
+import type { SettingsView } from '../../api/stats/_settings'
 
 const TOKEN_KEY = 'stats-auth-token'
 
@@ -18,6 +19,29 @@ export function recordLinkClick(linkId: string): void {
   }
 
   void fetch('/api/stats/record', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+    keepalive: true,
+  }).catch(() => undefined)
+}
+
+let pageviewSent = false
+
+/** One pageview per page load. Strict Mode can run effects twice; the flag keeps it to one beacon. */
+export function recordPageview(): void {
+  if (pageviewSent) return
+  pageviewSent = true
+  const body = JSON.stringify({ referrer: document.referrer || '' })
+  try {
+    if (typeof navigator.sendBeacon === 'function') {
+      const blob = new Blob([body], { type: 'application/json' })
+      if (navigator.sendBeacon('/api/stats/pageview', blob)) return
+    }
+  } catch {
+    /* fall through */
+  }
+  void fetch('/api/stats/pageview', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body,
@@ -90,7 +114,6 @@ export function useStatsAuth() {
 
 export function useDashboard(token: string | null, days: StatsRange) {
   const [data, setData] = useState<DashboardData | null>(null)
-  const [umami, setUmami] = useState<UmamiReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [unauthorized, setUnauthorized] = useState(false)
@@ -119,13 +142,10 @@ export function useDashboard(token: string | null, days: StatsRange) {
     let cancelled = false
     const headers = { Authorization: `Bearer ${token}` }
 
-    Promise.all([
-      fetch(`/api/stats/data?days=${days}`, { headers }),
-      fetch(`/api/stats/umami?days=${days}`, { headers }),
-    ])
-      .then(async ([dataResponse, umamiResponse]) => {
+    fetch(`/api/stats/data?days=${days}`, { headers })
+      .then(async (dataResponse) => {
         if (cancelled) return
-        if (dataResponse.status === 401 || umamiResponse.status === 401) {
+        if (dataResponse.status === 401) {
           setUnauthorized(true)
           return
         }
@@ -134,11 +154,6 @@ export function useDashboard(token: string | null, days: StatsRange) {
           return
         }
         setData((await dataResponse.json()) as DashboardData)
-        if (umamiResponse.ok) {
-          setUmami((await umamiResponse.json()) as UmamiReport)
-        } else {
-          setUmami({ configured: true, unavailable: true })
-        }
       })
       .catch(() => {
         if (!cancelled) setError('network')
@@ -152,7 +167,107 @@ export function useDashboard(token: string | null, days: StatsRange) {
     }
   }, [token, days, requestKey])
 
-  return { data, umami, loading, error, unauthorized, refetch }
+  return { data, loading, error, unauthorized, refetch }
+}
+
+export function useVisitorSettings(token: string | null) {
+  const [settings, setSettings] = useState<SettingsView | null>(null)
+  const [unauthorized, setUnauthorized] = useState(false)
+  const [requestKey, setRequestKey] = useState(0)
+
+  const reload = useCallback(() => {
+    setRequestKey((key) => key + 1)
+  }, [])
+
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    fetch('/api/stats/settings', { headers: { Authorization: `Bearer ${token}` } })
+      .then(async (response) => {
+        if (cancelled) return
+        if (response.status === 401) {
+          setUnauthorized(true)
+          return
+        }
+        if (response.ok) setSettings((await response.json()) as SettingsView)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [token, requestKey])
+
+  return { settings, unauthorized, reload }
+}
+
+export function useVisitorReport(token: string | null, days: StatsRange, provider: VisitorProviderId | null) {
+  const [entry, setEntry] = useState<{ key: string; report: VisitorReport } | null>(null)
+  const [unauthorized, setUnauthorized] = useState(false)
+  const key = provider ? `${provider}:${days}` : ''
+  const report = entry?.key === key ? entry.report : null
+
+  useEffect(() => {
+    if (!token || !provider) return
+    let cancelled = false
+    const requestKey = `${provider}:${days}`
+    fetch(`/api/stats/visitors?provider=${provider}&days=${days}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (response) => {
+        if (cancelled) return
+        if (response.status === 401) {
+          setUnauthorized(true)
+          return
+        }
+        if (!response.ok) {
+          setEntry({
+            key: requestKey,
+            report: {
+              provider,
+              configured: true,
+              unavailable: true,
+              totals: null,
+              previous: null,
+              timeseries: [],
+              referrers: [],
+              countries: [],
+              devices: [],
+              browsers: [],
+              os: [],
+              linkClicks: null,
+            },
+          })
+          return
+        }
+        setEntry({ key: requestKey, report: (await response.json()) as VisitorReport })
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setEntry({
+            key: requestKey,
+            report: {
+              provider,
+              configured: true,
+              unavailable: true,
+              totals: null,
+              previous: null,
+              timeseries: [],
+              referrers: [],
+              countries: [],
+              devices: [],
+              browsers: [],
+              os: [],
+              linkClicks: null,
+            },
+          })
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token, days, provider])
+
+  return { report, unauthorized }
 }
 
 export function useStatsEnabled() {
