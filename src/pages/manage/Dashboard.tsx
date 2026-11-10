@@ -10,6 +10,7 @@ import { buildClickCsv } from './clickCsv'
 import { preferredProvider, providerName } from './providers'
 import { AnalyticsTab } from './tabs/AnalyticsTab'
 import { DataTab } from './tabs/DataTab'
+import { LanguagesTab } from './tabs/LanguagesTab'
 import { LinksTab } from './tabs/LinksTab'
 import { OverviewTab } from './tabs/OverviewTab'
 import { SiteTab } from './tabs/SiteTab'
@@ -21,12 +22,13 @@ const LANGUAGES: Array<{ code: AppLanguageCode; label: string }> = [
   { code: 'zh-TW', label: '繁' },
   { code: 'ru', label: 'РУ' },
 ]
-const TABS = ['overview', 'site', 'links', 'analytics', 'data'] as const
+const TABS = ['overview', 'site', 'languages', 'links', 'analytics', 'data'] as const
 type ManageTab = (typeof TABS)[number]
 
 const TAB_LABEL = {
   overview: 'manageTabOverview',
   site: 'manageTabSite',
+  languages: 'manageTabLanguages',
   links: 'manageTabLinks',
   analytics: 'manageTabAnalytics',
   data: 'manageTabData',
@@ -248,6 +250,7 @@ export function Dashboard({ token, logout }: { token: string; logout: () => void
             <OverviewTab data={data} report={report} showProvider={showProvider} providerLabel={providerLabel} labels={labels} />
           ) : null}
           {tab === 'site' ? <SiteTab draft={draft} /> : null}
+          {tab === 'languages' ? <LanguagesTab draft={draft} /> : null}
           {tab === 'links' ? <LinksTab draft={draft} /> : null}
           {tab === 'analytics' ? (
             <AnalyticsTab

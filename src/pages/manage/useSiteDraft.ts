@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { replaceSiteConfig, useSiteConfig } from '../../hooks/useSiteConfig'
+import { bundledValue, canonicalLocale, isPublicKey, type HomepageI18n } from '../../i18n/publicCopy'
 import type { SiteConfig } from '../../siteConfig'
 
 export interface LinkRow {
@@ -36,6 +37,22 @@ interface DraftState {
   avatarPath: string
   avatarUrl: string
   rows: LinkRow[]
+  i18n: HomepageI18n
+}
+
+/** Drop empty lines and lines that match the bundled text, so the save is only overrides. */
+function compactI18n(i18n: HomepageI18n): HomepageI18n {
+  const overrides: HomepageI18n['overrides'] = {}
+  for (const [code, pack] of Object.entries(i18n.overrides)) {
+    const strings: Record<string, string> = {}
+    for (const [key, value] of Object.entries(pack)) {
+      const trimmed = value.trim()
+      if (!trimmed || !isPublicKey(key) || trimmed === bundledValue(code, key)) continue
+      strings[key] = trimmed
+    }
+    if (Object.keys(strings).length > 0) overrides[code] = strings
+  }
+  return { ...i18n, overrides }
 }
 
 function snapshot(state: DraftState): string {
@@ -52,6 +69,7 @@ function draftFrom(config: ReturnType<typeof useSiteConfig>): DraftState {
     avatarPath: avatar.startsWith('/') ? avatar : '/avatar.jpg',
     avatarUrl: avatar.startsWith('https://') ? avatar : '',
     rows: rowsFrom(config.socials),
+    i18n: config.i18n,
   }
 }
 
@@ -106,7 +124,7 @@ export function useSiteDraft(token: string) {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const payload = (await response.json()) as SiteConfig & { error?: string; version?: number }
+      const payload = (await response.json()) as SiteConfig & { error?: string; version?: number; i18n?: HomepageI18n }
       if (!response.ok) {
         setStatus(payload.error ?? String(t('manageNetwork')))
         return
@@ -119,12 +137,13 @@ export function useSiteDraft(token: string) {
       }
       const next: DraftState = {
         name: site.name,
-        tagline: site.tagline,
+        tagline: site.tagline ?? '',
         domain: site.domain,
         handle: site.twitterHandle ?? '',
         avatarPath: payload.profile.avatar.startsWith('/') ? payload.profile.avatar : '/avatar.jpg',
         avatarUrl: payload.profile.avatar.startsWith('https://') ? payload.profile.avatar : '',
         rows: rowsFrom(payload.socials),
+        i18n: payload.i18n ?? state.i18n,
       }
       setSavedSnap(snapshot(next))
       if (payload.version != null) setSeenVersion(payload.version)
@@ -160,6 +179,7 @@ export function useSiteDraft(token: string) {
           site: { name: state.name, tagline: state.tagline, domain: state.domain, twitterHandle: state.handle },
           profile: { avatar: state.avatarUrl.trim() || state.avatarPath },
           socials,
+          i18n: compactI18n(state.i18n),
         })
       } catch (error) {
         setStatus(error instanceof Error ? error.message : String(t('manageNetwork')))
@@ -177,6 +197,7 @@ export function useSiteDraft(token: string) {
         url: row.url,
         ...(row.iconSlug ? { iconSlug: row.iconSlug } : {}),
       })),
+      i18n: compactI18n(state.i18n),
     }
     const blob = new Blob([JSON.stringify(body, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -193,6 +214,51 @@ export function useSiteDraft(token: string) {
     updateRow,
     move,
     setRows: (rows: LinkRow[]) => patch({ rows }),
+    setDetect: (detect: boolean) => setState((current) => ({ ...current, i18n: { ...current.i18n, detect } })),
+    setFallback: (fallback: string) => setState((current) => ({ ...current, i18n: { ...current.i18n, fallback } })),
+    setOverride: (code: string, key: string, value: string) =>
+      setState((current) => {
+        const overrides = { ...current.i18n.overrides }
+        const pack = { ...(overrides[code] ?? {}) }
+        if (value) pack[key] = value
+        else delete pack[key]
+        if (Object.keys(pack).length > 0) overrides[code] = pack
+        else delete overrides[code]
+        return { ...current, i18n: { ...current.i18n, overrides } }
+      }),
+    moveLanguage: (index: number, direction: -1 | 1) =>
+      setState((current) => {
+        const languages = [...current.i18n.languages]
+        const target = index + direction
+        if (target < 0 || target >= languages.length) return current
+        const [item] = languages.splice(index, 1)
+        if (!item) return current
+        languages.splice(target, 0, item)
+        return { ...current, i18n: { ...current.i18n, languages } }
+      }),
+    removeLanguage: (code: string) =>
+      setState((current) => {
+        if (current.i18n.languages.length <= 1) return current
+        const languages = current.i18n.languages.filter((language) => language.code !== code)
+        const fallback = current.i18n.fallback === code ? languages[0]?.code ?? current.i18n.fallback : current.i18n.fallback
+        const overrides = { ...current.i18n.overrides }
+        delete overrides[code]
+        return { ...current, i18n: { ...current.i18n, languages, fallback, overrides } }
+      }),
+    addLanguage: (code: string, label: string, shortLabel: string) => {
+      const canonical = canonicalLocale(code)
+      if (!canonical || !label.trim() || !shortLabel.trim()) return { ok: false as const, error: 'invalid' as const }
+      if (label.trim().length > 40 || shortLabel.trim().length > 12) return { ok: false as const, error: 'invalid' as const }
+      if (state.i18n.languages.some((language) => language.code === canonical)) return { ok: false as const, error: 'duplicate' as const }
+      setState((current) => ({
+        ...current,
+        i18n: {
+          ...current.i18n,
+          languages: [...current.i18n.languages, { code: canonical, label: label.trim(), shortLabel: shortLabel.trim() }],
+        },
+      }))
+      return { ok: true as const, code: canonical }
+    },
     dirty,
     status,
     saving,

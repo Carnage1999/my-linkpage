@@ -133,6 +133,8 @@ scripts/
 
 線上內容在 `/manage` 修改。`public/siteConfig.json` 是 Redis 沒有資料時的種子，也是 `index.html` 與建置的 `og-image.png` 的來源，這兩者要等下次部署。React 頁面、它的 meta 與 `/api/og` 會立刻採用新設定。
 
+「網站」分頁的顯示名稱用在分享圖與作者 metadata。首頁句子（含標題與副標）在「語言」分頁按語言修改。空白列沿用內建文字。後台本身仍使用 `src/locales/` 的檔案。由右至左的語言仍以由左至右顯示。
+
 ```jsonc
 {
   "site": {

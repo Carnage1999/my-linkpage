@@ -13,6 +13,7 @@
 
 import { Resvg } from '@resvg/resvg-js'
 import satori from 'satori'
+import { shareSubtitle } from '../src/i18n/publicCopy'
 import { readRuntimeSite } from './stats/_site-store'
 
 // ─── Types (mirroring siteConfig.ts) ─────────────────────
@@ -22,19 +23,6 @@ interface SocialLinkEntry {
   label: string
   url: string
   iconSlug?: string
-}
-
-interface SiteMetadata {
-  name: string
-  tagline: string
-  domain: string
-  twitterHandle?: string
-}
-
-interface SiteConfig {
-  site?: SiteMetadata
-  profile: { avatar: string }
-  socials: SocialLinkEntry[]
 }
 
 // ─── Constants ───────────────────────────────────────────
@@ -78,9 +66,8 @@ async function loadFonts() {
 
 // ─── Config loader ───────────────────────────────────────
 
-async function loadConfig(): Promise<SiteConfig> {
-  const site = await readRuntimeSite()
-  return { site: site.site, profile: site.profile, socials: site.socials }
+async function loadConfig() {
+  return readRuntimeSite()
 }
 
 // ─── OG Layout (satori JSX-like object tree) ─────────────
@@ -284,7 +271,12 @@ export default async function handler(request: Request): Promise<Response> {
     const [config, fonts] = await Promise.all([loadConfig(), loadFonts()])
 
     const name = config.site?.name ?? 'Han-che Wang'
-    const tagline = config.site?.tagline ?? 'Links & Socials'
+    const requested = new URL(request.url).searchParams.get('lng')
+    const tagline = shareSubtitle({
+      requested,
+      i18n: config.i18n,
+      legacyTagline: config.site?.tagline,
+    })
     const domain = config.site?.domain ?? 'link.w1999.me'
     const markup = buildMarkup(config.socials, name, tagline, domain)
 

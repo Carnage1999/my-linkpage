@@ -121,17 +121,23 @@ test('opens each section from the tab bar and keeps unsaved edits', async ({ pag
 
   await page.getByRole('tab', { name: 'Site' }).click()
   await expect(page).toHaveURL(/tab=site/)
-  await expect(page.getByLabel('Name')).toBeVisible()
+  await expect(page.getByLabel('Display name')).toBeVisible()
   await expect(page.getByText('Clicks this period')).toHaveCount(0)
-  await page.getByLabel('Name').fill('Changed name')
+  await page.getByLabel('Display name').fill('Changed name')
   page.once('dialog', (dialog) => dialog.dismiss())
   await page.getByRole('tab', { name: 'Links' }).click()
-  await expect(page.getByLabel('Name')).toHaveValue('Changed name')
+  await expect(page.getByLabel('Display name')).toHaveValue('Changed name')
 
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('tab', { name: 'Links' }).click()
   await expect(page).toHaveURL(/tab=links/)
   await expect(page.getByLabel('url').first()).toBeVisible()
+
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('tab', { name: 'Languages' }).click()
+  await expect(page).toHaveURL(/tab=languages/)
+  await expect(page.getByRole('checkbox', { name: /Detect the browser language/ })).toBeChecked()
+  await expect(page.getByLabel('Heading')).toHaveAttribute('placeholder', "Hi, I'm Wang")
 
   await page.goto('/manage?tab=analytics')
   await expect(page.getByRole('tab', { name: 'Analytics', selected: true })).toBeVisible()

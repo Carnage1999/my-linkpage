@@ -9,13 +9,26 @@ const LOCALE_MAP: Record<string, string> = {
   'zh-TW': 'zh_TW',
 }
 
-const LANGUAGES = ['en', 'ru', 'zh-TW']
+function openGraphLocale(code: string): string {
+  return LOCALE_MAP[code] ?? code.replaceAll('-', '_')
+}
 
-export function SEO({ site, socials, ogImagePath }: { site: SiteMetadata; socials: readonly SocialLinkEntry[]; ogImagePath: string }) {
+export function SEO({
+  site,
+  socials,
+  ogImagePath,
+  languages,
+}: {
+  site: SiteMetadata
+  socials: readonly SocialLinkEntry[]
+  ogImagePath: string
+  languages: readonly string[]
+}) {
   const { t, i18n } = useTranslation()
   const pageTitle = String(t('pageTitle')) || 'Wang — Link Page'
   const description = String(t('intro')) || 'Personal link page — find all my social profiles in one place.'
-  const currentLang = i18n.language || 'en'
+  const currentLang = i18n.resolvedLanguage || i18n.language || 'en'
+  const enabled = languages.length > 0 ? languages : ['en']
   
   // Use a fallback domain if window is not available (e.g. during SSR)
   const currentUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : 'https://link.w1999.me'
@@ -28,7 +41,7 @@ export function SEO({ site, socials, ogImagePath }: { site: SiteMetadata; social
   const schema = useMemo(() => ({
     "@context": "https://schema.org",
     "@type": "Person",
-    "name": String(t('title')),
+    "name": site.name,
     "description": description,
     "image": ogImageUrl,
     "url": origin,
@@ -36,16 +49,16 @@ export function SEO({ site, socials, ogImagePath }: { site: SiteMetadata; social
       const href = safeLinkUrl(social.url)
       return href ? [href] : []
     })
-  }), [t, description, ogImageUrl, origin, socials])
+  }), [site.name, description, ogImageUrl, origin, socials])
 
-  const ogLocale = LOCALE_MAP[currentLang] ?? 'en_US'
-  const alternateLocales = LANGUAGES.filter(l => l !== currentLang).map(l => LOCALE_MAP[l] ?? l)
+  const ogLocale = openGraphLocale(currentLang)
+  const alternateLocales = enabled.filter((language) => language !== currentLang).map(openGraphLocale)
 
   return (
     <>
       <title>{pageTitle}</title>
       <meta name="description" content={description} />
-      <meta name="author" content={String(t('title')).replace(/^(Hi, I'm |Привет, я |嗨，我是 )/, '')} />
+      <meta name="author" content={site.name} />
       <link rel="canonical" href={`${origin}/`} />
       
       <meta property="og:title" content={pageTitle} />
@@ -68,7 +81,7 @@ export function SEO({ site, socials, ogImagePath }: { site: SiteMetadata; social
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={ogImageUrl} />
 
-      {LANGUAGES.map(lang => (
+      {enabled.map((lang) => (
         <link key={lang} rel="alternate" hrefLang={lang} href={`${origin}/?lng=${lang}`} />
       ))}
       <link rel="alternate" hrefLang="x-default" href={`${origin}/`} />

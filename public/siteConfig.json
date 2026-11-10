@@ -8,6 +8,28 @@
   "profile": {
     "avatar": "/avatar.jpg"
   },
+  "i18n": {
+    "languages": [
+      {
+        "code": "en",
+        "label": "English",
+        "shortLabel": "EN"
+      },
+      {
+        "code": "ru",
+        "label": "Русский",
+        "shortLabel": "РУ"
+      },
+      {
+        "code": "zh-TW",
+        "label": "正體中文",
+        "shortLabel": "國"
+      }
+    ],
+    "fallback": "en",
+    "detect": true,
+    "overrides": {}
+  },
   "socials": [
     {
       "id": "github",

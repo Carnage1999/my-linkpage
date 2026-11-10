@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import seedFile from '../../public/siteConfig.json'
 import { EMPTY_SCRIPTS, type ScriptBundle } from '../analytics/types'
+import { applyHomepageI18n } from '../i18n/applyHomepage'
+import { DEFAULT_HOMEPAGE_I18N, type HomepageI18n } from '../i18n/publicCopy'
 import { safeAvatarUrl } from '../lib/safeAvatarUrl'
 import { safeLinkUrl, safeScriptUrl, safeSvgPath, safeToken } from '../lib/safeUrl'
 import type { AnalyticsConfig, SiteConfig, SiteMetadata, SocialLinkEntry } from '../siteConfig'
@@ -15,6 +17,7 @@ export interface SiteConfigState {
   ogImagePath: string
   scripts: ScriptBundle
   version: number
+  i18n: HomepageI18n
 }
 
 const DEFAULT_OG_PATH = '/api/og'
@@ -54,7 +57,19 @@ function sanitizeScripts(bundle: ScriptBundle): ScriptBundle {
   }
 }
 
-function fromConfig(data: SiteConfig & { scripts?: ScriptBundle; version?: number }, fallbackScripts: ScriptBundle): SiteConfigState {
+function readI18n(value: unknown): HomepageI18n {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return DEFAULT_HOMEPAGE_I18N
+  const body = value as Partial<HomepageI18n>
+  if (!Array.isArray(body.languages) || body.languages.length === 0) return DEFAULT_HOMEPAGE_I18N
+  return {
+    languages: body.languages,
+    fallback: typeof body.fallback === 'string' ? body.fallback : body.languages[0].code,
+    detect: body.detect !== false,
+    overrides: body.overrides ?? {},
+  }
+}
+
+function fromConfig(data: SiteConfig & { scripts?: ScriptBundle; version?: number; i18n?: HomepageI18n }, fallbackScripts: ScriptBundle): SiteConfigState {
   return {
     loading: false,
     error: null,
@@ -67,15 +82,18 @@ function fromConfig(data: SiteConfig & { scripts?: ScriptBundle; version?: numbe
     ogImagePath: data.ogImagePath ?? DEFAULT_OG_PATH,
     scripts: sanitizeScripts(data.scripts ?? fallbackScripts),
     version: data.version ?? 0,
+    i18n: readI18n(data.i18n),
   }
 }
 
 const seedScripts = scriptsFromAnalytics((seedFile as SiteConfig).analytics)
-let current = fromConfig(seedFile as SiteConfig, seedScripts)
+let current = fromConfig(seedFile as SiteConfig & { i18n?: HomepageI18n }, seedScripts)
+applyHomepageI18n(current.i18n)
 const listeners = new Set<() => void>()
 
 function publish(next: SiteConfigState) {
   current = next
+  applyHomepageI18n(next.i18n)
   for (const listener of listeners) listener()
 }
 

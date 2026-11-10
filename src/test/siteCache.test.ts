@@ -45,6 +45,7 @@ describe('site config CDN cache', () => {
     const body = (await response.json()) as {
       socials: Array<{ id: string; iconSlug?: string; iconPath?: string }>
       scripts: Record<string, unknown>
+      i18n: { overrides: Record<string, unknown>; languages: Array<{ code: string }> }
     }
     expect(body.socials).toHaveLength(6)
     for (const link of body.socials) {
@@ -56,5 +57,8 @@ describe('site config CDN cache', () => {
     const linkedin = body.socials.find((link) => link.id === 'linkedin')
     expect(linkedin?.iconSlug).toBe('linkedin')
     expect(body.scripts).not.toHaveProperty('plausible')
+    expect(body.i18n.overrides).toEqual({})
+    expect(body.i18n.languages.map((language) => language.code)).toEqual(['en', 'ru', 'zh-TW'])
+    expect(JSON.stringify(body).length).toBeLessThan(1_000_000)
   })
 })

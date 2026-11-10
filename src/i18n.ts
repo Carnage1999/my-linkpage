@@ -1,6 +1,7 @@
 import i18n from 'i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { initReactI18next } from 'react-i18next'
+import { DEFAULT_HOMEPAGE_I18N, mapDetected } from './i18n/publicCopy'
 import en from './locales/en.json'
 import ru from './locales/ru.json'
 import zhTW from './locales/zh-TW.json'
@@ -15,36 +16,7 @@ export const resources = {
 
 export type AppLanguageCode = keyof typeof resources
 
-function normalizeDetectedLanguage(language: string | undefined): AppLanguageCode {
-  if (!language) {
-    return 'en'
-  }
-
-  const normalizedLanguage = language.toLowerCase()
-
-  if (
-    normalizedLanguage === 'zh' ||
-    normalizedLanguage.startsWith('zh-cn') ||
-    normalizedLanguage.startsWith('zh-sg') ||
-    normalizedLanguage.includes('hans') ||
-    normalizedLanguage.startsWith('zh-tw') ||
-    normalizedLanguage.startsWith('zh-hk') ||
-    normalizedLanguage.startsWith('zh-mo') ||
-    normalizedLanguage.includes('hant')
-  ) {
-    return 'zh-TW'
-  }
-
-  if (normalizedLanguage.startsWith('ru')) {
-    return 'ru'
-  }
-
-  if (normalizedLanguage.startsWith('en')) {
-    return 'en'
-  }
-
-  return 'en'
-}
+const initialLanguages = DEFAULT_HOMEPAGE_I18N.languages.map((language) => language.code)
 
 i18n
   .use(LanguageDetector)
@@ -57,8 +29,8 @@ i18n
     detection: {
       order: ['localStorage', 'navigator', 'path', 'querystring'],
       caches: ['localStorage'],
-      convertDetectedLanguage: (language) =>
-        normalizeDetectedLanguage(language),
+      convertDetectedLanguage: (language: string) =>
+        mapDetected(language, initialLanguages, DEFAULT_HOMEPAGE_I18N.fallback),
     },
     interpolation: { escapeValue: false },
   })

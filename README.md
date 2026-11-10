@@ -148,6 +148,8 @@ scripts/
 
 Change the live site at `/manage`. `public/siteConfig.json` is the seed when Redis is empty or unreachable, and the source for `index.html` plus the built `public/og-image.png`. Those two stay as they were at build time until the next deploy. The React page, its meta tags, and `/api/og` follow the save immediately.
 
+The Site tab’s display name is the share-image name and the author metadata. Homepage sentences, including the heading and subtitle, are edited per language on the Languages tab. An empty line keeps the bundled text. The dashboard itself keeps the files in `src/locales/`. Right-to-left languages are shown left to right.
+
 ```jsonc
 {
   "site": {

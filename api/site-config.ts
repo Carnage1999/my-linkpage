@@ -57,6 +57,7 @@ export default async function handler(request: Request): Promise<Response> {
       await writeRuntimeSite(next)
     } else if (request.method === 'PUT') {
       const next = validateSiteConfig(await request.json(), current.version + 1)
+      if (!next.site.tagline && current.site.tagline) next.site.tagline = current.site.tagline
       await writeRuntimeSite(next)
     } else {
       return json({ error: 'Method not allowed' }, 405)

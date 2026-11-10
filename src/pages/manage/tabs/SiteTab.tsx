@@ -11,14 +11,13 @@ export function SiteTab({ draft }: { draft: SiteDraft }) {
     <section className="space-y-4 rounded-2xl border border-slate-200/60 bg-white p-4 dark:border-slate-800/60 dark:bg-slate-900/80">
       <h2 className="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase">{String(t('manageTabSite'))}</h2>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-sm text-slate-600 dark:text-slate-300">
-          {String(t('manageName'))}
-          <input className={fieldClass} value={draft.name} onChange={(event) => draft.patch({ name: event.target.value })} />
-        </label>
-        <label className="text-sm text-slate-600 dark:text-slate-300">
-          {String(t('manageTagline'))}
-          <input className={fieldClass} value={draft.tagline} onChange={(event) => draft.patch({ tagline: event.target.value })} />
-        </label>
+        <div>
+          <label className="text-sm text-slate-600 dark:text-slate-300">
+            {String(t('manageName'))}
+            <input className={fieldClass} value={draft.name} onChange={(event) => draft.patch({ name: event.target.value })} />
+          </label>
+          <p className="mt-1 text-xs text-slate-500">{String(t('manageDisplayNameHint'))}</p>
+        </div>
         <label className="text-sm text-slate-600 dark:text-slate-300">
           {String(t('manageDomain'))}
           <input className={fieldClass} value={draft.domain} onChange={(event) => draft.patch({ domain: event.target.value })} />

@@ -14,7 +14,6 @@ import {
 } from 'motion/react'
 import { startTransition, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AppLanguageCode } from './i18n'
 import { SocialIcon } from './SocialIcon'
 import { SEO } from './components/SEO'
 import { useAnalytics } from './hooks/useAnalytics'
@@ -22,18 +21,6 @@ import { useSiteConfig } from './hooks/useSiteConfig'
 import { safeAvatarUrl } from './lib/safeAvatarUrl'
 import { safeLinkUrl } from './lib/safeUrl'
 import { recordLinkClick, recordPageview, useStatsEnabled } from './hooks/useStats'
-
-interface LanguageOption {
-  code: AppLanguageCode
-  label: string
-  shortLabel: string
-}
-
-const LANGUAGES = [
-  { code: 'en', label: 'English', shortLabel: 'EN' },
-  { code: 'ru', label: 'Русский', shortLabel: 'РУ' },
-  { code: 'zh-TW', label: '正體中文', shortLabel: '國' },
-] as const satisfies readonly LanguageOption[]
 
 type ThemeMode = 'light' | 'dark'
 
@@ -132,16 +119,16 @@ function MoonIcon() {
 
 export default function App() {
   const { t, i18n } = useTranslation()
-  const { loading, site, profile, scripts, socials, ogImagePath } = useSiteConfig()
+  const { loading, site, profile, scripts, socials, ogImagePath, i18n: homepageI18n } = useSiteConfig()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [isDark, setIsDark] = useState<boolean>(getInitialTheme)
   const copyTimeoutRef = useRef<number | null>(null)
   const { trackLinkClick } = useAnalytics(scripts)
   const statsEnabled = useStatsEnabled()
+  const languages = homepageI18n.languages
   const activeLanguage =
-    LANGUAGES.find(
-      ({ code }) => code === (i18n.resolvedLanguage ?? i18n.language)
-    ) ?? LANGUAGES[0]
+    languages.find(({ code }) => code === (i18n.resolvedLanguage ?? i18n.language)) ??
+    languages[0] ?? { code: 'en', label: 'English', shortLabel: 'EN' }
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
@@ -207,7 +194,7 @@ export default function App() {
     []
   )
 
-  const changeLanguage = (languageCode: AppLanguageCode) => {
+  const changeLanguage = (languageCode: string) => {
     startTransition(() => {
       void i18n.changeLanguage(languageCode)
     })
@@ -272,7 +259,7 @@ export default function App() {
 
   return (
     <LazyMotion features={domAnimation} strict>
-    <SEO site={site} socials={socials} ogImagePath={ogImagePath} />
+    <SEO site={site} socials={socials} ogImagePath={ogImagePath} languages={languages.map((language) => language.code)} />
     <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <a
         href="#social-links"
@@ -348,7 +335,7 @@ export default function App() {
                       </ListboxButton>
 
                       <ListboxOptions className="absolute right-0 z-10 mt-3 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/10 focus:outline-hidden dark:border-slate-700 dark:bg-slate-950">
-                        {LANGUAGES.map(({ code, label }) => (
+                        {languages.map(({ code, label }) => (
                           <ListboxOption
                             key={code}
                             value={code}

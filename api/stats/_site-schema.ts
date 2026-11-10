@@ -1,3 +1,12 @@
+import {
+  bundledValue,
+  canonicalLocale,
+  DEFAULT_HOMEPAGE_I18N,
+  isPublicKey,
+  KEY_LIMIT,
+  type HomepageI18n,
+  type HomepageLanguage,
+} from '../../src/i18n/publicCopy'
 import { DEFAULT_AVATAR, safeAvatarUrl } from '../../src/lib/safeAvatarUrl'
 import { safeLinkUrl, safeSvgPath } from '../../src/lib/safeUrl'
 import type { SocialLinkEntry } from '../../src/siteConfig'
@@ -6,7 +15,8 @@ export { DEFAULT_AVATAR }
 
 export interface PublicSite {
   name: string
-  tagline: string
+  /** Legacy share-image subtitle. The homepage subtitle is an i18n override. */
+  tagline?: string
   domain: string
   twitterHandle?: string
 }
@@ -18,6 +28,7 @@ export interface PublicSiteConfig {
   profile: { avatar: string }
   socials: SocialLinkEntry[]
   ogImagePath: string
+  i18n: HomepageI18n
 }
 
 const URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tg:', 'tel:', 'sms:'])
@@ -76,6 +87,56 @@ export function validateAvatar(value: string): string {
   return safe
 }
 
+function validateI18n(value: unknown): HomepageI18n {
+  if (value == null) return structuredClone(DEFAULT_HOMEPAGE_I18N)
+  if (typeof value !== 'object' || Array.isArray(value)) throw new SiteValidationError('Languages must be an object')
+  const body = value as Record<string, unknown>
+  const languagesRaw = body.languages
+  if (!Array.isArray(languagesRaw) || languagesRaw.length < 1 || languagesRaw.length > 12) {
+    throw new SiteValidationError('Choose between 1 and 12 languages')
+  }
+  const seen = new Set<string>()
+  const languages: HomepageLanguage[] = languagesRaw.map((entry) => {
+    const row = entry as Record<string, unknown>
+    const code = canonicalLocale(typeof row.code === 'string' ? row.code : '')
+    if (!code) throw new SiteValidationError('Locale code must be a BCP 47 tag, such as fr or pt-BR')
+    if (seen.has(code)) throw new SiteValidationError(`Duplicate language: ${code}`)
+    seen.add(code)
+    return {
+      code,
+      label: text(row.label, 40, 'Language name'),
+      shortLabel: text(row.shortLabel, 12, 'Language short name'),
+    }
+  })
+  const fallback = canonicalLocale(typeof body.fallback === 'string' ? body.fallback : '')
+  if (!fallback || !seen.has(fallback)) throw new SiteValidationError('Default language must be one of the enabled languages')
+  if (typeof body.detect !== 'boolean') throw new SiteValidationError('Browser detection must be true or false')
+
+  const overrides: Record<string, Record<string, string>> = {}
+  const rawOverrides = body.overrides ?? {}
+  if (typeof rawOverrides !== 'object' || Array.isArray(rawOverrides)) {
+    throw new SiteValidationError('Text overrides must be an object')
+  }
+  for (const [rawCode, pack] of Object.entries(rawOverrides as Record<string, unknown>)) {
+    const code = canonicalLocale(rawCode)
+    if (!code || !seen.has(code)) throw new SiteValidationError(`Unknown language: ${rawCode}`)
+    if (!pack || typeof pack !== 'object' || Array.isArray(pack)) throw new SiteValidationError('Text overrides must be an object')
+    const strings: Record<string, string> = {}
+    for (const [key, raw] of Object.entries(pack as Record<string, unknown>)) {
+      if (!isPublicKey(key)) throw new SiteValidationError(`Unknown text: ${key}`)
+      if (typeof raw !== 'string') throw new SiteValidationError(`${key} must be text`)
+      const trimmed = raw.trim()
+      if (!trimmed) continue
+      if (trimmed.length > KEY_LIMIT[key]) throw new SiteValidationError(`${key} must be at most ${KEY_LIMIT[key]} characters`)
+      if (trimmed === bundledValue(code, key)) continue
+      strings[key] = trimmed
+    }
+    if (Object.keys(strings).length > 0) overrides[code] = strings
+  }
+
+  return { languages, fallback, detect: body.detect, overrides }
+}
+
 export function validateSiteConfig(input: unknown, version: number): PublicSiteConfig {
   if (!input || typeof input !== 'object') throw new SiteValidationError('Config must be an object')
   const body = input as Record<string, unknown>
@@ -85,6 +146,9 @@ export function validateSiteConfig(input: unknown, version: number): PublicSiteC
   if (!Array.isArray(socialsRaw) || socialsRaw.length > 40) {
     throw new SiteValidationError('Provide between 0 and 40 links')
   }
+
+  let tagline: string | undefined
+  if (typeof site.tagline === 'string' && site.tagline.trim()) tagline = text(site.tagline, 160, 'Tagline')
 
   const domain = text(site.domain, 253, 'Domain').toLowerCase()
   if (!DOMAIN.test(domain) || domain.includes('..')) throw new SiteValidationError('Domain is invalid')
@@ -129,7 +193,7 @@ export function validateSiteConfig(input: unknown, version: number): PublicSiteC
     version,
     site: {
       name: text(site.name, 80, 'Name'),
-      tagline: text(site.tagline, 160, 'Tagline'),
+      ...(tagline ? { tagline } : {}),
       domain,
       ...(twitterHandle ? { twitterHandle } : {}),
     },
@@ -138,5 +202,6 @@ export function validateSiteConfig(input: unknown, version: number): PublicSiteC
     },
     socials,
     ogImagePath: '/api/og',
+    i18n: validateI18n(body.i18n),
   }
 }
