@@ -15,8 +15,7 @@
 - **Тёмная / светлая тема** — следует системным настройкам; пользовательский выбор сохраняется в `localStorage`
 - **Анимации** — входные переходы Motion с поддержкой `prefers-reduced-motion`
 - **Самостоятельно размещённые шрифты** — переменные шрифты Manrope и Space Grotesk через `@fontsource-variable`
-- **Аналитика и тепловая карта кликов** — Plausible / Umami (настраивается); локальная тепловая карта кликов с графиками трендов за день/неделю — всё в `localStorage`, без cookies
-- **Панель статистики** — опциональная защищённая паролем страница `/stats` с серверным отслеживанием кликов через Upstash Redis; 30-дневный график трендов, статистика по ссылкам, встроенный Umami/Plausible — полностью опционально через переменные окружения
+- **Аналитика** — Plausible или Umami на публичной странице. Запись кликов для админки идёт в Upstash Redis и не зависит от скрипта аналитики.
 - **SEO** — динамические мета-теги/OG/Twitter, JSON-LD Person schema, hreflang, канонический URL
 - **Доступность** — skip-ссылка, семантический HTML, ARIA-метки, `aria-live` обратная связь, WCAG контраст; аудит axe-core в E2E
 - **Обработка ошибок** — аварийный fallback верхнего уровня с кнопкой перезагрузки
@@ -84,7 +83,7 @@ src/
   siteConfig.ts            Определения типов и значения по умолчанию для сборки
   App.tsx                  Главный UI страницы
   main.tsx                 Точка входа (обёрнута в ErrorBoundary)
-  router.tsx               Клиентская маршрутизация (/, /stats)
+  router.tsx               Клиентская маршрутизация (/, /manage)
   SocialIcon.tsx           Компонент иконок (simple-icons + автоопределение)
   iconRegistry.ts          Реестр иконок 48 платформ с автоматическим сопоставлением URL → иконка
   i18n.ts                  Определение языка и настройка i18n
@@ -92,25 +91,30 @@ src/
   components/
     ErrorBoundary.tsx      Аварийный UI при сбое
     SEO.tsx                Мета-теги, OG-изображение, JSON-LD
-    LinkHeatmap.tsx        Тепловая карта кликов и график трендов
+    LinkHeatmap.tsx        Сравнение кликов Redis и Umami
   hooks/
     useSiteConfig.ts       Загрузчик JSON-конфигурации (загружает siteConfig.json)
     useAnalytics.ts        Загрузчик аналитических скриптов и отслеживание событий
-    useLinkClickStats.ts   Счётчик кликов и хронология в localStorage
-    useStats.ts            Хуки аутентификации и данных статистики
+    useStats.ts            Вход в панель, статистика Redis и отчёт Umami
+  lib/
+    recordClick.ts         Запись клика через sendBeacon
+    clickCsv.ts            Экспорт CSV
   pages/
-    StatsPage.tsx          Панель статистики с защитой паролем
+    ManagePage.tsx         Панель администратора на /manage
   locales/                 Файлы переводов (en / ru / zh-TW)
   test/                    Юнит- и компонентные тесты Vitest
 api/
   og.ts                    Серверная функция — динамическая генерация OG-изображения (Web Standard API)
   stats/
-    _handlers.ts           Кросс-платформенные обработчики запросов
+    _handlers.ts           Обработчики auth, record, data и Umami
     _redis.ts              Upstash Redis REST-хелперы
+    _umami.ts              Серверный клиент Umami
+    _dates.ts              Границы дней по часовому поясу
     _token.ts              HMAC-аутентификация токенов (Web Crypto API)
     auth.ts                Endpoint аутентификации
     check.ts               Endpoint обнаружения функции
-    data.ts                Endpoint данных статистики
+    data.ts                Отчёт кликов Redis
+    umami.ts               Отчёт Umami
     record.ts              Endpoint записи кликов
 e2e/
   app.spec.ts              E2E-тесты Playwright
@@ -165,26 +169,31 @@ scripts/
 // Umami
 "analytics": { "provider": "umami", "umamiWebsiteId": "xxxxxxxx-…" }
 
-// Отключить (уберите ключ "analytics" — локальная тепловая карта продолжит работать)
+// Отключить (уберите ключ "analytics")
 ```
 
 ### OG-изображение
 
 OG-изображение генерируется **динамически** по адресу `/api/og`, считывая `siteConfig.json` при каждом запросе — ручная перегенерация не нужна. Статический fallback также создаётся при `pnpm build`.
 
-### Панель статистики (опционально)
+### Панель администратора (опционально)
 
-Панель статистики по адресу `/stats` — **полностью опциональная**. Для включения установите следующие переменные окружения:
+Панель открывается по адресу `/manage`, не ссылается с публичной страницы, отдаёт `noindex` и закрыта в `robots.txt`. Переменные окружения перечислены в `.env.example`:
 
 | Переменная | Описание |
 |---|---|
-| `STATS_PASSWORD` | Пароль для доступа к панели статистики |
-| `UPSTASH_REDIS_REST_URL` | URL REST-endpoint Upstash Redis |
-| `UPSTASH_REDIS_REST_TOKEN` | Токен аутентификации Upstash Redis REST |
+| `STATS_PASSWORD` | Пароль для `/manage` |
+| `STATS_TIMEZONE` | Часовой пояс границ дня. По умолчанию `Asia/Taipei`. |
+| `UPSTASH_REDIS_REST_URL` | REST URL Upstash Redis ([консоль](https://console.upstash.com) → база → REST API) |
+| `UPSTASH_REDIS_REST_TOKEN` | REST-токен Upstash Redis |
+| `UMAMI_WEBSITE_ID` | Id сайта. Если пусто, берётся `umamiWebsiteId` из `siteConfig.json`. |
+| `UMAMI_API_URL` | Origin Umami. Пустое значение — облако (`https://api.umami.is`). |
+| `UMAMI_API_KEY` | Ключ API облака или своего сервера. В облаке: Settings → API keys. |
+| `UMAMI_USERNAME` / `UMAMI_PASSWORD` | Вход на свой сервер, если ключа нет. Токен сессии остаётся на сервере. |
 
-Когда все три переменные установлены, отслеживание кликов автоматически включается для всех ссылок, а в подвале появляется ссылка «Статистика». Если любая переменная отсутствует, функция полностью скрыта — никаких дополнительных запросов или изменений UI.
+`STATS_PASSWORD` и обе переменные Upstash включают запись кликов. Главная страница отправляет `POST /api/stats/record` через `navigator.sendBeacon` (или `fetch` с `keepalive`). Блоки Umami появляются, только когда заданы id сайта и ключ либо пара логин/пароль. Клики Redis и события Umami Link Click стоят рядом: Redis учитывает посетителей, у которых скрипт Umami заблокирован.
 
-API статистики использует Web Standard `Request`/`Response` и Web Crypto API, поэтому работает на **Vercel Edge, Cloudflare Workers, Netlify Edge Functions** и других платформах с поддержкой Web Platform API.
+API использует Web `Request` / `Response` и Web Crypto, в том числе на Vercel Edge. Бесплатная база Upstash (256 МБ, 500 000 команд в месяц) достаточна: принятый клик — один скрипт примерно из 5 команд, загрузка панели читает два хеша.
 
 ## Развёртывание
 

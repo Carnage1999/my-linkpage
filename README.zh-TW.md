@@ -15,8 +15,7 @@
 - **深色 / 淺色模式** — 跟隨系統偏好；使用者的切換選擇透過 `localStorage` 保存
 - **動畫效果** — Motion 進場過渡動畫，支援 `prefers-reduced-motion`
 - **自託管字型** — 透過 `@fontsource-variable` 提供 Manrope 與 Space Grotesk 可變字型
-- **分析與點擊熱力圖** — 可設定 Plausible / Umami 分析工具；本機端逐連結點擊熱力圖含每日/每週趨勢圖 — 全部使用 `localStorage`，無 Cookie
-- **統計儀表板** — 選擇性啟用的密碼保護 `/stats` 頁面，透過 Upstash Redis 實現伺服器端點擊追蹤；30 天趨勢圖、逐連結統計、Umami/Plausible 嵌入 — 完全透過環境變數選擇性啟用
+- **分析** — 公開頁面可使用 Plausible 或 Umami。管理後台的點擊紀錄寫入 Upstash Redis，不依賴分析腳本。
 - **SEO** — 動態 meta/OG/Twitter 標籤、JSON-LD Person schema、hreflang、canonical 連結
 - **無障礙** — skip link、語意化 HTML、ARIA 標籤、`aria-live` 回饋、WCAG 對比度；E2E 中包含 axe-core 無障礙稽核
 - **錯誤邊界** — 頂層崩潰備援 UI，附重新載入按鈕
@@ -84,7 +83,7 @@ src/
   siteConfig.ts            型別定義與建置時期預設值
   App.tsx                  主頁面 UI
   main.tsx                 進入點（包裹於 ErrorBoundary）
-  router.tsx               客戶端路由（/、/stats）
+  router.tsx               客戶端路由（/、/manage）
   SocialIcon.tsx           品牌圖示元件（simple-icons + 自動偵測）
   iconRegistry.ts          48 平台圖示註冊表，URL → 圖示自動匹配
   i18n.ts                  語言偵測與 i18n 設定
@@ -92,25 +91,30 @@ src/
   components/
     ErrorBoundary.tsx      崩潰備援 UI
     SEO.tsx                Meta 標籤、OG 圖片、JSON-LD
-    LinkHeatmap.tsx        點擊熱力圖與趨勢圖表
+    LinkHeatmap.tsx        Redis 與 Umami 點擊對照
   hooks/
     useSiteConfig.ts       執行階段 JSON 設定載入器（擷取 siteConfig.json）
     useAnalytics.ts        分析腳本載入器與事件追蹤
-    useLinkClickStats.ts   localStorage 點擊計數器與時間軸
-    useStats.ts            伺服器端統計認證與資料 hook
+    useStats.ts            後台登入、Redis 統計與 Umami 報表
+  lib/
+    recordClick.ts         以 sendBeacon 紀錄點擊
+    clickCsv.ts            匯出 CSV
   pages/
-    StatsPage.tsx          密碼保護的統計儀表板
+    ManagePage.tsx         /manage 密碼保護的管理後台
   locales/                 翻譯檔案（en / ru / zh-TW）
   test/                    Vitest 單元與元件測試
 api/
   og.ts                    Serverless Function — 動態產生 OG 圖片（Web Standard API）
   stats/
-    _handlers.ts           跨平台請求處理器
+    _handlers.ts           auth、record、data 與 Umami 處理器
     _redis.ts              Upstash Redis REST 輔助函式
+    _umami.ts              伺服器端 Umami 用戶端
+    _dates.ts              時區日界
     _token.ts              HMAC 權杖認證（Web Crypto API）
     auth.ts                登入端點
     check.ts               功能偵測端點
-    data.ts                統計資料端點
+    data.ts                Redis 點擊報表
+    umami.ts               Umami 報表
     record.ts              點擊紀錄端點
 e2e/
   app.spec.ts              Playwright E2E 測試
@@ -165,26 +169,31 @@ scripts/
 // Umami
 "analytics": { "provider": "umami", "umamiWebsiteId": "xxxxxxxx-…" }
 
-// 停用（移除 "analytics" 鍵 — 本機熱力圖仍可運作）
+// 停用（移除 "analytics" 鍵）
 ```
 
 ### OG 圖片
 
 OG 圖片透過 `/api/og` **動態產生**，每次請求時讀取 `siteConfig.json`，無需手動重新產生。靜態備援圖片也會在 `pnpm build` 時產生。
 
-### 統計儀表板（選擇性啟用）
+### 管理後台（選擇性啟用）
 
-`/stats` 統計儀表板為**完全選擇性啟用**。設定以下環境變數即可啟用：
+後台位於 `/manage`，公開頁面沒有連到它。頁面送出 `noindex`，並在 `robots.txt` 禁止索引。環境變數見 `.env.example`：
 
 | 變數 | 說明 |
 |---|---|
-| `STATS_PASSWORD` | 存取統計儀表板的密碼 |
-| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST 端點 URL |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST 認證權杖 |
+| `STATS_PASSWORD` | `/manage` 的密碼 |
+| `STATS_TIMEZONE` | 日界使用的 IANA 時區，預設 `Asia/Taipei`。 |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL（[主控台](https://console.upstash.com) → 資料庫 → REST API） |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST 權杖 |
+| `UMAMI_WEBSITE_ID` | 網站 id。未設定時改用 `siteConfig.json` 的 `umamiWebsiteId`。 |
+| `UMAMI_API_URL` | Umami 來源位址。留空則使用雲端 `https://api.umami.is`。 |
+| `UMAMI_API_KEY` | 雲端或自架的 API 金鑰。雲端：Settings → API keys。 |
+| `UMAMI_USERNAME` / `UMAMI_PASSWORD` | 沒有 API 金鑰時的自架登入。工作階段權杖只留在伺服器。 |
 
-三個變數皆設定時，所有連結將自動啟用點擊追蹤，頁尾也會出現「統計」連結。任一變數缺少時，此功能完全隱藏 — 不會有額外請求或 UI 變動。
+同時設定 `STATS_PASSWORD` 與兩個 Upstash 變數後才會紀錄點擊。首頁以 `navigator.sendBeacon`（或 `keepalive` 的 `fetch`）送出 `POST /api/stats/record`。只有在有網站 id，且有 API 金鑰或帳號密碼時，才會顯示 Umami 區塊。Redis 點擊與 Umami 的 Link Click 並排：Redis 含被廣告阻擋程式擋下 Umami 的訪客。
 
-統計 API 使用 Web Standard `Request`/`Response` 與 Web Crypto API，可在 **Vercel Edge、Cloudflare Workers、Netlify Edge Functions** 及其他支援 Web Platform API 的平台上運行。
+API 使用 Web `Request` / `Response` 與 Web Crypto，可在 Vercel Edge 執行。Upstash 免費方案（256 MB、每月 500,000 個指令）足夠：一次成功的點擊約 5 個指令，載入後台讀取兩個 hash。
 
 ## 部署
 

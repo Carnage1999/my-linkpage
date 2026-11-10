@@ -13,6 +13,12 @@ customHeaders:
         value: 'strict-origin-when-cross-origin'
       - key: 'Permissions-Policy'
         value: 'camera=(), microphone=(), geolocation=()'
+  - pattern: '/manage'
+    headers:
+      - key: 'X-Robots-Tag'
+        value: 'noindex, nofollow'
+      - key: 'Cache-Control'
+        value: 'no-cache'
   - pattern: '/assets/**'
     headers:
       - key: 'Cache-Control'

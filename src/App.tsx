@@ -19,6 +19,8 @@ import { SocialIcon } from './SocialIcon'
 import { SEO } from './components/SEO'
 import { useAnalytics } from './hooks/useAnalytics'
 import { useSiteConfig } from './hooks/useSiteConfig'
+import { useStatsEnabled } from './hooks/useStats'
+import { recordLinkClick } from './lib/recordClick'
 
 interface LanguageOption {
   code: AppLanguageCode
@@ -134,6 +136,7 @@ export default function App() {
   const [isDark, setIsDark] = useState<boolean>(getInitialTheme)
   const copyTimeoutRef = useRef<number | null>(null)
   const { trackLinkClick } = useAnalytics(analytics)
+  const statsEnabled = useStatsEnabled()
   const activeLanguage =
     LANGUAGES.find(
       ({ code }) => code === (i18n.resolvedLanguage ?? i18n.language)
@@ -479,6 +482,7 @@ export default function App() {
                         aria-label={`${social.label} (${String(t('opensInNewTab'))})`}
                         onClick={() => {
                           trackLinkClick(social.id, social.label, social.url)
+                          if (statsEnabled) recordLinkClick(social.id)
                         }}
                       />
                       <span className="pointer-events-none flex size-14 shrink-0 items-center justify-center rounded-[1.25rem] bg-slate-950 text-white shadow-lg shadow-slate-900/20 transition group-hover:scale-105 group-hover:rotate-3 dark:bg-white dark:text-slate-950">

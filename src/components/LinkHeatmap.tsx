@@ -1,5 +1,4 @@
 import { m, useReducedMotion } from 'motion/react'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Area,
@@ -10,180 +9,142 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { useLinkClickStats } from '../hooks/useLinkClickStats'
-import type { SocialLinkEntry } from '../siteConfig'
+import type { DailyClicks } from '../../api/stats/_aggregate'
 
-type TimeRange = 'daily' | 'weekly'
+export interface HeatmapLink {
+  id: string
+  label: string
+  redisClicks: number
+  umamiClicks: number | null
+}
 
-/**
- * Renders a heat-bar per link, a trend chart (daily/weekly), and a reset button.
- */
-export function LinkHeatmap({ socials }: { socials: readonly SocialLinkEntry[] }) {
+export function LinkHeatmap({
+  links,
+  daily,
+  showUmami,
+}: {
+  links: readonly HeatmapLink[]
+  daily: readonly DailyClicks[]
+  showUmami: boolean
+}) {
   const { t } = useTranslation()
-  const {
-    stats,
-    totalClicks,
-    getIntensity,
-    resetStats,
-    dailyData,
-    weeklyData,
-  } = useLinkClickStats()
   const prefersReduced = useReducedMotion()
-  const [range, setRange] = useState<TimeRange>('daily')
-  const [showConfirm, setShowConfirm] = useState(false)
-
-  if (totalClicks === 0) return null
-
-  const chartData = range === 'daily' ? dailyData : weeklyData
-
-  function handleReset() {
-    resetStats()
-    setShowConfirm(false)
-  }
+  const maxClicks = Math.max(...links.map((link) => link.redisClicks), 0)
+  const chartData = daily.map((day) => ({
+    date: day.date,
+    clicks: Object.values(day.clicks).reduce((sum, count) => sum + count, 0),
+  }))
 
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-200/60 bg-slate-50/60 p-4 dark:border-slate-800/60 dark:bg-slate-900/40">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 rounded-2xl border border-slate-200/60 bg-white p-4 dark:border-slate-800/60 dark:bg-slate-900/80">
+      <div className="flex items-end justify-between gap-3">
         <p className="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
           {String(t('clickHeatmap'))}
         </p>
-
-        {showConfirm ? (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleReset}
-              className="rounded-lg bg-red-500 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-red-600"
-            >
-              {String(t('confirmReset'))}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowConfirm(false)}
-              className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800"
-            >
-              {String(t('cancel'))}
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowConfirm(true)}
-            className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-500 transition hover:border-red-300 hover:text-red-500 dark:border-slate-600 dark:text-slate-400 dark:hover:border-red-400 dark:hover:text-red-400"
-          >
-            {String(t('resetStats'))}
-          </button>
-        )}
-      </div>
-
-      <ul className="space-y-2" aria-label={String(t('clickHeatmap'))}>
-        {socials.map((social) => {
-          const count = stats[social.id] ?? 0
-          const intensity = getIntensity(social.id)
-
-          return (
-            <li key={social.id} className="flex items-center gap-3">
-              <span className="w-20 truncate text-xs font-medium text-slate-700 dark:text-slate-300">
-                {social.label}
-              </span>
-
-              <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200/60 dark:bg-slate-800/60">
-                <m.div
-                  className="absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-amber-400 to-rose-500 dark:from-cyan-400 dark:to-indigo-500"
-                  initial={false}
-                  animate={{ width: `${Math.max(intensity * 100, count > 0 ? 4 : 0)}%` }}
-                  transition={
-                    prefersReduced
-                      ? { duration: 0 }
-                      : { type: 'spring', stiffness: 300, damping: 30 }
-                  }
-                />
-              </div>
-
-              <span className="w-8 text-right font-mono text-xs text-slate-500 tabular-nums dark:text-slate-400">
-                {count}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-
-      {/* Trend chart */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
-            {String(t('clickTrend'))}
+        {showUmami ? (
+          <p className="max-w-md text-right text-xs text-slate-500 dark:text-slate-400">
+            {String(t('manageCompareNote'))}
           </p>
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => setRange('daily')}
-              className={`rounded-md px-2 py-0.5 text-xs font-medium transition ${
-                range === 'daily'
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                  : 'text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800'
-              }`}
-            >
-              {String(t('daily'))}
-            </button>
-            <button
-              type="button"
-              onClick={() => setRange('weekly')}
-              className={`rounded-md px-2 py-0.5 text-xs font-medium transition ${
-                range === 'weekly'
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                  : 'text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800'
-              }`}
-            >
-              {String(t('weekly'))}
-            </button>
-          </div>
-        </div>
-
-        <div className="h-40 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-              <defs>
-                <linearGradient id="clickGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" className="[stop-color:var(--color-amber-400)] dark:[stop-color:var(--color-cyan-400)]" stopOpacity={0.3} />
-                  <stop offset="95%" className="[stop-color:var(--color-amber-400)] dark:[stop-color:var(--color-cyan-400)]" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-800" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 10 }}
-                className="fill-slate-400 dark:fill-slate-500"
-                tickFormatter={(v: string) => v.slice(5)}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontSize: 10 }}
-                className="fill-slate-400 dark:fill-slate-500"
-              />
-              <Tooltip
-                contentStyle={{
-                  fontSize: 12,
-                  borderRadius: 8,
-                  border: 'none',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="clicks"
-                className="stroke-amber-500 dark:stroke-cyan-400"
-                strokeWidth={2}
-                fill="url(#clickGradient)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        ) : null}
       </div>
 
-      <p className="text-right text-xs text-slate-400 dark:text-slate-500">
-        {String(t('totalClicks'))}: {totalClicks}
-      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-slate-200/60 text-xs tracking-wide text-slate-500 uppercase dark:border-slate-800/60 dark:text-slate-400">
+              <th className="p-2 font-semibold">{String(t('manageLink'))}</th>
+              <th className="p-2 text-right font-semibold">{String(t('manageRedis'))}</th>
+              {showUmami ? (
+                <th className="p-2 text-right font-semibold">{String(t('manageUmami'))}</th>
+              ) : null}
+            </tr>
+          </thead>
+          <tbody>
+            {links.map((link) => {
+              const width = maxClicks === 0 ? 0 : (link.redisClicks / maxClicks) * 100
+              return (
+                <tr key={link.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800/40">
+                  <td className="px-2 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="w-24 shrink-0 truncate font-medium text-slate-900 dark:text-white">
+                        {link.label}
+                      </span>
+                      <div className="relative hidden h-2.5 min-w-16 flex-1 overflow-hidden rounded-full bg-slate-200/60 sm:block dark:bg-slate-800/60">
+                        <m.div
+                          className="absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-amber-400 to-rose-500 dark:from-cyan-400 dark:to-indigo-500"
+                          initial={false}
+                          animate={{ width: `${Math.max(width, link.redisClicks > 0 ? 4 : 0)}%` }}
+                          transition={
+                            prefersReduced
+                              ? { duration: 0 }
+                              : { type: 'spring', stiffness: 300, damping: 30 }
+                          }
+                        />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-2 py-3 text-right font-mono text-slate-700 tabular-nums dark:text-slate-200">
+                    {link.redisClicks.toLocaleString()}
+                  </td>
+                  {showUmami ? (
+                    <td className="px-2 py-3 text-right font-mono text-slate-700 tabular-nums dark:text-slate-200">
+                      {(link.umamiClicks ?? 0).toLocaleString()}
+                    </td>
+                  ) : null}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="h-40 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+            <defs>
+              <linearGradient id="clickGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="5%"
+                  className="[stop-color:var(--color-amber-400)] dark:[stop-color:var(--color-cyan-400)]"
+                  stopOpacity={0.3}
+                />
+                <stop
+                  offset="95%"
+                  className="[stop-color:var(--color-amber-400)] dark:[stop-color:var(--color-cyan-400)]"
+                  stopOpacity={0}
+                />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-800" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10 }}
+              className="fill-slate-400 dark:fill-slate-500"
+              tickFormatter={(value: string) => value.slice(5)}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 10 }}
+              className="fill-slate-400 dark:fill-slate-500"
+            />
+            <Tooltip
+              contentStyle={{
+                fontSize: 12,
+                borderRadius: 8,
+                border: 'none',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="clicks"
+              className="stroke-amber-500 dark:stroke-cyan-400"
+              strokeWidth={2}
+              fill="url(#clickGradient)"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   )
 }

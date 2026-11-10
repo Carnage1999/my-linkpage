@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /manage
 
 Sitemap: https://link.w1999.me/sitemap.xml

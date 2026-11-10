@@ -1,0 +1,101 @@
+import { expect, test, type Page } from '@playwright/test'
+
+const DATA = {
+  timezone: 'Asia/Taipei',
+  days: 30,
+  totals: { github: 9, retired: 4 },
+  periodTotals: { github: 5, retired: 1 },
+  previousPeriodTotals: { github: 2 },
+  daily: [{ date: '2026-11-10', clicks: { github: 5 } }],
+  configuredIds: ['github'],
+  removed: [{ id: 'retired', total: 4, period: 1 }],
+}
+
+const UMAMI = {
+  configured: true,
+  pageviews: 20,
+  visitors: 8,
+  visits: 10,
+  bounces: 3,
+  totaltime: 100,
+  bounceRate: 0.3,
+  avgDuration: 10,
+  previous: { pageviews: 10, visitors: 4, visits: 5, bounces: 2, totaltime: 40, bounceRate: 0.4, avgDuration: 8 },
+  referrers: [{ name: 'github.com', count: 4 }],
+  countries: [{ name: 'TW', count: 6 }],
+  devices: [{ name: 'desktop', count: 7 }],
+  browsers: [{ name: 'chrome', count: 5 }],
+  linkClicks: { github: 2 },
+  pageviewsSeries: [{ date: '2026-11-10', pageviews: 20, visitors: 8 }],
+}
+
+async function installApi(page: Page, dataStatus = 200) {
+  await page.route('**/api/stats/auth', async (route) => {
+    const body = route.request().postDataJSON() as { password?: string }
+    if (body.password === 'correct') {
+      await route.fulfill({ json: { token: 'test-token' } })
+      return
+    }
+    await route.fulfill({ status: 401, json: { error: 'Invalid password' } })
+  })
+  await page.route('**/api/stats/data**', async (route) => {
+    if (route.request().headers().authorization !== 'Bearer test-token') {
+      await route.fulfill({ status: 401, json: { error: 'Invalid or expired token' } })
+      return
+    }
+    await route.fulfill({ status: dataStatus, json: dataStatus === 200 ? DATA : { error: 'Invalid or expired token' } })
+  })
+  await page.route('**/api/stats/umami**', async (route) => {
+    if (route.request().headers().authorization !== 'Bearer test-token') {
+      await route.fulfill({ status: 401, json: { error: 'Invalid or expired token' } })
+      return
+    }
+    await route.fulfill({ json: UMAMI })
+  })
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('i18nextLng', 'en')
+    localStorage.setItem('theme', 'light')
+  })
+})
+
+test('shows the login form only at /manage', async ({ page }) => {
+  await page.goto('/manage')
+  await expect(page.getByRole('heading', { name: 'Admin' })).toBeVisible()
+  await expect(page.getByLabel('Password')).toBeVisible()
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, nofollow')
+
+  await page.goto('/stats')
+  await expect(page.getByLabel('Password')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Admin' })).toHaveCount(0)
+})
+
+test('logs in with the mocked API and shows Redis beside Umami', async ({ page }) => {
+  await installApi(page)
+  await page.goto('/manage')
+  await page.getByLabel('Password').fill('wrong')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByText('That password is incorrect.')).toBeVisible()
+
+  await page.getByLabel('Password').fill('correct')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByText('Clicks this period')).toBeVisible()
+  await expect(page.getByText('Redis counts clicks that reach this server')).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: 'Redis' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: 'Umami' })).toBeVisible()
+  await expect(page.getByText('GitHub', { exact: true })).toBeVisible()
+  await expect(page.getByText('retired')).toBeVisible()
+  await expect(page.getByText('Referrers')).toBeVisible()
+  await expect(page.getByText('github.com')).toBeVisible()
+})
+
+test('returns to the login form when the session is rejected', async ({ page }) => {
+  await installApi(page, 401)
+  await page.goto('/manage')
+  await page.getByLabel('Password').fill('correct')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByLabel('Password')).toBeVisible()
+  await expect(page.getByText('Clicks this period')).toHaveCount(0)
+})

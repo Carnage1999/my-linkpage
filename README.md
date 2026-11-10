@@ -15,8 +15,7 @@ A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind
 - **Dark / light mode** — follows system preference; user toggle persists via `localStorage`
 - **Animations** — Motion entrance transitions with `prefers-reduced-motion` support
 - **Self-hosted fonts** — Manrope & Space Grotesk variable fonts via `@fontsource-variable`
-- **Analytics & click heatmap** — Plausible / Umami (configurable); local per-link click heatmap with daily/weekly trend chart — all `localStorage`, no cookies
-- **Stats dashboard** — optional password-protected `/stats` page with server-side click tracking via Upstash Redis; 30-day trend chart, per-link breakdown, Umami/Plausible embed — fully opt-in via environment variables
+- **Analytics** — Plausible or Umami on the public page. Click recording for the admin dashboard uses Upstash Redis and does not depend on the analytics script.
 - **SEO** — dynamic meta/OG/Twitter tags, JSON-LD Person schema, hreflang, canonical link
 - **Accessibility** — skip link, semantic HTML, ARIA labels, `aria-live` feedback, WCAG contrast; dedicated axe-core audit in E2E
 - **Error boundary** — top-level crash fallback with reload button
@@ -84,7 +83,7 @@ src/
   siteConfig.ts            Type definitions and build-time fallback defaults
   App.tsx                  Main page UI
   main.tsx                 Entry point (wrapped in ErrorBoundary)
-  router.tsx               Client-side routing (/, /stats)
+  router.tsx               Client-side routing (/, /manage)
   SocialIcon.tsx           Brand icon component (simple-icons + auto-detection)
   iconRegistry.ts          48-platform icon registry with URL → icon auto-matching
   i18n.ts                  Language detection and i18n setup
@@ -92,25 +91,30 @@ src/
   components/
     ErrorBoundary.tsx      Crash fallback UI
     SEO.tsx                Meta tags, OG image, JSON-LD
-    LinkHeatmap.tsx        Click heatmap and trend chart
+    LinkHeatmap.tsx        Redis and Umami click comparison
   hooks/
     useSiteConfig.ts       Runtime JSON config loader (fetches siteConfig.json)
     useAnalytics.ts        Analytics script loader and event tracking
-    useLinkClickStats.ts   localStorage click counter and timeline
-    useStats.ts            Server-side stats auth and data hooks
+    useStats.ts            Dashboard auth, Redis stats, and Umami report
+  lib/
+    recordClick.ts         sendBeacon click recording
+    clickCsv.ts            Dashboard CSV export
   pages/
-    StatsPage.tsx          Password-protected stats dashboard
+    ManagePage.tsx         Password-protected admin dashboard at /manage
   locales/                 Translation files (en / ru / zh-TW)
   test/                    Vitest unit and component tests
 api/
   og.ts                    Serverless function — dynamic OG image (Web Standard API)
   stats/
-    _handlers.ts           Platform-agnostic request handlers
+    _handlers.ts           Request handlers (auth, record, data, Umami)
     _redis.ts              Upstash Redis REST helpers
+    _umami.ts              Server-side Umami client
+    _dates.ts              Timezone day boundaries
     _token.ts              HMAC token auth (Web Crypto API)
     auth.ts                Login endpoint
     check.ts               Feature-detection endpoint
-    data.ts                Stats data endpoint
+    data.ts                Redis click report
+    umami.ts               Umami report
     record.ts              Click recording endpoint
 e2e/
   app.spec.ts              Playwright E2E tests
@@ -165,26 +169,31 @@ Configure in `public/siteConfig.json`:
 // Umami
 "analytics": { "provider": "umami", "umamiWebsiteId": "xxxxxxxx-…" }
 
-// Disable (omit the "analytics" key — local heatmap still works)
+// Disable (omit the "analytics" key)
 ```
 
 ### OG image
 
 Generated **dynamically** at `/api/og` by reading `siteConfig.json` at request time — no manual regeneration needed. A static fallback is also generated on `pnpm build`.
 
-### Stats dashboard (optional)
+### Admin dashboard (optional)
 
-The stats dashboard at `/stats` is **fully opt-in**. To enable it, set the following environment variables:
+The dashboard lives at `/manage` and is not linked from the public page. It sends `noindex` and is disallowed in `robots.txt`. Set these environment variables (see `.env.example`):
 
 | Variable | Description |
 |---|---|
-| `STATS_PASSWORD` | Password to access the stats dashboard |
-| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST endpoint URL |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST auth token |
+| `STATS_PASSWORD` | Password for `/manage` |
+| `STATS_TIMEZONE` | IANA day boundary. Defaults to `Asia/Taipei`. |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL ([console](https://console.upstash.com) → database → REST API) |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token |
+| `UMAMI_WEBSITE_ID` | Website id. Falls back to `umamiWebsiteId` in `siteConfig.json`. |
+| `UMAMI_API_URL` | Umami origin. Empty uses Umami Cloud (`https://api.umami.is`). |
+| `UMAMI_API_KEY` | Cloud or self-hosted API key. Cloud: Settings → API keys. |
+| `UMAMI_USERNAME` / `UMAMI_PASSWORD` | Self-hosted login, used only when no API key is set. The session token stays on the server. |
 
-When all three variables are set, click tracking is automatically enabled for all links, and a "Stats" link appears in the page footer. When any variable is missing, the feature is completely hidden — no extra requests, no UI changes.
+`STATS_PASSWORD` plus both Upstash variables turn on click recording. The homepage sends one `POST /api/stats/record` per click with `navigator.sendBeacon` (or `fetch` keepalive). Umami sections appear only when a website id and either an API key or a username and password are set. Redis click counts and Umami Link Click counts are shown side by side: Redis includes visitors who block the Umami script.
 
-The stats API uses Web Standard `Request`/`Response` and Web Crypto API, so it works on **Vercel Edge, Cloudflare Workers, Netlify Edge Functions**, and other platforms supporting the Web Platform APIs.
+The API uses Web `Request` / `Response` and Web Crypto, including on Vercel Edge. The free Upstash database (256 MB, 500,000 commands/month) is the intended size: an accepted click is one script of about 5 commands, and a dashboard load reads two hashes. See the pull request for the monthly estimate.
 
 ## Deployment
 
