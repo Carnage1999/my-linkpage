@@ -44,11 +44,11 @@
 | 測試 | Vitest 5、Testing Library、Playwright、axe-core |
 | 程式碼檢查 | ESLint 10、Prettier |
 | 套件管理器 | pnpm 12（在 `packageManager` 釘選為 `pnpm@12.18.0`） |
-| CI | GitHub Actions（Node 22） |
+| CI | GitHub Actions（Node 24） |
 
 ## 快速開始
 
-需要 Node.js 22（CI 使用的版本）。pnpm 版本釘選在 `package.json` 的 `packageManager`。Node 22 內建的 Corepack 會安裝這個確切版本：
+需要 Node.js 24（CI 使用的版本）。Node.js 22.22 以上也符合目前工具鏈的需求。pnpm 版本釘選在 `package.json` 的 `packageManager`。這些 Node 版本內建的 Corepack 會安裝這個確切版本：
 
 ```bash
 corepack enable
