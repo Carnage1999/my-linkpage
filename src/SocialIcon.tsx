@@ -1,15 +1,16 @@
-import { FALLBACK_ICON_PATH, ICON_MAP } from './iconRegistry'
+import { FALLBACK_ICON_PATH } from './icons/paths'
+import { safeSvgPath } from './lib/safeUrl'
 
 export function SocialIcon({
-  slug,
+  path,
   className = 'size-5',
 }: {
-  slug?: string
+  path?: string
   className?: string
 }) {
-  const icon = slug ? ICON_MAP[slug] : undefined
+  const drawn = safeSvgPath(path)
 
-  if (icon) {
+  if (drawn) {
     return (
       <svg
         viewBox="0 0 24 24"
@@ -18,12 +19,11 @@ export function SocialIcon({
         aria-hidden="true"
         focusable="false"
       >
-        <path d={icon.path} />
+        <path d={drawn} />
       </svg>
     )
   }
 
-  // Fallback: generic link icon
   return (
     <svg
       viewBox="0 0 24 24"

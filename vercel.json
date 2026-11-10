@@ -1,5 +1,10 @@
 {
   "installCommand": "corepack enable && corepack install && pnpm install --frozen-lockfile",
+  "functions": {
+    "api/og.js": {
+      "includeFiles": "api/resvgjs.linux-x64-gnu.node"
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -31,6 +36,19 @@
       ]
     },
     {
+      "source": "/manage",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
       "source": "/assets/(.*)",
       "headers": [
         {
@@ -40,7 +58,7 @@
       ]
     },
     {
-      "source": "/((?!assets/).*)",
+      "source": "/((?!assets/|api/).*)",
       "headers": [
         {
           "key": "Cache-Control",

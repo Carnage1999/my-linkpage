@@ -2,8 +2,8 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import App from './App'
 
-const StatsPage = lazy(() =>
-  import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })),
+const ManagePage = lazy(() =>
+  import('./pages/manage/ManagePage').then((module) => ({ default: module.ManagePage })),
 )
 
 function Spinner() {
@@ -20,10 +20,10 @@ export function AppRouter() {
       <Routes>
         <Route path="/" element={<App />} />
         <Route
-          path="/stats"
+          path="/manage"
           element={
             <Suspense fallback={<Spinner />}>
-              <StatsPage />
+              <ManagePage />
             </Suspense>
           }
         />

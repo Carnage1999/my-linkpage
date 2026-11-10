@@ -1,18 +1,39 @@
 /**
- * Serverless Function — generates an Open Graph image (1200×630 PNG)
- * dynamically by reading the current /siteConfig.json at request time.
+ * Node.js Function — generates an Open Graph image (1200×630 PNG)
+ * from the runtime site config, falling back to public/siteConfig.json.
  *
  * Endpoint:  GET /api/og
  *
- * Uses Web Standard Request/Response — works on Vercel Edge, Cloudflare,
- * Netlify, and any platform supporting @resvg/resvg-js.
- *
- * This means the OG image always reflects the latest config —
- * no redeploy needed when social links change.
+ * The renderer is a native addon, so the deployed file stays on the Node.js
+ * runtime. Vercel does not bundle this handler's TypeScript imports, which
+ * is why scripts/bundle-og.ts emits api/og.js. The glibc binary is copied
+ * next to @resvg/resvg-js so that package's own require can see it.
  */
 
-import { Resvg } from '@resvg/resvg-js'
+import { createRequire } from 'node:module'
 import satori from 'satori'
+import { shareSubtitle } from '../../src/i18n/homepage'
+import { SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE } from '../stats/_cache'
+import { readRuntimeSite } from '../stats/_site-store'
+
+const nativeRequire = createRequire(import.meta.url)
+
+function loadResvg(): typeof import('@resvg/resvg-js') {
+  if (process.platform !== 'linux' || process.arch !== 'x64') {
+    return nativeRequire('@resvg/resvg-js') as typeof import('@resvg/resvg-js')
+  }
+  const binding = nativeRequire('./resvgjs.linux-x64-gnu.node') as {
+    Resvg: new (svg: string, options?: string) => InstanceType<typeof import('@resvg/resvg-js').Resvg>
+  }
+  class Resvg extends binding.Resvg {
+    constructor(svg: string, options?: object) {
+      super(svg, options ? JSON.stringify(options) : undefined)
+    }
+  }
+  return { Resvg } as typeof import('@resvg/resvg-js')
+}
+
+const { Resvg } = loadResvg()
 
 // ─── Types (mirroring siteConfig.ts) ─────────────────────
 
@@ -21,19 +42,6 @@ interface SocialLinkEntry {
   label: string
   url: string
   iconSlug?: string
-}
-
-interface SiteMetadata {
-  name: string
-  tagline: string
-  domain: string
-  twitterHandle?: string
-}
-
-interface SiteConfig {
-  site?: SiteMetadata
-  profile: { avatar: string }
-  socials: SocialLinkEntry[]
 }
 
 // ─── Constants ───────────────────────────────────────────
@@ -77,10 +85,8 @@ async function loadFonts() {
 
 // ─── Config loader ───────────────────────────────────────
 
-async function loadConfig(origin: string): Promise<SiteConfig> {
-  const res = await fetch(`${origin}/siteConfig.json`, { cache: 'no-cache' })
-  if (!res.ok) throw new Error(`Config fetch failed: ${res.status}`)
-  return res.json() as Promise<SiteConfig>
+async function loadConfig() {
+  return readRuntimeSite({ fresh: true })
 }
 
 // ─── OG Layout (satori JSX-like object tree) ─────────────
@@ -279,15 +285,52 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
 
 // ─── Handler ─────────────────────────────────────────────
 
-export default async function handler(request: Request): Promise<Response> {
-  try {
-    const url = new URL(request.url)
-    const origin = url.origin
+type HeaderSource = { get?: (name: string) => string | null } | Record<string, string | string[] | undefined>
+type NodeResponse = {
+  statusCode: number
+  setHeader: (name: string, value: string) => void
+  end: (body?: Uint8Array | string) => void
+}
 
-    const [config, fonts] = await Promise.all([loadConfig(origin), loadFonts()])
+function headerValue(headers: HeaderSource | undefined, name: string): string | null {
+  if (!headers) return null
+  if (typeof (headers as { get?: unknown }).get === 'function') return (headers as { get: (name: string) => string | null }).get(name)
+  const value = (headers as Record<string, string | string[] | undefined>)[name.toLowerCase()]
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
+
+function pageUrl(request: { url?: string; headers?: HeaderSource }): URL {
+  const raw = request.url || '/'
+  try {
+    return new URL(raw)
+  } catch {
+    const host = headerValue(request.headers, 'x-forwarded-host') ?? headerValue(request.headers, 'host') ?? 'localhost'
+    const proto = headerValue(request.headers, 'x-forwarded-proto') ?? 'https'
+    return new URL(raw, `${proto}://${host}`)
+  }
+}
+
+function isNodeResponse(value: unknown): value is NodeResponse {
+  return !!value && typeof (value as NodeResponse).setHeader === 'function' && typeof (value as NodeResponse).end === 'function'
+}
+
+function send(response: unknown, status: number, headers: Record<string, string>, body: Uint8Array | string): Response | undefined {
+  if (isNodeResponse(response)) {
+    response.statusCode = status
+    for (const [key, value] of Object.entries(headers)) response.setHeader(key, value)
+    response.end(body)
+    return undefined
+  }
+  return new Response(body as BodyInit, { status, headers })
+}
+
+export default async function handler(request: Request, response?: unknown): Promise<Response | undefined> {
+  try {
+    const [config, fonts] = await Promise.all([loadConfig(), loadFonts()])
 
     const name = config.site?.name ?? 'Han-che Wang'
-    const tagline = config.site?.tagline ?? 'Links & Socials'
+    const requested = pageUrl(request).searchParams.get('lng')
+    const tagline = shareSubtitle({ requested, i18n: config.i18n })
     const domain = config.site?.domain ?? 'link.w1999.me'
     const markup = buildMarkup(config.socials, name, tagline, domain)
 
@@ -305,16 +348,16 @@ export default async function handler(request: Request): Promise<Response> {
     const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: WIDTH } })
     const png = resvg.render().asPng()
 
-    return new Response(new Uint8Array(png), {
-      status: 200,
-      headers: {
-        'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600',
-      },
-    })
+    return send(response, 200, {
+      'Content-Type': 'image/png',
+      'Cache-Control': SITE_BROWSER_CACHE,
+      'CDN-Cache-Control': SITE_CDN_CACHE,
+      'Vercel-CDN-Cache-Control': SITE_CDN_CACHE,
+      'Vercel-Cache-Tag': SITE_CACHE_TAG,
+    }, new Uint8Array(png))
   } catch (err) {
     console.error('OG generation failed:', err)
-    // Fallback: redirect to static OG image
-    return Response.redirect(new URL('/og-image.png', request.url).href, 302)
+    const location = new URL('/og-image.png', pageUrl(request)).href
+    return send(response, 302, { Location: location }, '')
   }
 }

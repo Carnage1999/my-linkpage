@@ -1,0 +1,79 @@
+/**
+ * GET /api/site-config — public site content plus non-secret script ids.
+ * PUT /api/site-config — authenticated replace.
+ * POST /api/site-config — { action: "import" | "reset" } writes the repo seed.
+ *
+ * Stays on the Edge runtime. The full simple-icons package is over the 1 MB
+ * Edge limit, so this function only stores the SVG path that /manage resolved
+ * at save time. Vercel's CDN caches the GET. A hit does not call Redis.
+ */
+
+import { etagMatches, publicCdnHeaders, purgeSiteConfigCache } from './stats/_cache'
+import { json, requireStatsToken } from './stats/_http'
+import { bumpNamedLimit, hashClientIp, isRedisConfigured } from './stats/_redis'
+import { SiteValidationError, validateSiteConfig } from './stats/_site-schema'
+import { readRuntimeSite, seedSiteConfig, writeRuntimeSite } from './stats/_site-store'
+import { isStatsEnabled } from './stats/_token'
+import { __resetScriptCache, scriptPayload } from './stats/scripts'
+
+export const config = { runtime: 'edge' }
+
+function etag(version: number, scripts: unknown): string {
+  const payload = `${version}:${JSON.stringify(scripts)}`
+  let hash = 2166136261
+  for (let i = 0; i < payload.length; i += 1) {
+    hash ^= payload.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `"site-${(hash >>> 0).toString(16)}"`
+}
+
+export default async function handler(request: Request): Promise<Response> {
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
+
+  if (request.method === 'GET') {
+    const site = await readRuntimeSite({ fresh: true })
+    const scripts = await scriptPayload({ fresh: true })
+    const tag = etag(site.version, scripts)
+    if (etagMatches(request.headers.get('if-none-match'), tag)) {
+      return new Response(null, { status: 304, headers: publicCdnHeaders(tag) })
+    }
+    return json({ ...site, scripts }, 200, undefined, publicCdnHeaders(tag))
+  }
+
+  if (!isStatsEnabled()) return json({ error: 'Stats not enabled' }, 501)
+  const denied = await requireStatsToken(request)
+  if (denied) return denied
+  if (!isRedisConfigured()) return json({ error: 'Redis is not configured' }, 501)
+
+  try {
+    const attempts = await bumpNamedLimit('site', await hashClientIp(request))
+    if (attempts > 20) return json({ error: 'Too many attempts' }, 429)
+  } catch (error) {
+    console.error('Site config rate limit error:', error)
+    return json({ error: 'Rate limit unavailable' }, 503)
+  }
+
+  try {
+    const current = await readRuntimeSite()
+    if (request.method === 'POST') {
+      const body = (await request.json()) as { action?: string }
+      if (body.action !== 'import' && body.action !== 'reset') return json({ error: 'Unknown action' }, 400)
+      const next = { ...seedSiteConfig(), version: current.version + 1 }
+      await writeRuntimeSite(next)
+    } else if (request.method === 'PUT') {
+      const next = validateSiteConfig(await request.json(), current.version + 1)
+      await writeRuntimeSite(next)
+    } else {
+      return json({ error: 'Method not allowed' }, 405)
+    }
+    __resetScriptCache()
+    const purge = await purgeSiteConfigCache()
+    const saved = await readRuntimeSite({ fresh: true })
+    return json(saved, 200, 'private, no-store', { 'x-site-purge': purge })
+  } catch (error) {
+    if (error instanceof SiteValidationError) return json({ error: error.message }, 400)
+    console.error('Site config save error:', error)
+    return json({ error: 'Internal error' }, 500)
+  }
+}

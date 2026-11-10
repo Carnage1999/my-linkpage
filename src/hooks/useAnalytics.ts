@@ -1,89 +1,84 @@
-import { useCallback, useEffect, useRef } from 'react'
-import type { AnalyticsConfig } from '../siteConfig'
-
-// ─── Plausible / Umami type augmentations ────────────────
-
-interface PlausibleFn {
-  (event: string, options?: { props?: Record<string, string> }): void
-  q?: unknown[][]
-}
+import { useCallback, useEffect } from 'react'
+import { EMPTY_SCRIPTS, type ScriptBundle } from '../analytics/types'
+import { safeScriptUrl, safeToken } from '../lib/safeUrl'
 
 interface UmamiTracker {
   track(event: string, data?: Record<string, string | number>): void
 }
 
+interface GoatCounter {
+  count(event: { path: string; title?: string; event?: boolean }): void
+}
+
 declare global {
   interface Window {
-    plausible?: PlausibleFn
     umami?: UmamiTracker
+    goatcounter?: GoatCounter
   }
 }
 
-// ─── Script loader (idempotent) ──────────────────────────
+const injected = new Set<string>()
 
-let scriptInjected = false
-
-function injectScript(cfg: AnalyticsConfig | null): void {
-  if (scriptInjected || typeof document === 'undefined' || !cfg) return
-  scriptInjected = true
-
+function appendScript(key: string, setup: (script: HTMLScriptElement) => void): void {
+  if (injected.has(key) || typeof document === 'undefined') return
+  injected.add(key)
   const script = document.createElement('script')
   script.defer = true
-  script.setAttribute('data-cf-beacon', '') // Won't hurt if unused
-
-  if (cfg.provider === 'plausible' && cfg.plausibleDomain) {
-    script.src = cfg.plausibleHost
-      ? `${cfg.plausibleHost}/js/script.js`
-      : 'https://plausible.io/js/script.js'
-    script.setAttribute('data-domain', cfg.plausibleDomain)
-
-    // Stub so calls before script loads are queued
-    window.plausible =
-      window.plausible ??
-      Object.assign(
-        ((...args: unknown[]) => {
-          ;(window.plausible!.q = window.plausible!.q ?? []).push(
-            args as unknown[],
-          )
-        }) as PlausibleFn,
-        { q: [] as unknown[][] },
-      )
-  } else if (cfg.provider === 'umami' && cfg.umamiWebsiteId) {
-    script.src = cfg.umamiHost
-      ? `${cfg.umamiHost}/script.js`
-      : 'https://cloud.umami.is/script.js'
-    script.setAttribute('data-website-id', cfg.umamiWebsiteId)
-  } else {
-    scriptInjected = false
-    return
-  }
-
+  setup(script)
   document.head.appendChild(script)
 }
 
-// ─── Public hook ─────────────────────────────────────────
-
-export function useAnalytics(analytics: AnalyticsConfig | null = null) {
-  const ready = useRef(false)
-
-  useEffect(() => {
-    if (!ready.current && analytics) {
-      injectScript(analytics)
-      ready.current = true
+export function injectScripts(bundle: ScriptBundle): void {
+  if (bundle.umami) {
+    const websiteId = safeToken(bundle.umami.websiteId)
+    const src = safeScriptUrl(bundle.umami.src)
+    if (websiteId && src) {
+      appendScript(`umami:${websiteId}`, (script) => {
+        script.src = src
+        script.setAttribute('data-website-id', websiteId)
+      })
     }
-  }, [analytics])
+  }
+
+  if (bundle.goatcounter) {
+    const endpoint = safeScriptUrl(bundle.goatcounter.endpoint)
+    if (endpoint) {
+      appendScript(`goatcounter:${endpoint}`, (script) => {
+        script.src = 'https://gc.zgo.at/count.js'
+        script.setAttribute('data-goatcounter', endpoint)
+      })
+    }
+  }
+
+  if (bundle.cloudflare) {
+    const token = safeToken(bundle.cloudflare.token)
+    const src = safeScriptUrl('https://static.cloudflareinsights.com/beacon.min.js')
+    if (token && src) {
+      appendScript(`cloudflare:${token}`, (script) => {
+        script.src = src
+        script.setAttribute('data-cf-beacon', JSON.stringify({ token, spa: false }))
+      })
+    }
+  }
+}
+
+export function trackScripts(bundle: ScriptBundle, name: string, props?: Record<string, string>): void {
+  if (bundle.umami) window.umami?.track(name, props)
+  if (bundle.goatcounter && props?.id) {
+    window.goatcounter?.count({ path: `link:${props.id}`, title: props.label ?? name, event: true })
+  }
+}
+
+export function useAnalytics(scripts: ScriptBundle = EMPTY_SCRIPTS) {
+  useEffect(() => {
+    injectScripts(scripts)
+  }, [scripts])
 
   const trackEvent = useCallback(
     (name: string, props?: Record<string, string>) => {
-      if (!analytics) return
-
-      if (analytics.provider === 'plausible') {
-        window.plausible?.(name, props ? { props } : undefined)
-      } else if (analytics.provider === 'umami') {
-        window.umami?.track(name, props)
-      }
+      trackScripts(scripts, name, props)
     },
-    [analytics],
+    [scripts],
   )
 
   const trackLinkClick = useCallback(

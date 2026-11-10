@@ -12,25 +12,16 @@ import {
   m,
   useReducedMotion,
 } from 'motion/react'
-import { startTransition, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { AppLanguageCode } from './i18n'
+import { useEffect, useRef, useState } from 'react'
 import { SocialIcon } from './SocialIcon'
 import { SEO } from './components/SEO'
 import { useAnalytics } from './hooks/useAnalytics'
 import { useSiteConfig } from './hooks/useSiteConfig'
-
-interface LanguageOption {
-  code: AppLanguageCode
-  label: string
-  shortLabel: string
-}
-
-const LANGUAGES = [
-  { code: 'en', label: 'English', shortLabel: 'EN' },
-  { code: 'ru', label: 'Русский', shortLabel: 'РУ' },
-  { code: 'zh-TW', label: '正體中文', shortLabel: '國' },
-] as const satisfies readonly LanguageOption[]
+import { homepageText, type PublicKey } from './i18n/homepage'
+import { detectHomepageLanguage, setUiLanguage, useUiLanguage } from './i18n/language'
+import { safeAvatarUrl } from './lib/safeAvatarUrl'
+import { safeLinkUrl } from './lib/safeUrl'
+import { recordLinkClick, recordPageview, useStatsEnabled } from './hooks/useStats'
 
 type ThemeMode = 'light' | 'dark'
 
@@ -128,22 +119,42 @@ function MoonIcon() {
 }
 
 export default function App() {
-  const { t, i18n } = useTranslation()
-  const { loading, site, profile, analytics, socials, ogImagePath } = useSiteConfig()
+  const { loading, site, profile, scripts, socials, ogImagePath, i18n: homepageI18n } = useSiteConfig()
+  const [uiLanguage] = useUiLanguage()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [isDark, setIsDark] = useState<boolean>(getInitialTheme)
   const copyTimeoutRef = useRef<number | null>(null)
-  const { trackLinkClick } = useAnalytics(analytics)
+  const { trackLinkClick } = useAnalytics(scripts)
+  const statsEnabled = useStatsEnabled()
+  const languages = homepageI18n.languages
+  const enabledCodes = languages.map((language) => language.code).join(',')
+  const detect = homepageI18n.detect
+  const fallback = homepageI18n.fallback
+  useEffect(() => {
+    setUiLanguage(
+      detectHomepageLanguage({
+        languages: enabledCodes.split(',').filter(Boolean).map((code) => ({ code, label: code, shortLabel: code })),
+        fallback,
+        detect,
+        texts: {},
+      }),
+    )
+  }, [enabledCodes, fallback, detect])
   const activeLanguage =
-    LANGUAGES.find(
-      ({ code }) => code === (i18n.resolvedLanguage ?? i18n.language)
-    ) ?? LANGUAGES[0]
+    languages.find((language) => language.code === uiLanguage) ??
+    languages.find((language) => language.code === homepageI18n.fallback) ??
+    languages[0] ?? { code: 'en', label: 'English', shortLabel: 'EN' }
+  const t = (key: PublicKey) => homepageText(homepageI18n, activeLanguage.code, key)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
 
     return undefined
   }, [isDark])
+
+  useEffect(() => {
+    if (statsEnabled) recordPageview()
+  }, [statsEnabled])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -180,15 +191,24 @@ export default function App() {
 
   useEffect(() => {
     try {
-      const lang = i18n.resolvedLanguage ?? i18n.language
-      document.documentElement.lang = lang
-      document.title = String(t('pageTitle'))
+      const pageTitle = homepageText(homepageI18n, activeLanguage.code, 'pageTitle') || 'Wang — Link Page'
+      const description = homepageText(homepageI18n, activeLanguage.code, 'intro')
+      document.documentElement.lang = activeLanguage.code
+      document.title = pageTitle
+      // index.html ships a static title and description for crawlers. React 19
+      // hoists its own tags beside those, so drop the ones that are now stale.
+      for (const node of document.querySelectorAll('title')) {
+        if (node.textContent !== pageTitle) node.remove()
+      }
+      for (const node of document.querySelectorAll('meta[name="description"]')) {
+        if (node.getAttribute('content') !== description) node.remove()
+      }
     } catch {
       return undefined
     }
 
     return undefined
-  }, [i18n.language, i18n.resolvedLanguage, t])
+  }, [activeLanguage.code, homepageI18n])
 
   useEffect(
     () => () => {
@@ -199,16 +219,8 @@ export default function App() {
     []
   )
 
-  const changeLanguage = (languageCode: AppLanguageCode) => {
-    startTransition(() => {
-      void i18n.changeLanguage(languageCode)
-    })
-
-    try {
-      localStorage.setItem('i18nextLng', languageCode)
-    } catch {
-      return undefined
-    }
+  const changeLanguage = (languageCode: string) => {
+    setUiLanguage(languageCode)
   }
 
   async function copyLink(url: string, id: string) {
@@ -254,7 +266,7 @@ export default function App() {
         },
       }
 
-  if (loading) {
+  if (loading && socials.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="size-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300" />
@@ -264,7 +276,7 @@ export default function App() {
 
   return (
     <LazyMotion features={domAnimation} strict>
-    <SEO site={site} socials={socials} ogImagePath={ogImagePath} />
+    <SEO site={site} socials={socials} ogImagePath={ogImagePath} languages={languages.map((language) => language.code)} />
     <div className="relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <a
         href="#social-links"
@@ -340,7 +352,7 @@ export default function App() {
                       </ListboxButton>
 
                       <ListboxOptions className="absolute right-0 z-10 mt-3 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/10 focus:outline-hidden dark:border-slate-700 dark:bg-slate-950">
-                        {LANGUAGES.map(({ code, label }) => (
+                        {languages.map(({ code, label }) => (
                           <ListboxOption
                             key={code}
                             value={code}
@@ -376,7 +388,7 @@ export default function App() {
 
                 <div className="space-y-4">
                   <m.img
-                    src={profile.avatar}
+                    src={safeAvatarUrl(profile.avatar)}
                     alt={String(t('avatarAlt'))}
                     width={96}
                     height={96}
@@ -442,7 +454,9 @@ export default function App() {
             </div>
 
             <ul className="grid min-w-0 gap-4" aria-label={String(t('subtitle'))} id="social-links">
-              {socials.map((social, index) => (
+              {socials.map((social, index) => {
+                const href = safeLinkUrl(social.url)
+                return (
                 <li key={social.id} className="block w-full min-w-0">
                   <m.div
                     className="group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-900/5 sm:p-5 dark:border-slate-800 dark:bg-slate-950/90 dark:shadow-black/10"
@@ -471,25 +485,28 @@ export default function App() {
                   <div className="absolute inset-y-0 left-0 w-1 -translate-x-full bg-linear-to-b from-amber-300 via-orange-400 to-rose-400 transition duration-300 group-hover:translate-x-0 dark:from-cyan-300 dark:via-sky-400 dark:to-indigo-500" />
                   <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center xl:gap-5">
                     <div className="relative flex min-w-0 items-center gap-3 sm:gap-4">
-                      <a
-                        href={social.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="absolute inset-0 rounded-[1.25rem] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 dark:focus-visible:ring-cyan-400"
-                        aria-label={`${social.label} (${String(t('opensInNewTab'))})`}
-                        onClick={() => {
-                          trackLinkClick(social.id, social.label, social.url)
-                        }}
-                      />
+                      {href ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="absolute inset-0 rounded-[1.25rem] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 dark:focus-visible:ring-cyan-400"
+                          aria-label={`${social.label} (${String(t('opensInNewTab'))})`}
+                          onClick={() => {
+                            trackLinkClick(social.id, social.label, href)
+                            if (statsEnabled) recordLinkClick(social.id)
+                          }}
+                        />
+                      ) : null}
                       <span className="pointer-events-none flex size-14 shrink-0 items-center justify-center rounded-[1.25rem] bg-slate-950 text-white shadow-lg shadow-slate-900/20 transition group-hover:scale-105 group-hover:rotate-3 dark:bg-white dark:text-slate-950">
-                        <SocialIcon slug={social.iconSlug} />
+                        <SocialIcon path={social.iconPath} />
                       </span>
                       <span className="pointer-events-none min-w-0 flex-1 space-y-1">
                         <span className="block text-lg font-semibold text-slate-950 dark:text-white">
                           {social.label}
                         </span>
                         <span className="block truncate text-sm leading-6 whitespace-nowrap text-slate-600 dark:text-slate-400">
-                          {social.url}
+                          {href ?? ''}
                         </span>
                       </span>
                     </div>
@@ -502,7 +519,10 @@ export default function App() {
                             ? 'border-emerald-500 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
                             : 'border-slate-200 text-slate-700 hover:border-slate-950 hover:bg-slate-950 hover:text-white dark:border-slate-700 dark:text-slate-200 dark:hover:border-white dark:hover:bg-white dark:hover:text-slate-950'
                         } focus-visible:ring-amber-400 dark:focus-visible:ring-cyan-400 dark:focus-visible:ring-offset-slate-950`}
-                        onClick={() => copyLink(social.url, social.id)}
+                        onClick={() => {
+                          if (href) copyLink(href, social.id)
+                        }}
+                        disabled={!href}
                         aria-label={`${String(t('copy'))} ${social.label}`}
                       >
                         <span className="invisible col-start-1 row-start-1">{String(t('copy'))}</span>
@@ -527,7 +547,8 @@ export default function App() {
                   </div>
                   </m.div>
                 </li>
-              ))}
+                )
+              })}
             </ul>
 
             <div className="flex min-h-7 flex-col gap-2 px-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
