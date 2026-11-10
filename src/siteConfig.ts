@@ -26,12 +26,11 @@ export interface SocialLinkEntry {
   /** Full URL to your profile */
   readonly url: string
   /**
-   * Manual icon override: a simple-icons slug such as "github", or a legacy
-   * export name such as "siGithub". Omit it and the hostname picks the icon.
-   * This is not the link id.
+   * simple-icons slug such as "github", or "linkedin" for the custom mark.
+   * Present together with iconPath. This is not the link id.
    */
   readonly iconSlug?: string
-  /** SVG path filled in by /api/site-config so the homepage does not load simple-icons. */
+  /** SVG path from the installed simple-icons package, or the custom LinkedIn mark. */
   readonly iconPath?: string
 }
 

@@ -46,9 +46,15 @@ describe('site config CDN cache', () => {
       socials: Array<{ id: string; iconSlug?: string; iconPath?: string }>
       scripts: Record<string, unknown>
     }
+    expect(body.socials).toHaveLength(6)
+    for (const link of body.socials) {
+      expect(link.iconSlug).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      expect(link.iconPath?.length).toBeGreaterThan(20)
+    }
     const github = body.socials.find((link) => link.id === 'github')
-    expect(github?.iconPath).toBeTruthy()
-    expect(github?.iconSlug).toBeUndefined()
+    expect(github?.iconSlug).toBe('github')
+    const linkedin = body.socials.find((link) => link.id === 'linkedin')
+    expect(linkedin?.iconSlug).toBe('linkedin')
     expect(body.scripts).not.toHaveProperty('plausible')
   })
 })

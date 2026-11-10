@@ -138,6 +138,7 @@ e2e/
 scripts/
   generate-og-image.ts     Build-time OG image generator (static fallback)
   generate-public-images.ts  Avatar manifest from public/
+  generate-site-icons.ts   Seed icon slugs and paths from simple-icons
   update-sitemap-lastmod.ts  Auto-update sitemap.xml lastmod date
 ```
 
@@ -159,10 +160,10 @@ Change the live site at `/manage`. `public/siteConfig.json` is the seed when Red
     "avatar": "/avatar.jpg"             // a public/ image, or an https URL
   },
   "socials": [
-    { "id": "github", "label": "GitHub", "url": "https://github.com/you" },
-    { "id": "x", "label": "X", "url": "https://x.com/you" }
-    // Icons are matched from the URL. Set iconSlug to override, e.g. "github".
-    // "siGithub" still works. The link id is not the icon.
+    { "id": "github", "label": "GitHub", "url": "https://github.com/you", "iconSlug": "github", "iconPath": "M12 ..." },
+    { "id": "x", "label": "X", "url": "https://x.com/you", "iconSlug": "x", "iconPath": "M14 ..." }
+    // iconSlug is a simple-icons slug plus iconPath from that package.
+    // LinkedIn uses the custom "linkedin" mark. The link id is not the icon.
   ]
 }
 ```

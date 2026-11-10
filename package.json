@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsx scripts/generate-public-images.ts && tsx scripts/update-sitemap-lastmod.ts && tsx scripts/generate-og-image.ts && vite build",
+    "build": "tsx scripts/generate-public-images.ts && tsx scripts/generate-site-icons.ts && tsx scripts/update-sitemap-lastmod.ts && tsx scripts/generate-og-image.ts && vite build",
     "generate-og": "tsx scripts/generate-og-image.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

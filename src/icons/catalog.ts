@@ -1,10 +1,10 @@
 /**
- * Full Simple Icons catalog. Import this only from /manage (lazy) and the
- * site-config API. The homepage renders stored SVG paths and must not import it.
+ * Full Simple Icons catalog. Import this only from /manage (lazy) and from
+ * scripts/generate-site-icons.ts. The homepage and the edge API render stored
+ * SVG paths and must not import it.
  *
  * simple-icons v16: `import * as icons from 'simple-icons'` iterates every icon
  * (`title`, `slug`, `path`). Aliases live in `simple-icons/icons.json`.
- * `slugToVariableName` is the old `siGithub` export name.
  * https://github.com/simple-icons/simple-icons#node-usage
  */
 
@@ -15,7 +15,7 @@ import type { Aliases } from 'simple-icons/sdk'
 import { LINKEDIN_PATH } from './paths'
 
 /**
- * Same rules as `titleToSlug` and `slugToVariableName` in simple-icons/sdk.
+ * Same rules as `titleToSlug` in simple-icons/sdk.
  * Inlined so this module does not import the SDK, which reads the filesystem
  * and cannot run in the browser.
  * https://github.com/simple-icons/simple-icons/blob/develop/sdk.mjs
@@ -41,10 +41,6 @@ function titleToSlug(title: string): string {
     .replaceAll(/[+.]|&|đ|ħ|ı|ĸ|ŀ|ł|ß|ŧ|ø/gv, (char) => TITLE_TO_SLUG_REPLACEMENTS[char] ?? '')
     .normalize('NFD')
     .replaceAll(/[^a-z\d]/gv, '')
-}
-
-function slugToVariableName(slug: string): string {
-  return `si${slug[0]?.toUpperCase() ?? ''}${slug.slice(1)}`
 }
 
 export interface IconRecord {
@@ -94,7 +90,6 @@ let cache: {
   icons: IconRecord[]
   bySlug: Map<string, IconRecord>
   byToken: Map<string, string>
-  byVariable: Map<string, string>
 } | null = null
 
 function aliasList(meta: Aliases | undefined): string[] {
@@ -135,7 +130,6 @@ function load() {
 
   const bySlug = new Map(icons.map((icon) => [icon.slug, icon]))
   const byToken = new Map<string, string>()
-  const byVariable = new Map<string, string>()
 
   function claim(token: string, slug: string) {
     const key = token.trim().toLowerCase()
@@ -145,9 +139,7 @@ function load() {
 
   for (const icon of icons) {
     byToken.set(icon.slug, icon.slug)
-    byVariable.set(slugToVariableName(icon.slug), icon.slug)
   }
-  byVariable.set('siLinkedin', 'linkedin')
 
   for (const icon of icons) {
     claim(icon.title, icon.slug)
@@ -159,7 +151,7 @@ function load() {
     for (const extra of EXTRA_ALIASES[icon.slug] ?? []) claim(extra, icon.slug)
   }
 
-  cache = { icons, bySlug, byToken, byVariable }
+  cache = { icons, bySlug, byToken }
   return cache
 }
 
@@ -167,15 +159,13 @@ export function allIcons(): readonly IconRecord[] {
   return load().icons
 }
 
-/** Accepts a current slug (`github`) or a legacy export name (`siGithub`). */
+/** A simple-icons slug such as `github`, or the custom `linkedin` mark. */
 export function canonicalSlug(value: string | undefined | null): string | null {
   if (!value) return null
   const trimmed = value.trim()
   if (!trimmed) return null
-  const { bySlug, byVariable } = load()
+  const { bySlug } = load()
   if (bySlug.has(trimmed)) return trimmed
-  const fromVariable = byVariable.get(trimmed)
-  if (fromVariable) return fromVariable
   const lower = trimmed.toLowerCase()
   if (bySlug.has(lower)) return lower
   return null
@@ -232,6 +222,7 @@ export function searchIcons(query: string, limit = 80): IconRecord[] {
 /**
  * Manual `iconSlug` wins. Otherwise the URL hostname is matched.
  * The link id is never used as an icon key.
+ * A match is stored as the slug plus the SVG path from the installed package.
  */
 export function resolveStoredIcon(link: { url: string; iconSlug?: string }): {
   iconSlug?: string
@@ -241,11 +232,7 @@ export function resolveStoredIcon(link: { url: string; iconSlug?: string }): {
   if (link.iconSlug?.trim() && !manual) {
     throw new Error(`Unknown icon: ${link.iconSlug}`)
   }
-  if (manual) {
-    const icon = iconBySlug(manual)
-    return { iconSlug: manual, ...(icon ? { iconPath: icon.path } : {}) }
-  }
-  const slug = resolveIconSlug(link.url)
+  const slug = manual ?? resolveIconSlug(link.url)
   const icon = slug ? iconBySlug(slug) : null
-  return icon ? { iconPath: icon.path } : {}
+  return icon ? { iconSlug: icon.slug, iconPath: icon.path } : {}
 }

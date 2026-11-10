@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { canonicalSlug, matchHostname, resolveIconSlug, resolveStoredIcon, allIcons } from '../icons/catalog'
+import { migrateSocials } from '../../scripts/generate-site-icons'
+import { canonicalSlug, iconBySlug, matchHostname, resolveIconSlug, resolveStoredIcon, allIcons } from '../icons/catalog'
+import { LINKEDIN_PATH } from '../icons/paths'
 import { safeSvgPath } from '../lib/safeUrl'
 
 describe('icon host matching', () => {
@@ -35,17 +38,41 @@ describe('icon host matching', () => {
     expect(resolveIconSlug('javascript:alert(1)')).toBeNull()
   })
 
-  it('migrates siGithub and does not treat the link id as an icon', () => {
-    expect(canonicalSlug('siGithub')).toBe('github')
-    expect(canonicalSlug('siLinkedin')).toBe('linkedin')
-    const manual = resolveStoredIcon({ url: 'https://example.com/not-github', iconSlug: 'siGithub' })
+  it('stores a slug and path, and does not treat the link id as an icon', () => {
+    expect(canonicalSlug('github')).toBe('github')
+    expect(canonicalSlug('siGithub')).toBeNull()
+    expect(canonicalSlug('siLinkedin')).toBeNull()
+    const manual = resolveStoredIcon({ url: 'https://example.com/not-github', iconSlug: 'github' })
     expect(manual.iconSlug).toBe('github')
     expect(manual.iconPath).toBeTruthy()
     const automatic = resolveStoredIcon({ url: 'https://example.com/not-github' })
-    expect(automatic.iconSlug).toBeUndefined()
-    expect(automatic.iconPath).toBeUndefined()
-    expect(resolveStoredIcon({ url: 'https://github.com/Carnage1999' }).iconSlug).toBeUndefined()
+    expect(automatic).toEqual({})
+    const matched = resolveStoredIcon({ url: 'https://github.com/Carnage1999' })
+    expect(matched.iconSlug).toBe('github')
+    expect(matched.iconPath).toBe(manual.iconPath)
+    expect(() => resolveStoredIcon({ url: 'https://github.com/x', iconSlug: 'siGithub' })).toThrow(/Unknown icon/)
     expect(() => resolveStoredIcon({ url: 'https://github.com/x', iconSlug: 'not-a-real-icon' })).toThrow(/Unknown icon/)
+  })
+
+  it('keeps the seed file on the installed icon paths', () => {
+    const seed = JSON.parse(readFileSync('public/siteConfig.json', 'utf8')) as {
+      socials: Array<{ id: string; iconSlug: string; iconPath: string }>
+    }
+    expect(seed.socials.map((link) => link.id)).toEqual(['github', 'bluesky', 'x', 'line', 'telegram', 'linkedin'])
+    for (const link of seed.socials) {
+      const icon = iconBySlug(link.iconSlug)
+      expect(icon?.slug).toBe(link.iconSlug)
+      expect(link.iconPath).toBe(icon?.path)
+    }
+    expect(seed.socials.find((link) => link.id === 'linkedin')?.iconPath).toBe(LINKEDIN_PATH)
+  })
+
+  it('migrates a legacy export name once, outside the app', () => {
+    const [link] = migrateSocials([{ url: 'https://example.com/not-github', iconSlug: 'siGithub' }])
+    expect(link?.iconSlug).toBe('github')
+    expect(link?.iconPath).toBe(iconBySlug('github')?.path)
+    const [untouched] = migrateSocials([{ id: 'keep', url: 'https://example.com', label: 'Keep' }])
+    expect(untouched).toEqual({ id: 'keep', url: 'https://example.com', label: 'Keep' })
   })
 
   it('keeps every catalog path free of markup', () => {

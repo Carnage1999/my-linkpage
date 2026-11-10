@@ -149,10 +149,10 @@ scripts/
     "umamiWebsiteId": "xxxxxxxx-..."
   },
   "socials": [
-    { "id": "github", "label": "GitHub", "url": "https://github.com/you" },
-    { "id": "x", "label": "X", "url": "https://x.com/you" }
-    // Иконка подбирается по URL. Для замены укажите iconSlug, например "github".
-    // "siGithub" тоже принимается. id ссылки — не иконка.
+    { "id": "github", "label": "GitHub", "url": "https://github.com/you", "iconSlug": "github", "iconPath": "M12 ..." },
+    { "id": "x", "label": "X", "url": "https://x.com/you", "iconSlug": "x", "iconPath": "M14 ..." }
+    // iconSlug — slug simple-icons, iconPath — путь из этого пакета.
+    // LinkedIn использует свой знак "linkedin". id ссылки — не иконка.
   ]
 }
 ```

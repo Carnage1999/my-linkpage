@@ -107,17 +107,20 @@ export function validateSiteConfig(input: unknown, version: number): PublicSiteC
     const url = validateLinkUrl(text(row.url, 500, 'Link URL'))
     // The path is resolved in the browser when /manage saves, so this edge
     // function does not import the simple-icons package (the 1 MB limit).
+    // Stored icons are a simple-icons slug plus that path. LinkedIn is the
+    // custom `linkedin` slug. Export names such as `siGithub` are not accepted.
     const requested = typeof row.iconSlug === 'string' ? row.iconSlug.trim() : ''
-    if (requested && !/^(?:si[A-Za-z0-9]+|[a-z0-9]+(?:-[a-z0-9]+){0,8})$/.test(requested)) {
+    if (requested && !/^[a-z0-9]+(?:-[a-z0-9]+){0,8}$/.test(requested)) {
       throw new SiteValidationError(`Unknown icon: ${requested}`)
     }
     const iconPath = safeSvgPath(row.iconPath) ?? undefined
+    if (requested && !iconPath) throw new SiteValidationError('Icon path is required')
+    if (!requested && iconPath) throw new SiteValidationError('Icon slug is required')
     return {
       id,
       label,
       url,
-      ...(requested ? { iconSlug: requested } : {}),
-      ...(iconPath ? { iconPath } : {}),
+      ...(requested && iconPath ? { iconSlug: requested, iconPath } : {}),
     }
   })
 

@@ -149,10 +149,10 @@ scripts/
     "umamiWebsiteId": "xxxxxxxx-..."
   },
   "socials": [
-    { "id": "github", "label": "GitHub", "url": "https://github.com/you" },
-    { "id": "x", "label": "X", "url": "https://x.com/you" }
-    // 圖示依網址匹配。要指定時加 iconSlug，例如 "github"。
-    // "siGithub" 仍可用。連結 id 不是圖示。
+    { "id": "github", "label": "GitHub", "url": "https://github.com/you", "iconSlug": "github", "iconPath": "M12 ..." },
+    { "id": "x", "label": "X", "url": "https://x.com/you", "iconSlug": "x", "iconPath": "M14 ..." }
+    // iconSlug 是 simple-icons 的 slug，iconPath 來自該套件。
+    // LinkedIn 使用自訂的 "linkedin" 圖示。連結 id 不是圖示。
   ]
 }
 ```

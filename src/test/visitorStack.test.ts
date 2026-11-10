@@ -93,6 +93,19 @@ describe('avatar and request parsing', () => {
       validateSiteConfig({ site: { name: 'A', tagline: 'B', domain: 'example.com' }, profile: { avatar: '/secret.png' }, socials: [] }, 1),
     ).toThrow(/shipped/)
   })
+
+  it('rejects a legacy icon export name', () => {
+    expect(() =>
+      validateSiteConfig(
+        {
+          site: { name: 'A', tagline: 'B', domain: 'example.com' },
+          profile: { avatar: '/avatar.jpg' },
+          socials: [{ id: 'github', label: 'GitHub', url: 'https://github.com/x', iconSlug: 'siGithub', iconPath: 'M0 0' }],
+        },
+        1,
+      ),
+    ).toThrow(/Unknown icon/)
+  })
 })
 
 describe('provider normalizers', () => {
