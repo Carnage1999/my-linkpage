@@ -3,7 +3,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import App from './App'
 
 const ManagePage = lazy(() =>
-  import('./pages/ManagePage').then((module) => ({ default: module.ManagePage })),
+  import('./pages/manage/ManagePage').then((module) => ({ default: module.ManagePage })),
 )
 
 function Spinner() {

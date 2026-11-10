@@ -9,14 +9,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { UmamiMetric, UmamiReport } from '../../api/stats/_umami'
-import { percentChange, type StatsRange } from '../../api/stats/_dates'
-import { LinkHeatmap } from '../components/LinkHeatmap'
-import type { AuthError, DashboardData } from '../hooks/useStats'
-import { useDashboard, useStatsAuth } from '../hooks/useStats'
-import { useSiteConfig } from '../hooks/useSiteConfig'
-import { buildClickCsv } from '../lib/clickCsv'
-import type { AppLanguageCode } from '../i18n'
+import { percentChange, type StatsRange } from '../../../api/stats/_dates'
+import type { UmamiMetric, UmamiReport } from '../../../api/stats/_umami'
+import { useDashboard } from '../../hooks/useStats'
+import { useSiteConfig } from '../../hooks/useSiteConfig'
+import type { AppLanguageCode } from '../../i18n'
+import { buildClickCsv } from './clickCsv'
+import { LinkHeatmap } from './LinkHeatmap'
 
 const RANGES: StatsRange[] = [7, 30, 90]
 const LANGUAGES: Array<{ code: AppLanguageCode; label: string }> = [
@@ -24,29 +23,6 @@ const LANGUAGES: Array<{ code: AppLanguageCode; label: string }> = [
   { code: 'zh-TW', label: '繁' },
   { code: 'ru', label: 'РУ' },
 ]
-
-function useNoIndex(title: string) {
-  useEffect(() => {
-    const meta = document.createElement('meta')
-    meta.name = 'robots'
-    meta.content = 'noindex, nofollow'
-    document.head.appendChild(meta)
-    const previous = document.title
-    document.title = title
-    return () => {
-      meta.remove()
-      document.title = previous
-    }
-  }, [title])
-}
-
-function useThemeSync() {
-  useEffect(() => {
-    const saved = localStorage.getItem('theme')
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    document.documentElement.classList.toggle('dark', saved === 'dark' || (!saved && prefersDark))
-  }, [])
-}
 
 function formatDuration(seconds: number | null | undefined): string {
   if (seconds == null || !Number.isFinite(seconds)) return '—'
@@ -61,6 +37,10 @@ function formatRate(rate: number | null | undefined): string {
   return `${Math.round(rate * 100)}%`
 }
 
+function sumRecord(record: Record<string, number> | undefined): number {
+  return Object.values(record ?? {}).reduce((sum, count) => sum + count, 0)
+}
+
 function Delta({ current, previous }: { current: number; previous: number | null | undefined }) {
   const { t } = useTranslation()
   if (previous == null) return null
@@ -69,7 +49,12 @@ function Delta({ current, previous }: { current: number; previous: number | null
     return <p className="mt-0.5 text-sm text-slate-400">{String(t('manageNew'))}</p>
   }
   const sign = change > 0 ? '+' : ''
-  const tone = change > 0 ? 'text-emerald-600 dark:text-emerald-400' : change < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'
+  const tone =
+    change > 0
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : change < 0
+        ? 'text-rose-600 dark:text-rose-400'
+        : 'text-slate-400'
   return (
     <p className={`mt-0.5 text-sm ${tone}`}>
       {sign}
@@ -131,83 +116,61 @@ function MetricList({ title, metrics }: { title: string; metrics: readonly Umami
   )
 }
 
-function LoginForm({
-  onLogin,
-  loading,
-  error,
-}: {
-  onLogin: (password: string) => void
-  loading: boolean
-  error: AuthError
-}) {
+function UmamiCards({ report }: { report: UmamiReport }) {
   const { t } = useTranslation()
-  const [password, setPassword] = useState('')
-  const message =
-    error === 'bad-password'
-      ? t('manageBadPassword')
-      : error === 'rate-limited'
-        ? t('manageRateLimited')
-        : error === 'disabled'
-          ? t('manageDisabled')
-          : error === 'network'
-            ? t('manageNetwork')
-            : null
-
+  const previous = report.previous
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm space-y-6 rounded-2xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900">
-        <div className="space-y-2 text-center">
-          <h1 className="font-display text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
-            {String(t('manageTitle'))}
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{String(t('manageSubtitle'))}</p>
-        </div>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            onLogin(password)
-          }}
-          className="space-y-4"
-        >
-          <div>
-            <label htmlFor="manage-password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              {String(t('managePassword'))}
-            </label>
-            <input
-              id="manage-password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-xs focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-hidden dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-cyan-400 dark:focus:ring-cyan-400/30"
-            />
-          </div>
-          {message ? <p className="text-sm font-medium text-red-500">{String(message)}</p> : null}
-          <button
-            type="submit"
-            disabled={loading || !password}
-            className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
-          >
-            {loading ? String(t('manageSigningIn')) : String(t('manageSignIn'))}
-          </button>
-        </form>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <StatCard label={String(t('managePageviews'))} value={(report.pageviews ?? 0).toLocaleString()} current={report.pageviews} previous={previous?.pageviews} />
+      <StatCard label={String(t('manageVisitors'))} value={(report.visitors ?? 0).toLocaleString()} current={report.visitors} previous={previous?.visitors} />
+      <StatCard label={String(t('manageVisits'))} value={(report.visits ?? 0).toLocaleString()} current={report.visits} previous={previous?.visits} />
+      <StatCard label={String(t('manageBounce'))} value={formatRate(report.bounceRate)} current={report.bounceRate ?? undefined} previous={previous?.bounceRate} />
+      <StatCard label={String(t('manageAvgTime'))} value={formatDuration(report.avgDuration)} />
+    </div>
+  )
+}
+
+function UmamiBreakdowns({ report }: { report: UmamiReport }) {
+  const { t } = useTranslation()
+  const series = report.pageviewsSeries ?? []
+  return (
+    <div className="space-y-4">
+      {series.length > 0 ? (
+        <section className="h-56 rounded-2xl border border-slate-200/60 bg-white p-4 dark:border-slate-800/60 dark:bg-slate-900/80">
+          <h2 className="mb-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase">
+            {String(t('managePageviews'))}
+          </h2>
+          <ResponsiveContainer width="100%" height="85%">
+            <BarChart data={series}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-800" />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 10 }}
+                className="fill-slate-400 dark:fill-slate-500"
+                tickFormatter={(value: string) => value.slice(5)}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 10 }}
+                className="fill-slate-400 dark:fill-slate-500"
+              />
+              <Tooltip />
+              <Bar dataKey="pageviews" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </section>
+      ) : null}
+      <div className="grid gap-4 md:grid-cols-2">
+        <MetricList title={String(t('manageReferrers'))} metrics={report.referrers ?? []} />
+        <MetricList title={String(t('manageCountries'))} metrics={report.countries ?? []} />
+        <MetricList title={String(t('manageDevices'))} metrics={report.devices ?? []} />
+        <MetricList title={String(t('manageBrowsers'))} metrics={report.browsers ?? []} />
       </div>
     </div>
   )
 }
 
-function sumRecord(record: Record<string, number> | undefined): number {
-  return Object.values(record ?? {}).reduce((sum, count) => sum + count, 0)
-}
-
-function Dashboard({
-  token,
-  logout,
-}: {
-  token: string
-  logout: () => void
-}) {
+export function Dashboard({ token, logout }: { token: string; logout: () => void }) {
   const { t, i18n: i18nInstance } = useTranslation()
   const { socials } = useSiteConfig()
   const [days, setDays] = useState<StatsRange>(30)
@@ -217,10 +180,7 @@ function Dashboard({
     if (unauthorized) logout()
   }, [unauthorized, logout])
 
-  const labels = useMemo(() => {
-    const map = new Map(socials.map((social) => [social.id, social.label]))
-    return map
-  }, [socials])
+  const labels = useMemo(() => new Map(socials.map((social) => [social.id, social.label])), [socials])
 
   if (loading && !data) {
     return (
@@ -366,11 +326,7 @@ function Dashboard({
             previous={previousClicks}
           />
           <StatCard label={String(t('manageToday'))} value={todayClicks.toLocaleString()} />
-          <StatCard
-            label={String(t('manageLinksTracked'))}
-            value={String(data.configuredIds.length)}
-            current={undefined}
-          />
+          <StatCard label={String(t('manageLinksTracked'))} value={String(data.configuredIds.length)} />
         </div>
         {data.removed.length > 0 ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -405,80 +361,4 @@ function Dashboard({
       </div>
     </div>
   )
-}
-
-function UmamiCards({ report }: { report: UmamiReport }) {
-  const { t } = useTranslation()
-  const previous = report.previous
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-      <StatCard label={String(t('managePageviews'))} value={(report.pageviews ?? 0).toLocaleString()} current={report.pageviews} previous={previous?.pageviews} />
-      <StatCard label={String(t('manageVisitors'))} value={(report.visitors ?? 0).toLocaleString()} current={report.visitors} previous={previous?.visitors} />
-      <StatCard label={String(t('manageVisits'))} value={(report.visits ?? 0).toLocaleString()} current={report.visits} previous={previous?.visits} />
-      <StatCard label={String(t('manageBounce'))} value={formatRate(report.bounceRate)} current={report.bounceRate ?? undefined} previous={previous?.bounceRate} />
-      <StatCard label={String(t('manageAvgTime'))} value={formatDuration(report.avgDuration)} />
-    </div>
-  )
-}
-
-function UmamiBreakdowns({ report }: { report: UmamiReport }) {
-  const { t } = useTranslation()
-  const series = report.pageviewsSeries ?? []
-  return (
-    <div className="space-y-4">
-      {series.length > 0 ? (
-        <section className="h-56 rounded-2xl border border-slate-200/60 bg-white p-4 dark:border-slate-800/60 dark:bg-slate-900/80">
-          <h2 className="mb-2 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase">
-            {String(t('managePageviews'))}
-          </h2>
-          <ResponsiveContainer width="100%" height="85%">
-            <BarChart data={series}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-800" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 10 }}
-                className="fill-slate-400 dark:fill-slate-500"
-                tickFormatter={(value: string) => value.slice(5)}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontSize: 10 }}
-                className="fill-slate-400 dark:fill-slate-500"
-              />
-              <Tooltip />
-              <Bar dataKey="pageviews" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </section>
-      ) : null}
-      <div className="grid gap-4 md:grid-cols-2">
-        <MetricList title={String(t('manageReferrers'))} metrics={report.referrers ?? []} />
-        <MetricList title={String(t('manageCountries'))} metrics={report.countries ?? []} />
-        <MetricList title={String(t('manageDevices'))} metrics={report.devices ?? []} />
-        <MetricList title={String(t('manageBrowsers'))} metrics={report.browsers ?? []} />
-      </div>
-    </div>
-  )
-}
-
-export function ManagePage() {
-  const { t } = useTranslation()
-  useNoIndex(String(t('manageTitle')))
-  useThemeSync()
-  const { loading: configLoading } = useSiteConfig()
-  const { token, loading, error, login, logout, isAuthenticated } = useStatsAuth()
-
-  if (configLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300" />
-      </div>
-    )
-  }
-
-  if (!isAuthenticated || !token) {
-    return <LoginForm onLogin={(password) => void login(password)} loading={loading} error={error} />
-  }
-
-  return <Dashboard token={token} logout={logout} />
 }

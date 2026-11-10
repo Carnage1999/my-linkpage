@@ -91,16 +91,16 @@ src/
   components/
     ErrorBoundary.tsx      崩潰備援 UI
     SEO.tsx                Meta 標籤、OG 圖片、JSON-LD
-    LinkHeatmap.tsx        Redis 與 Umami 點擊對照
   hooks/
     useSiteConfig.ts       執行階段 JSON 設定載入器（擷取 siteConfig.json）
     useAnalytics.ts        分析腳本載入器與事件追蹤
-    useStats.ts            後台登入、Redis 統計與 Umami 報表
-  lib/
-    recordClick.ts         以 sendBeacon 紀錄點擊
-    clickCsv.ts            匯出 CSV
+    useStats.ts            後台登入、Redis 與 Umami 報表、點擊紀錄
   pages/
-    ManagePage.tsx         /manage 密碼保護的管理後台
+    manage/                /manage 密碼保護的管理後台
+      ManagePage.tsx       登入
+      Dashboard.tsx        Redis 與 Umami 圖表
+      LinkHeatmap.tsx      逐連結點擊對照
+      clickCsv.ts          匯出 CSV
   locales/                 翻譯檔案（en / ru / zh-TW）
   test/                    Vitest 單元與元件測試
 api/
@@ -110,6 +110,8 @@ api/
     _redis.ts              Upstash Redis REST 輔助函式
     _umami.ts              伺服器端 Umami 用戶端
     _dates.ts              時區日界
+    _aggregate.ts          所選期間的點擊合計
+    _links.ts              siteConfig 中允許的連結 id
     _token.ts              HMAC 權杖認證（Web Crypto API）
     auth.ts                登入端點
     check.ts               功能偵測端點
@@ -118,6 +120,7 @@ api/
     record.ts              點擊紀錄端點
 e2e/
   app.spec.ts              Playwright E2E 測試
+  manage.spec.ts           管理後台登入與儀表板
   a11y.spec.ts             axe-core 無障礙稽核
 scripts/
   generate-og-image.ts     建置時期 OG 圖片產生器（靜態備援）

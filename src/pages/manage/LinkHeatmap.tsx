@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { DailyClicks } from '../../api/stats/_aggregate'
+import type { DailyClicks } from '../../../api/stats/_aggregate'
 
 export interface HeatmapLink {
   id: string

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildClickCsv } from '../lib/clickCsv'
-import { recordLinkClick } from '../lib/recordClick'
+import { recordLinkClick } from '../hooks/useStats'
+import { buildClickCsv } from '../pages/manage/clickCsv'
 
 afterEach(() => {
   vi.unstubAllGlobals()

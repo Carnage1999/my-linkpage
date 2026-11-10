@@ -91,16 +91,16 @@ src/
   components/
     ErrorBoundary.tsx      Crash fallback UI
     SEO.tsx                Meta tags, OG image, JSON-LD
-    LinkHeatmap.tsx        Redis and Umami click comparison
   hooks/
     useSiteConfig.ts       Runtime JSON config loader (fetches siteConfig.json)
     useAnalytics.ts        Analytics script loader and event tracking
-    useStats.ts            Dashboard auth, Redis stats, and Umami report
-  lib/
-    recordClick.ts         sendBeacon click recording
-    clickCsv.ts            Dashboard CSV export
+    useStats.ts            Dashboard auth, Redis and Umami reports, click beacon
   pages/
-    ManagePage.tsx         Password-protected admin dashboard at /manage
+    manage/                Password-protected dashboard at /manage
+      ManagePage.tsx       Login gate
+      Dashboard.tsx        Redis and Umami charts
+      LinkHeatmap.tsx      Per-link click comparison
+      clickCsv.ts          CSV export
   locales/                 Translation files (en / ru / zh-TW)
   test/                    Vitest unit and component tests
 api/
@@ -110,6 +110,8 @@ api/
     _redis.ts              Upstash Redis REST helpers
     _umami.ts              Server-side Umami client
     _dates.ts              Timezone day boundaries
+    _aggregate.ts          Click totals for the selected range
+    _links.ts              Allowed link ids from siteConfig
     _token.ts              HMAC token auth (Web Crypto API)
     auth.ts                Login endpoint
     check.ts               Feature-detection endpoint
@@ -118,6 +120,7 @@ api/
     record.ts              Click recording endpoint
 e2e/
   app.spec.ts              Playwright E2E tests
+  manage.spec.ts           Admin login and dashboard
   a11y.spec.ts             axe-core accessibility audit
 scripts/
   generate-og-image.ts     Build-time OG image generator (static fallback)

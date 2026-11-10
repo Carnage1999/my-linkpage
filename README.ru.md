@@ -91,16 +91,16 @@ src/
   components/
     ErrorBoundary.tsx      Аварийный UI при сбое
     SEO.tsx                Мета-теги, OG-изображение, JSON-LD
-    LinkHeatmap.tsx        Сравнение кликов Redis и Umami
   hooks/
     useSiteConfig.ts       Загрузчик JSON-конфигурации (загружает siteConfig.json)
     useAnalytics.ts        Загрузчик аналитических скриптов и отслеживание событий
-    useStats.ts            Вход в панель, статистика Redis и отчёт Umami
-  lib/
-    recordClick.ts         Запись клика через sendBeacon
-    clickCsv.ts            Экспорт CSV
+    useStats.ts            Вход в панель, отчёты Redis и Umami, запись клика
   pages/
-    ManagePage.tsx         Панель администратора на /manage
+    manage/                Панель администратора на /manage
+      ManagePage.tsx       Форма входа
+      Dashboard.tsx        Графики Redis и Umami
+      LinkHeatmap.tsx      Сравнение кликов по ссылкам
+      clickCsv.ts          Экспорт CSV
   locales/                 Файлы переводов (en / ru / zh-TW)
   test/                    Юнит- и компонентные тесты Vitest
 api/
@@ -110,6 +110,8 @@ api/
     _redis.ts              Upstash Redis REST-хелперы
     _umami.ts              Серверный клиент Umami
     _dates.ts              Границы дней по часовому поясу
+    _aggregate.ts          Итоги кликов за выбранный период
+    _links.ts              Разрешённые id ссылок из siteConfig
     _token.ts              HMAC-аутентификация токенов (Web Crypto API)
     auth.ts                Endpoint аутентификации
     check.ts               Endpoint обнаружения функции
@@ -118,6 +120,7 @@ api/
     record.ts              Endpoint записи кликов
 e2e/
   app.spec.ts              E2E-тесты Playwright
+  manage.spec.ts           Вход и панель администратора
   a11y.spec.ts             Аудит доступности axe-core
 scripts/
   generate-og-image.ts     Генератор OG-изображения при сборке (статический fallback)

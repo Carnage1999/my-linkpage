@@ -19,8 +19,7 @@ import { SocialIcon } from './SocialIcon'
 import { SEO } from './components/SEO'
 import { useAnalytics } from './hooks/useAnalytics'
 import { useSiteConfig } from './hooks/useSiteConfig'
-import { useStatsEnabled } from './hooks/useStats'
-import { recordLinkClick } from './lib/recordClick'
+import { recordLinkClick, useStatsEnabled } from './hooks/useStats'
 
 interface LanguageOption {
   code: AppLanguageCode
