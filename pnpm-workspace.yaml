@@ -7,3 +7,12 @@ allowBuilds:
 # rejects versions published inside the window. This repo already locks
 # current releases, so keep the pnpm 10 behavior of installing them.
 minimumReleaseAge: 0
+
+# happy-dom is an optional peer of Vitest. Tests run in jsdom, and the
+# installed happy-dom 20.x line has unpatched RCE and SSRF advisories.
+# "-" drops that unused optional dependency (and its vulnerable ws copy).
+# satori pins fflate 0.7.3 exactly. 0.7.5 is the patched release on the
+# same 0.7 line that satori and opentype.js already accept.
+overrides:
+  happy-dom: '-'
+  fflate: 0.7.5

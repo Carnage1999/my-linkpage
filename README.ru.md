@@ -44,11 +44,11 @@
 | Тестирование | Vitest 5, Testing Library, Playwright, axe-core |
 | Линтинг | ESLint 10, Prettier |
 | Менеджер пакетов | pnpm 12 (закреплён как `pnpm@12.18.0` в `packageManager`) |
-| CI | GitHub Actions (Node 22) |
+| CI | GitHub Actions (Node 24) |
 
 ## Начало работы
 
-Нужен Node.js 22 (эту версию использует CI). Версия pnpm закреплена в поле `packageManager`. Corepack, который поставляется с Node 22, ставит именно её:
+Нужен Node.js 24 (эту версию использует CI). Node.js 22.22 и новее тоже подходит для установленного набора инструментов. Версия pnpm закреплена в поле `packageManager`. Corepack, который поставляется с этими версиями Node, ставит именно её:
 
 ```bash
 corepack enable

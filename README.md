@@ -44,11 +44,11 @@ A multilingual link-in-bio page built with React, Vite, TypeScript, and Tailwind
 | Testing | Vitest 5, Testing Library, Playwright, axe-core |
 | Linting | ESLint 10, Prettier |
 | Package manager | pnpm 12 (pinned as `pnpm@12.18.0` in `packageManager`) |
-| CI | GitHub Actions (Node 22) |
+| CI | GitHub Actions (Node 24) |
 
 ## Getting Started
 
-Node.js 22 (the version CI uses). pnpm is pinned in `package.json` via the `packageManager` field. [Corepack](https://nodejs.org/api/corepack.html), which ships with Node 22, installs that exact pnpm:
+Node.js 24 (the version CI uses). Node.js 22.22 or newer also satisfies the installed toolchain. pnpm is pinned in `package.json` via the `packageManager` field. [Corepack](https://nodejs.org/api/corepack.html), which ships with these Node versions, installs that exact pnpm:
 
 ```bash
 corepack enable
