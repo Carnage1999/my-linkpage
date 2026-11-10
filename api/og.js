@@ -24942,16 +24942,35 @@ function buildMarkup(socials, name, tagline, domain) {
     }
   };
 }
+function headerValue(headers, name) {
+  if (!headers) return null;
+  if (typeof headers.get === "function") return headers.get(name);
+  const value = headers[name.toLowerCase()];
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
 function pageUrl(request) {
+  const raw = request.url || "/";
   try {
-    return new URL(request.url);
+    return new URL(raw);
   } catch {
-    const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "localhost";
-    const proto = request.headers.get("x-forwarded-proto") ?? "https";
-    return new URL(request.url || "/", `${proto}://${host}`);
+    const host = headerValue(request.headers, "x-forwarded-host") ?? headerValue(request.headers, "host") ?? "localhost";
+    const proto = headerValue(request.headers, "x-forwarded-proto") ?? "https";
+    return new URL(raw, `${proto}://${host}`);
   }
 }
-async function handler(request) {
+function isNodeResponse(value) {
+  return !!value && typeof value.setHeader === "function" && typeof value.end === "function";
+}
+function send(response, status, headers, body) {
+  if (isNodeResponse(response)) {
+    response.statusCode = status;
+    for (const [key, value] of Object.entries(headers)) response.setHeader(key, value);
+    response.end(body);
+    return void 0;
+  }
+  return new Response(body, { status, headers });
+}
+async function handler(request, response) {
   try {
     const [config, fonts] = await Promise.all([loadConfig(), loadFonts()]);
     const name = config.site?.name ?? "Han-che Wang";
@@ -24971,19 +24990,17 @@ async function handler(request) {
     });
     const resvg = new Resvg(svg, { fitTo: { mode: "width", value: WIDTH } });
     const png = resvg.render().asPng();
-    return new Response(new Uint8Array(png), {
-      status: 200,
-      headers: {
-        "Content-Type": "image/png",
-        "Cache-Control": SITE_BROWSER_CACHE,
-        "CDN-Cache-Control": SITE_CDN_CACHE,
-        "Vercel-CDN-Cache-Control": SITE_CDN_CACHE,
-        "Vercel-Cache-Tag": SITE_CACHE_TAG
-      }
-    });
+    return send(response, 200, {
+      "Content-Type": "image/png",
+      "Cache-Control": SITE_BROWSER_CACHE,
+      "CDN-Cache-Control": SITE_CDN_CACHE,
+      "Vercel-CDN-Cache-Control": SITE_CDN_CACHE,
+      "Vercel-Cache-Tag": SITE_CACHE_TAG
+    }, new Uint8Array(png));
   } catch (err2) {
     console.error("OG generation failed:", err2);
-    return Response.redirect(new URL("/og-image.png", pageUrl(request)).href, 302);
+    const location = new URL("/og-image.png", pageUrl(request)).href;
+    return send(response, 302, { Location: location }, "");
   }
 }
 export {

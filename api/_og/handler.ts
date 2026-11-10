@@ -285,17 +285,46 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
 
 // ─── Handler ─────────────────────────────────────────────
 
-function pageUrl(request: Request): URL {
+type HeaderSource = { get?: (name: string) => string | null } | Record<string, string | string[] | undefined>
+type NodeResponse = {
+  statusCode: number
+  setHeader: (name: string, value: string) => void
+  end: (body?: Uint8Array | string) => void
+}
+
+function headerValue(headers: HeaderSource | undefined, name: string): string | null {
+  if (!headers) return null
+  if (typeof (headers as { get?: unknown }).get === 'function') return (headers as { get: (name: string) => string | null }).get(name)
+  const value = (headers as Record<string, string | string[] | undefined>)[name.toLowerCase()]
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
+
+function pageUrl(request: { url?: string; headers?: HeaderSource }): URL {
+  const raw = request.url || '/'
   try {
-    return new URL(request.url)
+    return new URL(raw)
   } catch {
-    const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? 'localhost'
-    const proto = request.headers.get('x-forwarded-proto') ?? 'https'
-    return new URL(request.url || '/', `${proto}://${host}`)
+    const host = headerValue(request.headers, 'x-forwarded-host') ?? headerValue(request.headers, 'host') ?? 'localhost'
+    const proto = headerValue(request.headers, 'x-forwarded-proto') ?? 'https'
+    return new URL(raw, `${proto}://${host}`)
   }
 }
 
-export default async function handler(request: Request): Promise<Response> {
+function isNodeResponse(value: unknown): value is NodeResponse {
+  return !!value && typeof (value as NodeResponse).setHeader === 'function' && typeof (value as NodeResponse).end === 'function'
+}
+
+function send(response: unknown, status: number, headers: Record<string, string>, body: Uint8Array | string): Response | undefined {
+  if (isNodeResponse(response)) {
+    response.statusCode = status
+    for (const [key, value] of Object.entries(headers)) response.setHeader(key, value)
+    response.end(body)
+    return undefined
+  }
+  return new Response(body as BodyInit, { status, headers })
+}
+
+export default async function handler(request: Request, response?: unknown): Promise<Response | undefined> {
   try {
     const [config, fonts] = await Promise.all([loadConfig(), loadFonts()])
 
@@ -319,18 +348,16 @@ export default async function handler(request: Request): Promise<Response> {
     const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: WIDTH } })
     const png = resvg.render().asPng()
 
-    return new Response(new Uint8Array(png), {
-      status: 200,
-      headers: {
-        'Content-Type': 'image/png',
-        'Cache-Control': SITE_BROWSER_CACHE,
-        'CDN-Cache-Control': SITE_CDN_CACHE,
-        'Vercel-CDN-Cache-Control': SITE_CDN_CACHE,
-        'Vercel-Cache-Tag': SITE_CACHE_TAG,
-      },
-    })
+    return send(response, 200, {
+      'Content-Type': 'image/png',
+      'Cache-Control': SITE_BROWSER_CACHE,
+      'CDN-Cache-Control': SITE_CDN_CACHE,
+      'Vercel-CDN-Cache-Control': SITE_CDN_CACHE,
+      'Vercel-Cache-Tag': SITE_CACHE_TAG,
+    }, new Uint8Array(png))
   } catch (err) {
     console.error('OG generation failed:', err)
-    return Response.redirect(new URL('/og-image.png', pageUrl(request)).href, 302)
+    const location = new URL('/og-image.png', pageUrl(request)).href
+    return send(response, 302, { Location: location }, '')
   }
 }
