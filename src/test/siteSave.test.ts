@@ -198,6 +198,35 @@ describe('site config save', () => {
     })
   })
 
+  it('drops a save that lost the compare-and-set', async () => {
+    stage()
+    const proposed = document({
+      ids: [...SAVED_ORDER].reverse(),
+      code: 'en',
+      title: 'Race',
+      intro: CUSTOM_INTRO,
+    })
+    const originalGet = redis.store.get.bind(redis.store)
+    let reads = 0
+    redis.store.get = ((key: string) => {
+      const value = originalGet(key)
+      if (key === 'site:config') {
+        reads += 1
+        if (reads === 1) {
+          const stored = JSON.parse(String(value)) as { version?: number }
+          redis.store.set(key, JSON.stringify({ ...stored, version: 40 }))
+        }
+      }
+      return reads === 1 && key === 'site:config' ? value : originalGet(key)
+    }) as typeof redis.store.get
+
+    const response = await put({ ...proposed, settings: SETTINGS, baseVersion: 25 })
+    expect(response.status).toBe(409)
+    const stored = JSON.parse(String(redis.store.get('site:config'))) as { version?: number }
+    expect(stored.version).toBe(40)
+    expect(redis.writes.filter((key) => key === 'site:config')).toEqual([])
+  })
+
   it('rejects a stale version without writing', async () => {
     stage()
     const before = redis.store.get('site:config')

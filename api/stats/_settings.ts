@@ -10,7 +10,7 @@ import { safeScriptUrl, safeToken } from '../../src/lib/safeUrl'
 import { decryptJson, encryptJson, secretKeyMaterial } from './_crypto'
 import { DEFAULT_STATS_TIMEZONE } from './_dates'
 import { isRedisConfigured, redisCommand } from './_redis'
-import { readManaged, siteCacheGeneration, writeManaged } from './_site-store'
+import { compareAndSetManaged, readManaged, readManagedStrict, siteCacheGeneration } from './_site-store'
 import { normalizeConfig, SiteConflictError, SiteValidationError, type PublicSiteConfig } from './_site-schema'
 import { isVisitorProvider, VISITOR_PROVIDERS, type VisitorProviderId } from './_providers/types'
 
@@ -472,14 +472,23 @@ export async function commitManagedConfig(input: unknown): Promise<ManagedSave> 
   if (!material) throw new SettingsError('STATS_PASSWORD or STATS_SECRET is required')
   if (!input || typeof input !== 'object') throw new SiteValidationError('Config must be an object')
   const body = input as Record<string, unknown>
-  const currentSite = (await readManaged({ fresh: true })).site
-  if (typeof body.baseVersion !== 'number') throw new SiteValidationError('baseVersion is required')
-  if (body.baseVersion !== currentSite.version) throw new SiteConflictError(currentSite.version)
-  const current = await readStored({ fresh: true })
-  const site = normalizeConfig(body, currentSite.version + 1)
+  if (typeof body.baseVersion !== 'number' || !Number.isInteger(body.baseVersion)) {
+    throw new SiteValidationError('baseVersion is required')
+  }
+  const currentDoc = await readManagedStrict()
+  if (body.baseVersion !== currentDoc.site.version) throw new SiteConflictError(currentDoc.site.version)
+  const current = currentDoc.settings != null ? await decodeSettings(currentDoc.settings) : await readLegacy()
+  const site = normalizeConfig(body, currentDoc.site.version + 1)
   const settings = normalizeSettings(body.settings)
   const secrets = applySecretWrites(current.secrets, body.secrets)
-  await writeManaged(site, { ...settings, secrets: await encryptJson(material, secrets) })
+  const wrote = await compareAndSetManaged(currentDoc.raw, site, {
+    ...settings,
+    secrets: await encryptJson(material, secrets),
+  })
+  if (!wrote) {
+    const latest = await readManagedStrict()
+    throw new SiteConflictError(latest.site.version)
+  }
   decoded = { generation: siteCacheGeneration(), stored: settings, secrets }
   return { site, effective: buildEffective(settings, secrets) }
 }

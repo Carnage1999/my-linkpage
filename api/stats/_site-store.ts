@@ -64,18 +64,72 @@ export async function readRuntimeSite(options?: { fresh?: boolean }): Promise<Pu
   return (await readManaged(options)).site
 }
 
-/** Writes the site and the settings blob in one Redis SET. `settings: null` leaves settings off the document. */
-export async function writeManaged(site: PublicSiteConfig, settings: unknown | null): Promise<void> {
-  if (!isRedisConfigured()) throw new Error('Redis is not configured')
-  const payload = settings == null ? site : { ...site, settings }
-  await redisCommand(['SET', KEY, JSON.stringify(payload)])
-  cacheGeneration += 1
-  cache = { at: Date.now(), site, settings }
+export interface ManagedDocument {
+  raw: string | null
+  site: PublicSiteConfig
+  settings: unknown | null
 }
 
-export async function writeRuntimeSite(config: PublicSiteConfig): Promise<void> {
-  const settings = cache ? cache.settings : (await readManaged({ fresh: true })).settings
-  await writeManaged(config, settings)
+/**
+ * Read used by a save. A Redis or JSON failure throws, so a blip cannot look
+ * like an empty database and overwrite the stored document with the seed.
+ */
+export async function readManagedStrict(): Promise<ManagedDocument> {
+  if (!isRedisConfigured()) throw new Error('Redis is not configured')
+  const response = await redisCommand(['GET', KEY])
+  if (typeof response.result !== 'string' || !response.result) {
+    return { raw: null, site: seedSiteConfig(), settings: null }
+  }
+  const parsed = JSON.parse(response.result) as { version?: number; settings?: unknown }
+  return {
+    raw: response.result,
+    site: normalizeConfig(parsed, Number(parsed.version) || 1),
+    settings: parsed.settings ?? null,
+  }
+}
+
+/**
+ * One EVAL: GET the document and SET the replacement only when the bytes
+ * still match the copy the save read. Two saves that read the same version
+ * cannot both write. The script runs GET plus SET (two commands), the same
+ * count as the previous check-then-SET, and a lost race stops after GET.
+ */
+const COMPARE_AND_SET = `
+local raw = redis.call('GET', KEYS[1])
+local expected = ARGV[1]
+if expected == '' then
+  if raw and raw ~= '' then
+    return 0
+  end
+else
+  if raw ~= expected then
+    return 0
+  end
+end
+redis.call('SET', KEYS[1], ARGV[2])
+return 1
+`
+
+/** Writes the site and settings in one compare-and-set. `settings: null` leaves settings off the document. */
+export async function compareAndSetManaged(
+  expectedRaw: string | null,
+  site: PublicSiteConfig,
+  settings: unknown | null,
+): Promise<boolean> {
+  if (!isRedisConfigured()) throw new Error('Redis is not configured')
+  const payload = settings == null ? site : { ...site, settings }
+  const response = await redisCommand([
+    'EVAL',
+    COMPARE_AND_SET,
+    '1',
+    KEY,
+    expectedRaw ?? '',
+    JSON.stringify(payload),
+  ])
+  if (Number(response.result) !== 1) return false
+  cacheGeneration += 1
+  cache = { at: Date.now(), site, settings }
+  return true
 }
 
 export async function runtimeLinkIds(): Promise<ReadonlySet<string>> {

@@ -13,7 +13,7 @@ import { json, requireStatsToken } from './stats/_http'
 import { bumpNamedLimit, hashClientIp, isRedisConfigured } from './stats/_redis'
 import { commitManagedConfig, publicScriptsFrom, SettingsError } from './stats/_settings'
 import { SiteConflictError, SiteValidationError } from './stats/_site-schema'
-import { readRuntimeSite, seedSiteConfig, writeRuntimeSite } from './stats/_site-store'
+import { compareAndSetManaged, readManagedStrict, readRuntimeSite, seedSiteConfig } from './stats/_site-store'
 import { isStatsEnabled } from './stats/_token'
 import { __resetScriptCache, scriptPayload } from './stats/scripts'
 
@@ -56,13 +56,17 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   try {
-    const current = await readRuntimeSite({ fresh: true })
     let saved
     if (request.method === 'POST') {
       const body = (await request.json()) as { action?: string }
       if (body.action !== 'import' && body.action !== 'reset') return json({ error: 'Unknown action' }, 400)
-      saved = { ...seedSiteConfig(), version: current.version + 1 }
-      await writeRuntimeSite(saved)
+      const current = await readManagedStrict()
+      saved = { ...seedSiteConfig(), version: current.site.version + 1 }
+      const wrote = await compareAndSetManaged(current.raw, saved, current.settings)
+      if (!wrote) {
+        const latest = await readManagedStrict()
+        throw new SiteConflictError(latest.site.version)
+      }
     } else if (request.method === 'PUT') {
       const committed = await commitManagedConfig(await request.json())
       saved = { ...committed.site, scripts: publicScriptsFrom(committed.effective) }

@@ -29,6 +29,18 @@ export function installMemoryRedis() {
     }
     if (op === 'EXPIRE' || op === 'PEXPIRE') return { result: 1 }
     if (op === 'PING') return { result: 'PONG' }
+    if (op === 'EVAL' && command[1]?.includes("redis.call('GET', KEYS[1])")) {
+      const numkeys = Number(command[2] ?? 0)
+      const key = command[3] ?? ''
+      const expected = command[3 + numkeys] ?? ''
+      const next = command[4 + numkeys] ?? ''
+      const raw = store.get(key)
+      const missing = raw == null || raw === ''
+      if ((expected === '' && !missing) || (expected !== '' && raw !== expected)) return { result: 0 }
+      writes.push(key)
+      store.set(key, next)
+      return { result: 1 }
+    }
     return { result: null }
   }
 
