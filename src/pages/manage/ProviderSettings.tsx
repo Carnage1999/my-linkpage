@@ -171,21 +171,23 @@ function ProviderForm({
           GoatCounter site
           <input className={inputClass} value={goatSite} disabled={settings.goatcounter.site.locked} onChange={(event) => setGoatSite(event.target.value)} />
         </label>
-        <label className="text-sm text-slate-600 dark:text-slate-300">
-          GOATCOUNTER_API_KEY
-          <input
-            className={inputClass}
-            type="password"
-            autoComplete="off"
-            disabled={settings.goatcounter.apiKey.locked}
-            placeholder={secretPlaceholder(settings.goatcounter.apiKey, unset, managed)}
-            value={secrets.goat ?? ''}
-            onChange={(event) => setSecrets((current) => ({ ...current, goat: event.target.value }))}
-          />
+        <div className="text-sm text-slate-600 dark:text-slate-300">
+          <label>
+            GOATCOUNTER_API_KEY
+            <input
+              className={inputClass}
+              type="password"
+              autoComplete="off"
+              disabled={settings.goatcounter.apiKey.locked}
+              placeholder={secretPlaceholder(settings.goatcounter.apiKey, unset, managed)}
+              value={secrets.goat ?? ''}
+              onChange={(event) => setSecrets((current) => ({ ...current, goat: event.target.value }))}
+            />
+          </label>
           <button type="button" className="text-xs text-slate-400 underline" onClick={() => setCleared((current) => ({ ...current, goat: true }))}>
             {String(t('manageClearSecret'))}
           </button>
-        </label>
+        </div>
         <label className="text-sm text-slate-600 dark:text-slate-300">
           CLOUDFLARE_ACCOUNT_ID
           <input className={inputClass} value={cfAccount} disabled={settings.cloudflare.accountId.locked} onChange={(event) => setCfAccount(event.target.value)} />

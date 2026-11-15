@@ -111,13 +111,13 @@ export function replaceSiteConfig(data: SiteConfig & { scripts?: ScriptBundle; v
   publish(fromConfig(data, current.scripts, current.etag))
 }
 
-async function revalidate(bust = false) {
+async function revalidate(bust = false, signal?: AbortSignal) {
   try {
     const headers: Record<string, string> = { Accept: 'application/json' }
     if (!bust && current.etag) headers['If-None-Match'] = current.etag
     const url = bust ? `/api/site-config?v=${current.version}` : '/api/site-config'
-    const response = await fetch(url, { headers, cache: 'no-cache' })
-    if (response.status === 304 || !response.ok) return
+    const response = await fetch(url, { headers, cache: 'no-cache', signal })
+    if (signal?.aborted || response.status === 304 || !response.ok) return
     const data = (await response.json()) as SiteConfig & { scripts?: ScriptBundle; version?: number }
     const incoming = data.version ?? 0
     if (current.version > 0 && incoming < current.version) return
@@ -137,11 +137,11 @@ export function useSiteConfig(): SiteConfigState {
   useEffect(() => {
     const sync = () => setState(current)
     listeners.add(sync)
-    let cancelled = false
-    void revalidate().catch(() => undefined)
+    const controller = new AbortController()
+    void revalidate(false, controller.signal).catch(() => undefined)
 
     const onFocus = () => {
-      if (!cancelled) void revalidate().catch(() => undefined)
+      if (!controller.signal.aborted) void revalidate(false, controller.signal).catch(() => undefined)
     }
     const onVisible = () => {
       if (document.visibilityState === 'visible') onFocus()
@@ -153,8 +153,8 @@ export function useSiteConfig(): SiteConfigState {
       try {
         channel = new BroadcastChannel(SITE_CHANNEL)
         channel.addEventListener('message', (event: MessageEvent<SiteSavedMessage>) => {
-          if (event.data?.type !== 'saved' || cancelled) return
-          void revalidate(Boolean(event.data.bust)).catch(() => undefined)
+          if (event.data?.type !== 'saved' || controller.signal.aborted) return
+          void revalidate(Boolean(event.data.bust), controller.signal).catch(() => undefined)
         })
       } catch {
         channel = null
@@ -162,7 +162,7 @@ export function useSiteConfig(): SiteConfigState {
     }
 
     return () => {
-      cancelled = true
+      controller.abort()
       listeners.delete(sync)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisible)

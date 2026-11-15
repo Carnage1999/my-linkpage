@@ -75,9 +75,9 @@ export function LinkHeatmap({
                       </span>
                       <div className="relative hidden h-2.5 min-w-16 flex-1 overflow-hidden rounded-full bg-slate-200/60 sm:block dark:bg-slate-800/60">
                         <m.div
-                          className="absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-amber-400 to-rose-500 dark:from-cyan-400 dark:to-indigo-500"
+                          className="absolute inset-y-0 left-0 w-full origin-left rounded-full bg-linear-to-r from-amber-400 to-rose-500 dark:from-cyan-400 dark:to-indigo-500"
                           initial={false}
-                          animate={{ width: `${Math.max(width, link.redisClicks > 0 ? 4 : 0)}%` }}
+                          animate={{ scaleX: Math.max(width, link.redisClicks > 0 ? 4 : 0) / 100 }}
                           transition={
                             prefersReduced
                               ? { duration: 0 }

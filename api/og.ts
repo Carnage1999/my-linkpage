@@ -55,6 +55,7 @@ async function googleFontUrl(family: string, weight: number): Promise<string> {
   const cssRes = await fetch(`${GOOGLE_FONTS_BASE}?${params}`, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; bot)' },
   })
+  if (!cssRes.ok) throw new Error(`Font CSS failed: ${cssRes.status}`)
   const css = await cssRes.text()
   const match = css.match(/src:\s*url\(([^)]+)\)/)
   if (!match) throw new Error(`Could not extract font URL for ${family}@${weight}`)
@@ -65,8 +66,14 @@ async function loadFonts() {
   if (fontCache) return fontCache
   const [manropeTtfUrl, spaceGroteskTtfUrl] = await Promise.all([googleFontUrl('Manrope', 700), googleFontUrl('Space Grotesk', 700)])
   const [manrope, spaceGrotesk] = await Promise.all([
-    fetch(manropeTtfUrl).then((r) => r.arrayBuffer()),
-    fetch(spaceGroteskTtfUrl).then((r) => r.arrayBuffer()),
+    fetch(manropeTtfUrl).then((response) => {
+      if (!response.ok) throw new Error(`Font file failed: ${response.status}`)
+      return response.arrayBuffer()
+    }),
+    fetch(spaceGroteskTtfUrl).then((response) => {
+      if (!response.ok) throw new Error(`Font file failed: ${response.status}`)
+      return response.arrayBuffer()
+    }),
   ])
   fontCache = { manrope, spaceGrotesk }
   return fontCache

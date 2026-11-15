@@ -37,6 +37,7 @@ export function SiteTab({ draft }: { draft: SiteDraft }) {
                 <input
                   type="radio"
                   name="avatar"
+                  aria-label={path}
                   checked={!draft.avatarUrl && draft.avatarPath === path}
                   onChange={() => draft.patch({ avatarPath: path, avatarUrl: '' })}
                 />

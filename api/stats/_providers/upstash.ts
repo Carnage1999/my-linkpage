@@ -31,8 +31,10 @@ export async function fetchUpstashReport(input: {
   previousDates: readonly string[]
 }): Promise<VisitorReport> {
   if (!isRedisConfigured()) return emptyReport('upstash', false)
-  const currentRaw = await readPageviewDays(input.dates)
-  const previousRaw = await readPageviewDays(input.previousDates)
+  const [currentRaw, previousRaw] = await Promise.all([
+    readPageviewDays(input.dates),
+    readPageviewDays(input.previousDates),
+  ])
   const current = currentRaw.map((row) => parseRedisHash(row))
   const previous = previousRaw.map((row) => parseRedisHash(row))
   const pageviews = current.reduce((sum, row) => sum + views(row), 0)

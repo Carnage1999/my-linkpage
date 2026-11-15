@@ -57,6 +57,7 @@ export async function fetchGoatcounterReport(
   const range = `start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
   const get = (path: string) => goatGet(resolved.site, resolved.apiKey, path)
 
+  // GoatCounter allows 4 requests per second, so the report stays sequential.
   const total = (await get(`/stats/total?${range}`)) as { total?: number; stats?: Array<{ day?: string; daily?: number }> }
   const hits = (await get(`/stats/hits?${range}&limit=50`)) as { hits?: HitStat[] }
   const browsers = await get(`/stats/browsers?${range}`).catch(() => ({ stats: [] }))
