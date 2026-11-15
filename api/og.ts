@@ -1,28 +1,30 @@
 /**
- * Node.js Function — generates an Open Graph image (1200×630 PNG)
- * from the runtime site config, falling back to public/siteConfig.json.
+ * Node.js Function — GET /api/og, a 1200×630 PNG of the runtime site config.
  *
- * Endpoint:  GET /api/og
+ * Local helpers are imported from `./_ogdeps.js`, which `pnpm build` emits
+ * and gitignores. Vercel's file tracer follows that `.js` file. The resvg
+ * addon is the real file under pnpm's store (`includeFiles` in vercel.json);
+ * requiring the package name would follow a symlink, which Vercel rejects.
  *
- * The renderer is a native addon, so the deployed file stays on the Node.js
- * runtime. Vercel does not bundle this handler's TypeScript imports, which
- * is why scripts/bundle-og.ts emits api/og.js. The glibc binary is copied
- * next to @resvg/resvg-js so that package's own require can see it.
+ * https://vercel.com/docs/functions/runtimes/node-js
+ * https://vercel.com/docs/project-configuration/vercel-json#functions
  */
 
 import { createRequire } from 'node:module'
 import satori from 'satori'
-import { shareSubtitle } from '../../src/i18n/homepage'
-import { SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE } from '../stats/_cache'
-import { readRuntimeSite } from '../stats/_site-store'
+import { shareSubtitle, SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE, readRuntimeSite } from './_ogdeps.js'
 
 const nativeRequire = createRequire(import.meta.url)
+
+/** Matches the direct dependency @resvg/resvg-js-linux-x64-gnu@2.6.2. A real file, not a symlink. */
+const LINUX_X64_GNU =
+  '../node_modules/.pnpm/@resvg+resvg-js-linux-x64-gnu@2.6.2/node_modules/@resvg/resvg-js-linux-x64-gnu/resvgjs.linux-x64-gnu.node'
 
 function loadResvg(): typeof import('@resvg/resvg-js') {
   if (process.platform !== 'linux' || process.arch !== 'x64') {
     return nativeRequire('@resvg/resvg-js') as typeof import('@resvg/resvg-js')
   }
-  const binding = nativeRequire('./resvgjs.linux-x64-gnu.node') as {
+  const binding = nativeRequire(LINUX_X64_GNU) as {
     Resvg: new (svg: string, options?: string) => InstanceType<typeof import('@resvg/resvg-js').Resvg>
   }
   class Resvg extends binding.Resvg {
@@ -35,8 +37,6 @@ function loadResvg(): typeof import('@resvg/resvg-js') {
 
 const { Resvg } = loadResvg()
 
-// ─── Types (mirroring siteConfig.ts) ─────────────────────
-
 interface SocialLinkEntry {
   id: string
   label: string
@@ -44,18 +44,13 @@ interface SocialLinkEntry {
   iconSlug?: string
 }
 
-// ─── Constants ───────────────────────────────────────────
-
 const WIDTH = 1200
 const HEIGHT = 630
-
 const GOOGLE_FONTS_BASE = 'https://fonts.googleapis.com/css2'
-
-// ─── Font helpers (cached for warm starts) ───────────────
 
 let fontCache: { manrope: ArrayBuffer; spaceGrotesk: ArrayBuffer } | null = null
 
-async function getGoogleFontUrl(family: string, weight: number): Promise<string> {
+async function googleFontUrl(family: string, weight: number): Promise<string> {
   const params = new URLSearchParams({ family: `${family}:wght@${weight}` })
   const cssRes = await fetch(`${GOOGLE_FONTS_BASE}?${params}`, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; bot)' },
@@ -68,28 +63,14 @@ async function getGoogleFontUrl(family: string, weight: number): Promise<string>
 
 async function loadFonts() {
   if (fontCache) return fontCache
-
-  const [manropeTtfUrl, spaceGroteskTtfUrl] = await Promise.all([
-    getGoogleFontUrl('Manrope', 700),
-    getGoogleFontUrl('Space Grotesk', 700),
-  ])
-
+  const [manropeTtfUrl, spaceGroteskTtfUrl] = await Promise.all([googleFontUrl('Manrope', 700), googleFontUrl('Space Grotesk', 700)])
   const [manrope, spaceGrotesk] = await Promise.all([
     fetch(manropeTtfUrl).then((r) => r.arrayBuffer()),
     fetch(spaceGroteskTtfUrl).then((r) => r.arrayBuffer()),
   ])
-
   fontCache = { manrope, spaceGrotesk }
   return fontCache
 }
-
-// ─── Config loader ───────────────────────────────────────
-
-async function loadConfig() {
-  return readRuntimeSite({ fresh: true })
-}
-
-// ─── OG Layout (satori JSX-like object tree) ─────────────
 
 function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, domain: string) {
   return {
@@ -106,7 +87,6 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
         overflow: 'hidden',
       },
       children: [
-        // Decorative blobs
         {
           type: 'div',
           props: {
@@ -149,7 +129,6 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
             },
           },
         },
-        // Content
         {
           type: 'div',
           props: {
@@ -163,16 +142,10 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
               position: 'relative',
             },
             children: [
-              // Status badge
               {
                 type: 'div',
                 props: {
-                  style: {
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    marginBottom: '24px',
-                  },
+                  style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' },
                   children: [
                     {
                       type: 'div',
@@ -202,7 +175,6 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
                   ],
                 },
               },
-              // Name
               {
                 type: 'h1',
                 props: {
@@ -220,7 +192,6 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
                   children: name,
                 },
               },
-              // Tagline
               {
                 type: 'p',
                 props: {
@@ -233,15 +204,10 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
                   children: tagline,
                 },
               },
-              // Social pills — dynamically built from config
               {
                 type: 'div',
                 props: {
-                  style: {
-                    display: 'flex',
-                    flexWrap: 'wrap' as const,
-                    gap: '12px',
-                  },
+                  style: { display: 'flex', flexWrap: 'wrap' as const, gap: '12px' },
                   children: socials.map((s) => ({
                     type: 'div',
                     props: {
@@ -259,7 +225,6 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
                   })),
                 },
               },
-              // Domain at bottom
               {
                 type: 'div',
                 props: {
@@ -283,53 +248,19 @@ function buildMarkup(socials: SocialLinkEntry[], name: string, tagline: string, 
   } as const
 }
 
-// ─── Handler ─────────────────────────────────────────────
-
-type HeaderSource = { get?: (name: string) => string | null } | Record<string, string | string[] | undefined>
-type NodeResponse = {
-  statusCode: number
-  setHeader: (name: string, value: string) => void
-  end: (body?: Uint8Array | string) => void
-}
-
-function headerValue(headers: HeaderSource | undefined, name: string): string | null {
-  if (!headers) return null
-  if (typeof (headers as { get?: unknown }).get === 'function') return (headers as { get: (name: string) => string | null }).get(name)
-  const value = (headers as Record<string, string | string[] | undefined>)[name.toLowerCase()]
-  return Array.isArray(value) ? value[0] ?? null : value ?? null
-}
-
-function pageUrl(request: { url?: string; headers?: HeaderSource }): URL {
-  const raw = request.url || '/'
+function fallbackLocation(request: Request): string {
   try {
-    return new URL(raw)
+    return new URL('/og-image.png', request.url).href
   } catch {
-    const host = headerValue(request.headers, 'x-forwarded-host') ?? headerValue(request.headers, 'host') ?? 'localhost'
-    const proto = headerValue(request.headers, 'x-forwarded-proto') ?? 'https'
-    return new URL(raw, `${proto}://${host}`)
+    return '/og-image.png'
   }
 }
 
-function isNodeResponse(value: unknown): value is NodeResponse {
-  return !!value && typeof (value as NodeResponse).setHeader === 'function' && typeof (value as NodeResponse).end === 'function'
-}
-
-function send(response: unknown, status: number, headers: Record<string, string>, body: Uint8Array | string): Response | undefined {
-  if (isNodeResponse(response)) {
-    response.statusCode = status
-    for (const [key, value] of Object.entries(headers)) response.setHeader(key, value)
-    response.end(body)
-    return undefined
-  }
-  return new Response(body as BodyInit, { status, headers })
-}
-
-export default async function handler(request: Request, response?: unknown): Promise<Response | undefined> {
+export async function GET(request: Request): Promise<Response> {
   try {
-    const [config, fonts] = await Promise.all([loadConfig(), loadFonts()])
-
+    const [config, fonts] = await Promise.all([readRuntimeSite({ fresh: true }), loadFonts()])
     const name = config.site?.name ?? 'Han-che Wang'
-    const requested = pageUrl(request).searchParams.get('lng')
+    const requested = new URL(request.url).searchParams.get('lng')
     const tagline = shareSubtitle({ requested, i18n: config.i18n })
     const domain = config.site?.domain ?? 'link.w1999.me'
     const markup = buildMarkup(config.socials, name, tagline, domain)
@@ -345,19 +276,19 @@ export default async function handler(request: Request, response?: unknown): Pro
       ],
     })
 
-    const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: WIDTH } })
-    const png = resvg.render().asPng()
-
-    return send(response, 200, {
-      'Content-Type': 'image/png',
-      'Cache-Control': SITE_BROWSER_CACHE,
-      'CDN-Cache-Control': SITE_CDN_CACHE,
-      'Vercel-CDN-Cache-Control': SITE_CDN_CACHE,
-      'Vercel-Cache-Tag': SITE_CACHE_TAG,
-    }, new Uint8Array(png))
+    const png = new Resvg(svg, { fitTo: { mode: 'width', value: WIDTH } }).render().asPng()
+    return new Response(new Uint8Array(png) as BodyInit, {
+      status: 200,
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': SITE_BROWSER_CACHE,
+        'CDN-Cache-Control': SITE_CDN_CACHE,
+        'Vercel-CDN-Cache-Control': SITE_CDN_CACHE,
+        'Vercel-Cache-Tag': SITE_CACHE_TAG,
+      },
+    })
   } catch (err) {
     console.error('OG generation failed:', err)
-    const location = new URL('/og-image.png', pageUrl(request)).href
-    return send(response, 302, { Location: location }, '')
+    return new Response(null, { status: 302, headers: { Location: fallbackLocation(request) } })
   }
 }

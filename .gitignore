@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# Emitted by scripts/emit-og-deps.ts during pnpm build. Not source.
+api/_ogdeps.js
 test-results
 *.local
 

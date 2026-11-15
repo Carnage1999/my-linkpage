@@ -8,7 +8,7 @@ import tailwindcss from 'eslint-plugin-tailwindcss'
 import tseslint from 'typescript-eslint'
 
 export default defineConfig([
-  globalIgnores(['dist', 'api/og.js']),
+  globalIgnores(['dist', 'api/_ogdeps.js']),
   js.configs.recommended,
   ...tseslint.configs.recommended,
   // The plugin's published config type is built against an older ESLint config type.
