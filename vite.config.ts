@@ -37,14 +37,23 @@ export default defineConfig({
         return deps.filter((dep) => !dep.includes('recharts') && !dep.includes('ManagePage'))
       },
     },
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks(id) {
-          const bundled = id.split('node_modules/').pop() ?? ''
-          const pkg = bundled.startsWith('@') ? bundled.split('/').slice(0, 2).join('/') : bundled.split('/')[0]
-          // Only the chart stays in its own chunk. Shared React shims stay out
-          // of it, so the homepage does not import this file.
-          if (pkg === 'recharts' || pkg === 'd3' || pkg.startsWith('d3-')) return 'recharts'
+        codeSplitting: {
+          groups: [
+            {
+              // Only the chart libraries move. Their React dependencies stay
+              // behind, or the homepage statically imports this chunk.
+              debugName: 'recharts',
+              includeDependenciesRecursively: false,
+              name(id) {
+                const bundled = id.split('node_modules/').pop() ?? ''
+                const pkg = bundled.startsWith('@') ? bundled.split('/').slice(0, 2).join('/') : bundled.split('/')[0]
+                if (pkg === 'recharts' || pkg === 'd3' || pkg.startsWith('d3-')) return 'recharts'
+                return null
+              },
+            },
+          ],
         },
       },
     },
