@@ -114,14 +114,15 @@ describe('public reads and recovery', () => {
       }),
     )
     expect(unconfirmed.status).toBe(400)
-    const unconfirmedImport = await handler(
+    const imported = await handler(
       new Request('https://link.example/api/site-config', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'import', baseVersion: 8 }),
+        body: JSON.stringify({ action: 'import', confirm: true, baseVersion: 8 }),
       }),
     )
-    expect(unconfirmedImport.status).toBe(400)
+    expect(imported.status).toBe(400)
+    expect(await imported.json()).toMatchObject({ error: 'Unknown action' })
     const missingVersion = await handler(
       new Request('https://link.example/api/site-config', {
         method: 'POST',
