@@ -12,7 +12,16 @@
 
 import { createRequire } from 'node:module'
 import satori from 'satori'
-import { shareSubtitle, SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE, readRuntimeSite } from './_ogdeps.js'
+import {
+  canonicalLocale,
+  canonicalOgUrl,
+  hashClientIp,
+  readPublicDocument,
+  shareSubtitle,
+  SITE_BROWSER_CACHE,
+  SITE_CDN_CACHE,
+  siteCacheTag,
+} from './_ogdeps.js'
 
 const nativeRequire = createRequire(import.meta.url)
 
@@ -263,11 +272,38 @@ function fallbackLocation(request: Request): string {
   }
 }
 
+const NO_STORE = 'private, no-store'
+
 export async function GET(request: Request): Promise<Response> {
+  const url = new URL(request.url)
+  const canonical = canonicalOgUrl(url)
+  if (canonical.href !== url.href) {
+    return new Response(null, { status: 308, headers: { Location: canonical.href, 'Cache-Control': NO_STORE } })
+  }
+
   try {
-    const [config, fonts] = await Promise.all([readRuntimeSite({ fresh: true }), loadFonts()])
+    const read = await readPublicDocument(await hashClientIp(request))
+    if (read.kind === 'limited') return new Response(null, { status: 429, headers: { 'Cache-Control': NO_STORE } })
+    if (read.kind !== 'ready') {
+      return new Response(null, { status: 302, headers: { Location: fallbackLocation(request), 'Cache-Control': NO_STORE } })
+    }
+    const config = read.site
+    const requestedRaw = url.searchParams.get('lng')
+    const requested = requestedRaw ? canonicalLocale(requestedRaw) : null
+    const codes = config.i18n.languages.map((language) => language.code)
+    if (requestedRaw && (!requested || !codes.includes(requested))) {
+      const fallback = codes.includes(config.i18n.fallback) ? config.i18n.fallback : codes[0]
+      const dest = new URL('/api/og', request.url)
+      if (fallback) dest.searchParams.set('lng', fallback)
+      return new Response(null, { status: 307, headers: { Location: dest.href, 'Cache-Control': NO_STORE } })
+    }
+    if (requested && requestedRaw !== requested) {
+      const dest = new URL('/api/og', request.url)
+      dest.searchParams.set('lng', requested)
+      return new Response(null, { status: 307, headers: { Location: dest.href, 'Cache-Control': NO_STORE } })
+    }
+    const fonts = await loadFonts()
     const name = config.site?.name ?? 'Han-che Wang'
-    const requested = new URL(request.url).searchParams.get('lng')
     const tagline = shareSubtitle({ requested, i18n: config.i18n })
     const domain = config.site?.domain ?? 'link.w1999.me'
     const markup = buildMarkup(config.socials, name, tagline, domain)
@@ -291,11 +327,11 @@ export async function GET(request: Request): Promise<Response> {
         'Cache-Control': SITE_BROWSER_CACHE,
         'CDN-Cache-Control': SITE_CDN_CACHE,
         'Vercel-CDN-Cache-Control': SITE_CDN_CACHE,
-        'Vercel-Cache-Tag': SITE_CACHE_TAG,
+        'Vercel-Cache-Tag': siteCacheTag(),
       },
     })
   } catch (err) {
     console.error('OG generation failed:', err)
-    return new Response(null, { status: 302, headers: { Location: fallbackLocation(request) } })
+    return new Response(null, { status: 302, headers: { Location: fallbackLocation(request), 'Cache-Control': NO_STORE } })
   }
 }

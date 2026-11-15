@@ -31,6 +31,16 @@ export function installMemoryRedis() {
     }
     if (op === 'EXPIRE' || op === 'PEXPIRE') return { result: 1 }
     if (op === 'PING') return { result: 'PONG' }
+    if (op === 'EVAL' && command[1]?.includes("redis.call('INCR', KEYS[1])") && command[1]?.includes('KEYS[2]')) {
+      const rateKey = command[3] ?? ''
+      const docKey = command[4] ?? ''
+      const limit = Number(command[6] ?? 0)
+      const next = Number(store.get(rateKey) ?? 0) + 1
+      store.set(rateKey, String(next))
+      writes.push(rateKey)
+      if (next > limit) return { result: [0, ''] }
+      return { result: [1, store.get(docKey) ?? ''] }
+    }
     if (op === 'EVAL' && command[1]?.includes("redis.call('GET', KEYS[1])")) {
       const numkeys = Number(command[2] ?? 0)
       const key = command[3] ?? ''

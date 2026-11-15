@@ -402,6 +402,18 @@ export function applySecretWrites(current: SecretBag, writes: unknown): SecretBa
   return next
 }
 
+/** Public script ids from the site document. Does not read Redis and does not decrypt. */
+export function scriptsFromStored(settings: unknown): PublicScripts {
+  try {
+    if (settings == null) return publicScriptsFrom(buildEffective({ v: 1 }, {}))
+    const record = { ...(settings as Record<string, unknown>) }
+    delete record.secrets
+    return publicScriptsFrom(buildEffective(normalizeSettings(record), {}))
+  } catch {
+    return publicScriptsFrom(buildEffective({ v: 1 }, {}))
+  }
+}
+
 export function publicScriptsFrom(effective: EffectiveSettings): PublicScripts {
   const websiteId = safeToken(effective.view.umami.websiteId.value)
   const site = safeToken(effective.view.goatcounter.site.value)
@@ -415,26 +427,85 @@ export function publicScriptsFrom(effective: EffectiveSettings): PublicScripts {
   }
 }
 
-async function decodeSettings(raw: unknown): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
-  const record = raw as StoredSettings
+function originOf(url: string): string {
+  try {
+    return new URL(url).origin
+  } catch {
+    return ''
+  }
+}
+
+function secretWasReplaced(writes: unknown, key: keyof SecretBag): boolean {
+  if (!writes || typeof writes !== 'object') return false
+  const value = (writes as Record<string, unknown>)[key]
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+/**
+ * A secret is only sent to the origin it was saved for. Changing the Umami
+ * URL, or the GoatCounter site that becomes its host, drops the previous
+ * secret unless this request typed a new one.
+ */
+export function bindSecretsToOrigin(
+  previous: StoredSettings,
+  next: StoredSettings,
+  secrets: SecretBag,
+  writes: unknown,
+): SecretBag {
+  const bound: SecretBag = { ...secrets }
+  if (originOf(previous.umami?.apiUrl ?? '') !== originOf(next.umami?.apiUrl ?? '')) {
+    if (!secretWasReplaced(writes, 'umamiApiKey')) delete bound.umamiApiKey
+    if (!secretWasReplaced(writes, 'umamiPassword')) delete bound.umamiPassword
+  }
+  if ((previous.goatcounter?.site ?? '') !== (next.goatcounter?.site ?? '')) {
+    if (!secretWasReplaced(writes, 'goatcounterApiKey')) delete bound.goatcounterApiKey
+  }
+  return bound
+}
+
+async function decodeSettings(raw: unknown, strict: boolean): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
+  const record = (raw ?? {}) as StoredSettings
   const material = secretKeyMaterial()
-  const secrets = record.secrets && material ? ((await decryptJson<SecretBag>(material, record.secrets)) ?? {}) : {}
+  let secrets: SecretBag = {}
+  if (record.secrets) {
+    if (!material) {
+      if (strict) throw new SettingsError('STATS_PASSWORD or STATS_SECRET is required')
+    } else {
+      const decoded = await decryptJson<SecretBag>(material, record.secrets)
+      if (!decoded) {
+        if (strict) throw new SettingsError('Stored secrets could not be decrypted')
+      } else {
+        secrets = decoded
+      }
+    }
+  }
   const stored = { ...record, v: 1 as const }
   delete stored.secrets
   try {
     return { stored: normalizeSettings(stored), secrets }
-  } catch {
-    return { stored, secrets }
+  } catch (error) {
+    if (strict) throw error instanceof SettingsError ? error : new SettingsError('Stored settings are invalid')
+    return { stored: { v: 1 }, secrets }
   }
 }
 
-async function readLegacy(): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
-  if (!isRedisConfigured()) return { stored: { v: 1 }, secrets: {} }
+async function readLegacy(strict: boolean): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
+  if (!isRedisConfigured()) {
+    if (strict) throw new SettingsError('Redis is not configured')
+    return { stored: { v: 1 }, secrets: {} }
+  }
+  let response: { result: unknown }
   try {
-    const response = await redisCommand(['GET', legacyKey()])
-    if (typeof response.result !== 'string' || !response.result) return { stored: { v: 1 }, secrets: {} }
-    return decodeSettings(JSON.parse(response.result) as StoredSettings)
+    response = await redisCommand(['GET', legacyKey()])
   } catch {
+    if (strict) throw new SettingsError('Could not read stored settings')
+    return { stored: { v: 1 }, secrets: {} }
+  }
+  if (typeof response.result !== 'string' || !response.result) return { stored: { v: 1 }, secrets: {} }
+  try {
+    return await decodeSettings(JSON.parse(response.result) as StoredSettings, strict)
+  } catch (error) {
+    if (strict) throw error instanceof SettingsError ? error : new SettingsError('Stored settings are unreadable')
     return { stored: { v: 1 }, secrets: {} }
   }
 }
@@ -443,7 +514,7 @@ async function readStored(options?: { fresh?: boolean }): Promise<{ stored: Stor
   if (options?.fresh) decoded = null
   if (decoded && decoded.generation === siteCacheGeneration()) return decoded
   const managed = await readManaged(options)
-  const value = managed.settings != null ? await decodeSettings(managed.settings) : await readLegacy()
+  const value = managed.settings != null ? await decodeSettings(managed.settings, false) : await readLegacy(false)
   decoded = { generation: siteCacheGeneration(), ...value }
   return value
 }
@@ -478,17 +549,22 @@ export async function commitManagedConfig(input: unknown): Promise<ManagedSave> 
   }
   const currentDoc = await readManagedStrict()
   if (body.baseVersion !== currentDoc.site.version) throw new SiteConflictError(currentDoc.site.version)
-  const current = currentDoc.settings != null ? await decodeSettings(currentDoc.settings) : await readLegacy()
+  const current = currentDoc.settings != null ? await decodeSettings(currentDoc.settings, true) : await readLegacy(true)
   const site = normalizeConfig(body, currentDoc.site.version + 1)
   const settings = normalizeSettings(body.settings)
-  const secrets = applySecretWrites(current.secrets, body.secrets)
+  const secrets = bindSecretsToOrigin(current.stored, settings, applySecretWrites(current.secrets, body.secrets), body.secrets)
   const wrote = await compareAndSetManaged(currentDoc.raw, site, {
     ...settings,
     secrets: await encryptJson(material, secrets),
   })
   if (!wrote) {
-    const latest = await readManagedStrict()
-    throw new SiteConflictError(latest.site.version)
+    try {
+      const latest = await readManagedStrict()
+      throw new SiteConflictError(latest.site.version)
+    } catch (error) {
+      if (error instanceof SiteConflictError) throw error
+      throw new SiteConflictError(0)
+    }
   }
   decoded = { generation: siteCacheGeneration(), stored: settings, secrets }
   return { site, effective: buildEffective(settings, secrets) }
@@ -497,7 +573,9 @@ export async function commitManagedConfig(input: unknown): Promise<ManagedSave> 
 export async function previewDraft(draft: { settings?: unknown; secrets?: unknown } | undefined): Promise<EffectiveSettings> {
   const current = await readStored({ fresh: true })
   if (!draft?.settings) return buildEffective(current.stored, current.secrets)
-  return buildEffective(normalizeSettings(draft.settings), applySecretWrites(current.secrets, draft.secrets))
+  const next = normalizeSettings(draft.settings)
+  const secrets = bindSecretsToOrigin(current.stored, next, applySecretWrites(current.secrets, draft.secrets), draft.secrets)
+  return buildEffective(next, secrets)
 }
 
 export { VISITOR_PROVIDERS }

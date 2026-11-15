@@ -11,7 +11,7 @@ import {
   RETENTION_DAYS,
   dateKeyInTimeZone,
 } from './_dates'
-import { blockedWriteResponse, json, requireStatsToken } from './_http'
+import { blockedWriteResponse, json, requestIsSecure, requireStatsToken, sessionCookie } from './_http'
 import { previewWritesBlocked } from './_keys'
 import { acceptLinkId } from './_links'
 import { runtimeLinkIds } from './_site-store'
@@ -87,7 +87,10 @@ export async function handleAuth(request: Request): Promise<Response> {
   const { password } = body
   if (!password || typeof password !== 'string') return json({ error: 'Missing password' }, 400)
   if (!verifyPassword(password)) return json({ error: 'Invalid password' }, 401)
-  return json({ token: await createToken() })
+  const token = await createToken()
+  return json({ ok: true }, 200, 'private, no-store', {
+    'Set-Cookie': sessionCookie(token, requestIsSecure(request)),
+  })
 }
 
 export async function handleRecord(request: Request): Promise<Response> {

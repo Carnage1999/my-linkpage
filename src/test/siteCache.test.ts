@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import handler from '../../api/site-config'
-import { SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE, etagMatches, publicCdnHeaders, purgeSiteConfigCache } from '../../api/stats/_cache'
+import { SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE, etagMatches, publicCdnHeaders, purgeSiteConfigCache, siteCacheTag } from '../../api/stats/_cache'
 import { __resetSiteCache } from '../../api/stats/_site-store'
 import { __resetScriptCache } from '../../api/stats/scripts'
+import { installMemoryRedis } from './memoryRedis'
 
 describe('site config CDN cache', () => {
   afterEach(() => {
@@ -20,7 +21,8 @@ describe('site config CDN cache', () => {
     expect(headers['Cache-Control']).not.toMatch(/s-maxage|stale-while-revalidate/)
     expect(headers['Vercel-CDN-Cache-Control']).toBe(SITE_CDN_CACHE)
     expect(headers['CDN-Cache-Control']).toBe(SITE_CDN_CACHE)
-    expect(headers['Vercel-Cache-Tag']).toBe(SITE_CACHE_TAG)
+    expect(headers['Vercel-Cache-Tag']).toBe(siteCacheTag())
+    expect(siteCacheTag()).toBe(SITE_CACHE_TAG)
     expect(headers.ETag).toBe('"site-1"')
     expect(headers['Vercel-CDN-Cache-Control']).not.toMatch(/stale-while-revalidate/)
     expect(etagMatches('W/"site-1"', '"site-1"')).toBe(true)
@@ -37,17 +39,16 @@ describe('site config CDN cache', () => {
     expect(sources).toContain('/manage')
   })
 
-  it('sends CDN headers and resolved icon paths from GET /api/site-config', async () => {
+  it('sends the seed with no-store when Redis is not configured', async () => {
     delete process.env.UPSTASH_REDIS_REST_URL
     delete process.env.UPSTASH_REDIS_REST_TOKEN
     __resetSiteCache()
     __resetScriptCache()
     const response = await handler(new Request('https://link.example/api/site-config'))
     expect(response.status).toBe(200)
-    expect(response.headers.get('Cache-Control')).toBe(SITE_BROWSER_CACHE)
-    expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe(SITE_CDN_CACHE)
-    expect(response.headers.get('CDN-Cache-Control')).toBe(SITE_CDN_CACHE)
-    expect(response.headers.get('Vercel-Cache-Tag')).toBe(SITE_CACHE_TAG)
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store')
+    expect(response.headers.get('Vercel-CDN-Cache-Control')).toBeNull()
+    expect(response.headers.get('Vercel-Cache-Tag')).toBeNull()
     const body = (await response.json()) as {
       socials: Array<{ id: string; iconSlug?: string; iconPath?: string }>
       scripts: Record<string, unknown>
@@ -67,5 +68,22 @@ describe('site config CDN cache', () => {
     expect(body.i18n.texts.en?.title).toBe("Hi, I'm Wang")
     expect(body.i18n.languages.map((language) => language.code)).toEqual(['en', 'ru', 'zh-TW'])
     expect(JSON.stringify(body).length).toBeLessThan(1_000_000)
+  })
+
+  it('caches a stored document and ignores a junk query', async () => {
+    const redis = installMemoryRedis()
+    const seed = JSON.parse(readFileSync('public/siteConfig.json', 'utf8')) as { version?: number }
+    redis.store.set('site:config', JSON.stringify({ ...seed, version: 31 }))
+    const stored = await handler(new Request('https://link.example/api/site-config'))
+    expect(stored.status).toBe(200)
+    expect(stored.headers.get('Cache-Control')).toBe(SITE_BROWSER_CACHE)
+    expect(stored.headers.get('Vercel-CDN-Cache-Control')).toBe(SITE_CDN_CACHE)
+    expect(stored.headers.get('Vercel-Cache-Tag')).toBe(siteCacheTag())
+    const junk = await handler(new Request('https://link.example/api/site-config?v=nope&lng=zz&utm=1'))
+    expect(junk.status).toBe(308)
+    expect(junk.headers.get('Cache-Control')).toBe('private, no-store')
+    expect(junk.headers.get('Location')).toBe('https://link.example/api/site-config')
+    expect(redis.commands.filter((command) => command[0] === 'EVAL')).toHaveLength(1)
+    redis.restore()
   })
 })

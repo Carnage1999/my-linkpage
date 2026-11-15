@@ -21,6 +21,7 @@ export function referrerHostname(
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
   const host = url.hostname.toLowerCase()
+  if (host.includes(':') || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) return null
   const blocked = new Set([bareHost(pageHost), ...extraHosts.map(bareHost)].filter(Boolean))
   if (!host || blocked.has(host)) return null
   return host

@@ -135,17 +135,28 @@ export async function readClickHashes(): Promise<{
   return { totals: results[0]?.result, days: results[1]?.result }
 }
 
-const PAGEVIEW_SCRIPT = `
+export const PAGEVIEW_SCRIPT = `
 local ok = redis.call('SET', KEYS[1], '1', 'NX', 'EX', ARGV[1])
 if not ok then
   return 0
 end
-local ttl = redis.call('TTL', KEYS[2])
-for i = 3, #ARGV do
-  redis.call('HINCRBY', KEYS[2], ARGV[i], 1)
+local day = KEYS[2]
+local ttl = redis.call('TTL', day)
+local length = redis.call('HLEN', day)
+local cap = tonumber(ARGV[3])
+for i = 4, #ARGV do
+  local field = ARGV[i]
+  local existed = redis.call('HEXISTS', day, field)
+  local newRef = string.sub(field, 1, 4) == 'ref:' and existed == 0
+  if not (newRef and length >= cap) then
+    redis.call('HINCRBY', day, field, 1)
+    if existed == 0 then
+      length = length + 1
+    end
+  end
 end
 if ttl < 0 then
-  redis.call('EXPIRE', KEYS[2], ARGV[2])
+  redis.call('EXPIRE', day, ARGV[2])
 end
 return 1
 `
@@ -164,6 +175,7 @@ export async function recordPageview(input: {
     redisKey(`pv:${input.today}`),
     '30',
     '15552000',
+    '200',
     ...input.fields,
   ])
   return Number(response.result) === 1 ? 'ok' : 'limited'

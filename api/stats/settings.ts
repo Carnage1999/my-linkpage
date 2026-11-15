@@ -4,7 +4,7 @@
  */
 
 import { purgeSiteConfigCache } from './_cache'
-import { blockedWriteResponse, json, requireStatsToken } from './_http'
+import { blockedWriteResponse, json, readJsonObject, requireStatsToken } from './_http'
 import { previewWritesBlocked } from './_keys'
 import { bumpNamedLimit, hashClientIp, isRedisConfigured } from './_redis'
 import { commitManagedConfig, loadEffective, SettingsError } from './_settings'
@@ -33,7 +33,7 @@ export default async function handler(request: Request): Promise<Response> {
   try {
     const attempts = await bumpNamedLimit('settings', await hashClientIp(request))
     if (attempts > WRITE_LIMIT) return json({ error: 'Too many attempts' }, 429)
-    const committed = await commitManagedConfig(await request.json())
+    const committed = await commitManagedConfig(await readJsonObject(request))
     const purge = await purgeSiteConfigCache()
     return json(committed.effective.view, 200, 'private, no-store', { 'x-site-purge': purge })
   } catch (error) {

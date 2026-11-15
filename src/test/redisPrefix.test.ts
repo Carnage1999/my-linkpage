@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import handler from '../../api/site-config'
+import settingsHandler from '../../api/stats/settings'
 import { handleRecord } from '../../api/stats/_handlers'
 import { PreviewWriteBlocked, redisKey, redisKeyPrefix } from '../../api/stats/_keys'
 import {
@@ -52,7 +53,7 @@ describe('redis key prefix', () => {
     const scripts = ['api/stats/_redis.ts', 'api/stats/_site-store.ts']
       .map((file) => readFileSync(file, 'utf8'))
       .flatMap((source) => [...source.matchAll(/const [A-Z_]+ = `\n([\s\S]*?)`/g)].map((match) => match[1] ?? ''))
-    expect(scripts.length).toBe(3)
+    expect(scripts.length).toBe(4)
     for (const script of scripts) {
       expect(script).not.toMatch(/redis\.call\(\s*'[A-Z]+'\s*,\s*'/)
       expect(script).toMatch(/KEYS\[/)
@@ -73,6 +74,11 @@ describe('redis key prefix', () => {
     expect(response.status).toBe(200)
     const body = (await response.json()) as { version: number }
     expect(body.version).toBe(31)
+    const token = await createToken()
+    const settings = await settingsHandler(
+      new Request('https://link.example/api/stats/settings', { headers: { Authorization: `Bearer ${token}` } }),
+    )
+    expect(settings.status).toBe(200)
 
     await readClickHashes()
     await readPageviewDays(['2026-11-15'])

@@ -65,6 +65,7 @@ export async function verifyToken(token: string): Promise<boolean> {
   const timestamp = Number(ts)
 
   if (Number.isNaN(timestamp)) return false
+  if (timestamp > Date.now() + 60_000) return false
   if (Date.now() - timestamp > TOKEN_MAX_AGE) return false
 
   const expected = await hmacSha256(password, ts)

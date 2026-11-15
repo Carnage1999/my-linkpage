@@ -8,15 +8,17 @@
  * at save time. Vercel's CDN caches the GET. A hit does not call Redis.
  */
 
+import { bareUrl, privateBustValue, searchKeys } from './_canonical'
 import { etagMatches, publicCdnHeaders, purgeSiteConfigCache } from './stats/_cache'
-import { blockedWriteResponse, json, requireStatsToken } from './stats/_http'
+import { blockedWriteResponse, json, readJsonObject, requireStatsToken } from './stats/_http'
 import { previewWritesBlocked } from './stats/_keys'
 import { bumpNamedLimit, hashClientIp, isRedisConfigured } from './stats/_redis'
-import { commitManagedConfig, publicScriptsFrom, SettingsError } from './stats/_settings'
-import { SiteConflictError, SiteValidationError } from './stats/_site-schema'
-import { compareAndSetManaged, readManagedStrict, readRuntimeSite, seedSiteConfig } from './stats/_site-store'
-import { isStatsEnabled } from './stats/_token'
-import { __resetScriptCache, scriptPayload } from './stats/scripts'
+import { commitManagedConfig, publicScriptsFrom, scriptsFromStored, SettingsError } from './stats/_settings'
+import { normalizeConfig, SiteConflictError, SiteValidationError } from './stats/_site-schema'
+import { readManagedRaw, readPublicDocument, replaceManagedRaw, seedSiteConfig } from './stats/_site-store'
+import { isStatsEnabled, verifyToken } from './stats/_token'
+
+const NO_STORE = 'private, no-store'
 
 export const config = { runtime: 'edge' }
 
@@ -30,13 +32,40 @@ function etag(version: number, scripts: unknown): string {
   return `"site-${(hash >>> 0).toString(16)}"`
 }
 
+function bearer(request: Request): string {
+  const header = request.headers.get('authorization') ?? ''
+  return header.startsWith('Bearer ') ? header.slice(7) : ''
+}
+
+/** Local preview has no middleware, so a non-canonical GET is a no-store redirect and never a cache entry. */
+async function canonicalGet(request: Request): Promise<'public' | 'private' | Response> {
+  const url = new URL(request.url)
+  if (searchKeys(url).length === 0) return 'public'
+  const bust = privateBustValue(url)
+  if (bust && (await verifyToken(bearer(request)))) return 'private'
+  return new Response(null, {
+    status: 308,
+    headers: { Location: bareUrl(url).href, 'Cache-Control': NO_STORE },
+  })
+}
+
 export default async function handler(request: Request): Promise<Response> {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
 
   if (request.method === 'GET') {
-    const site = await readRuntimeSite({ fresh: true })
-    const scripts = await scriptPayload({ fresh: true })
+    const mode = await canonicalGet(request)
+    if (mode instanceof Response) return mode
+    const read = await readPublicDocument(await hashClientIp(request))
+    if (read.kind === 'limited') return json({ error: 'Too many requests' }, 429, NO_STORE)
+    if (read.kind === 'unavailable' || read.kind === 'invalid') {
+      return json({ error: 'Site config is unavailable' }, 503, NO_STORE)
+    }
+    const site = read.kind === 'ready' ? read.site : seedSiteConfig()
+    const scripts = scriptsFromStored(read.kind === 'ready' ? read.settings : null)
     const tag = etag(site.version, scripts)
+    if (mode === 'private' || read.kind !== 'ready') {
+      return json({ ...site, scripts }, 200, NO_STORE)
+    }
     if (etagMatches(request.headers.get('if-none-match'), tag)) {
       return new Response(null, { status: 304, headers: publicCdnHeaders(tag) })
     }
@@ -53,31 +82,51 @@ export default async function handler(request: Request): Promise<Response> {
     const attempts = await bumpNamedLimit('site', await hashClientIp(request))
     if (attempts > 20) return json({ error: 'Too many attempts' }, 429)
   } catch (error) {
+    const blocked = blockedWriteResponse(error)
+    if (blocked) return blocked
     console.error('Site config rate limit error:', error)
     return json({ error: 'Rate limit unavailable' }, 503)
   }
 
   try {
     let saved
+    const body = await readJsonObject(request)
     if (request.method === 'POST') {
-      const body = (await request.json()) as { action?: string }
       if (body.action !== 'import' && body.action !== 'reset') return json({ error: 'Unknown action' }, 400)
-      const current = await readManagedStrict()
-      saved = { ...seedSiteConfig(), version: current.site.version + 1 }
-      const wrote = await compareAndSetManaged(current.raw, saved, current.settings)
-      if (!wrote) {
-        const latest = await readManagedStrict()
-        throw new SiteConflictError(latest.site.version)
+      const raw = await readManagedRaw()
+      let version = 0
+      let settings: unknown = null
+      let readable = false
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as { version?: unknown; settings?: unknown }
+          version = normalizeConfig(parsed, typeof parsed.version === 'number' ? parsed.version : 1).version
+          settings = parsed.settings ?? null
+          readable = true
+        } catch {
+          readable = false
+        }
       }
+      if (readable) {
+        if (typeof body.baseVersion !== 'number' || !Number.isInteger(body.baseVersion)) {
+          throw new SiteValidationError('baseVersion is required')
+        }
+        if (body.baseVersion !== version) throw new SiteConflictError(version)
+      }
+      const nextVersion = (readable ? version : typeof body.baseVersion === 'number' && Number.isInteger(body.baseVersion) ? body.baseVersion : 0) + 1
+      const seeded = { ...seedSiteConfig(), version: nextVersion }
+      const next = readable && settings && typeof settings === 'object' ? { ...seeded, settings } : seeded
+      const wrote = await replaceManagedRaw(raw, JSON.stringify(next))
+      if (!wrote) throw new SiteConflictError(readable ? version : 0)
+      saved = { ...seeded, scripts: scriptsFromStored(readable ? settings : null) }
     } else if (request.method === 'PUT') {
-      const committed = await commitManagedConfig(await request.json())
+      const committed = await commitManagedConfig(body)
       saved = { ...committed.site, scripts: publicScriptsFrom(committed.effective) }
     } else {
       return json({ error: 'Method not allowed' }, 405)
     }
-    __resetScriptCache()
     const purge = await purgeSiteConfigCache()
-    return json(saved, 200, 'private, no-store', { 'x-site-purge': purge })
+    return json(saved, 200, NO_STORE, { 'x-site-purge': purge })
   } catch (error) {
     const blocked = blockedWriteResponse(error)
     if (blocked) return blocked

@@ -126,8 +126,14 @@ describe('stats handlers', () => {
       }),
     )
     expect(allowed.status).toBe(200)
-    const body = (await allowed.json()) as { token: string }
-    expect(body.token).toContain('.')
+    const body = (await allowed.json()) as { ok?: boolean; token?: string }
+    expect(body.ok).toBe(true)
+    expect(body.token).toBeUndefined()
+    const token = decodeURIComponent((allowed.headers.get('set-cookie') ?? '').split(';')[0]?.split('=').slice(1).join('=') ?? '')
+    expect(token).toContain('.')
+    expect(allowed.headers.get('set-cookie')).toMatch(/HttpOnly/)
+    expect(allowed.headers.get('set-cookie')).toMatch(/SameSite=Strict/)
+    expect(allowed.headers.get('set-cookie')).not.toMatch(/Secure/)
   })
 
   it('requires a token and reports removed links separately from configured ones', async () => {
@@ -140,7 +146,7 @@ describe('stats handlers', () => {
         body: JSON.stringify({ password: 'secret' }),
       }),
     )
-    const { token } = (await login.json()) as { token: string }
+    const token = decodeURIComponent((login.headers.get('set-cookie') ?? '').split(';')[0]?.split('=').slice(1).join('=') ?? '')
     const response = await handleData(
       new Request('http://localhost/api/stats/data?days=7', {
         headers: { Authorization: `Bearer ${token}` },

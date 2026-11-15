@@ -6,6 +6,8 @@
  * does not map the specifier back to this `.ts` source. The Edge functions
  * keep importing the TypeScript modules directly.
  */
-export { shareSubtitle } from '../src/i18n/homepage'
-export { SITE_BROWSER_CACHE, SITE_CACHE_TAG, SITE_CDN_CACHE } from './stats/_cache'
-export { readRuntimeSite } from './stats/_site-store'
+export { canonicalLocale, shareSubtitle } from '../src/i18n/homepage'
+export { canonicalOgUrl } from './_canonical'
+export { SITE_BROWSER_CACHE, SITE_CDN_CACHE, siteCacheTag } from './stats/_cache'
+export { hashClientIp } from './stats/_redis'
+export { readPublicDocument } from './stats/_site-store'
