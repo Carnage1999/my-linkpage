@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type BrowserContext, type Page, type Request } from '@playwright/test'
+import { cookieHeader } from './requestCookies'
 
 const DATA = {
   timezone: 'Asia/Taipei',
@@ -42,13 +43,15 @@ const SETTINGS = {
   ],
 }
 
-function hasSession(cookie: string | undefined): boolean {
+async function hasSession(context: BrowserContext, request: Request): Promise<boolean> {
+  const cookie = await cookieHeader(context, request)
   return (cookie ?? '').includes('stats_session=test-token')
 }
 
 async function installApi(page: Page, dataStatus = 200) {
+  const context = page.context()
   await page.route('**/api/stats/session', async (route) => {
-    if (!hasSession(route.request().headers().cookie)) {
+    if (!(await hasSession(context, route.request()))) {
       await route.fulfill({ status: 401, json: { error: 'Missing token' } })
       return
     }
@@ -76,21 +79,21 @@ async function installApi(page: Page, dataStatus = 200) {
     await route.fulfill({ status: 401, json: { error: 'Invalid password' } })
   })
   await page.route('**/api/stats/data**', async (route) => {
-    if (!hasSession(route.request().headers().cookie)) {
+    if (!(await hasSession(context, route.request()))) {
       await route.fulfill({ status: 401, json: { error: 'Invalid or expired token' } })
       return
     }
     await route.fulfill({ status: dataStatus, json: dataStatus === 200 ? DATA : { error: 'Invalid or expired token' } })
   })
   await page.route('**/api/stats/visitors**', async (route) => {
-    if (!hasSession(route.request().headers().cookie)) {
+    if (!(await hasSession(context, route.request()))) {
       await route.fulfill({ status: 401, json: { error: 'Invalid or expired token' } })
       return
     }
     await route.fulfill({ json: VISITORS })
   })
   await page.route('**/api/stats/settings**', async (route) => {
-    if (!hasSession(route.request().headers().cookie)) {
+    if (!(await hasSession(context, route.request()))) {
       await route.fulfill({ status: 401, json: { error: 'Invalid or expired token' } })
       return
     }

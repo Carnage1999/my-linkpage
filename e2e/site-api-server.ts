@@ -94,8 +94,17 @@ async function readBody(request: IncomingMessage): Promise<Buffer> {
   return Buffer.concat(chunks)
 }
 
+function requestUrl(incoming: IncomingMessage): URL {
+  const originHeader = incoming.headers.origin
+  const origin = Array.isArray(originHeader) ? originHeader[0] : originHeader
+  // The browser talks to the preview origin. The handler must see that same host,
+  // or the cookie write is rejected as cross-site.
+  const base = origin && origin !== 'null' ? origin : 'http://127.0.0.1'
+  return new URL(incoming.url ?? '/', base)
+}
+
 const server = createServer(async (incoming, outgoing) => {
-  const url = new URL(incoming.url ?? '/', 'http://127.0.0.1')
+  const url = requestUrl(incoming)
   if (url.pathname === '/__test/reset' && incoming.method === 'POST') {
     resetStore()
     outgoing.writeHead(204)

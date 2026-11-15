@@ -74,8 +74,11 @@ export function useStatsAuth() {
   useEffect(() => {
     const controller = new AbortController()
     fetch('/api/stats/session', { credentials: 'same-origin', signal: controller.signal })
-      .then((response) => {
-        if (response.ok) setToken(SESSION_TOKEN)
+      .then(async (response) => {
+        if (!response.ok) return
+        const body = (await response.json()) as { ok?: unknown }
+        // A static host can answer unknown /api paths with index.html and status 200.
+        if (body?.ok === true) setToken(SESSION_TOKEN)
       })
       .catch(() => undefined)
       .finally(() => {

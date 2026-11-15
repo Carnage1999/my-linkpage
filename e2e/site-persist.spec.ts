@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import { spawn, type ChildProcess } from 'node:child_process'
+import { cookieHeader } from './requestCookies'
 
 const SAVED_IDS = ['github', 'x', 'telegram', 'bluesky', 'line', 'linkedin']
 const putOrders: string[][] = []
@@ -46,6 +47,8 @@ async function installApi(context: BrowserContext) {
       putOrders.push((body.socials ?? []).map((link) => link.id))
     }
     const headers = request.headers()
+    const cookie = await cookieHeader(context, request)
+    if (cookie) headers.cookie = cookie
     delete headers['if-none-match']
     delete headers['if-modified-since']
     const response = await fetch(`http://127.0.0.1:${port}${url.pathname}${url.search}`, {
@@ -101,6 +104,10 @@ test.describe('site persistence', () => {
 
   test.afterAll(() => {
     server?.kill()
+  })
+
+  test.afterEach(async ({ page }) => {
+    await page.context().unrouteAll({ behavior: 'ignoreErrors' })
   })
 
   test.beforeEach(async ({ page }) => {
