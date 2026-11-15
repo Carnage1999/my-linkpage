@@ -5,6 +5,14 @@ const SAVED_ORDER = ['GitHub', 'X', 'Telegram', 'Bluesky', 'Line', 'LinkedIn']
 const SAVED_IDS = ['github', 'x', 'telegram', 'bluesky', 'line', 'linkedin']
 const putOrders: string[][] = []
 
+async function expectIds(page: Page, ids: string[]) {
+  const inputs = page.getByLabel('id')
+  await expect(inputs).toHaveCount(ids.length)
+  for (let index = 0; index < ids.length; index += 1) {
+    await expect(inputs.nth(index)).toHaveValue(ids[index])
+  }
+}
+
 let server: ChildProcess | null = null
 let port = 0
 
@@ -139,7 +147,7 @@ test.describe('site persistence', () => {
     await expect(page.getByLabel('id').nth(2)).toHaveValue('x')
     await page.getByRole('button', { name: 'up' }).last().click()
     const ids = ['github', 'telegram', 'x', 'bluesky', 'linkedin', 'line']
-    await expect(page.getByLabel('id')).toHaveValues(ids)
+    await expectIds(page, ids)
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByText('Saved', { exact: true })).toBeVisible()
     expect(putOrders.at(-1)).toEqual(ids)
@@ -168,7 +176,7 @@ test.describe('site persistence', () => {
     const manage = await again.newPage()
     await signIn(manage)
     await manage.getByRole('tab', { name: 'Links' }).click()
-    await expect(manage.getByLabel('id')).toHaveValues(ids)
+    await expectIds(manage, ids)
     await again.close()
   })
 
