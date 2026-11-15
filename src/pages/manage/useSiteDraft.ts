@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { SecretWrites, SettingsInput, SettingsView } from '../../../api/stats/_settings'
 import { replaceSiteConfig, useSiteConfig } from '../../hooks/useSiteConfig'
+import { dashboardRequest } from '../../hooks/useStats'
 import { canonicalLocale, type HomepageI18n, type PublicKey } from '../../i18n/homepage'
 import { useManageCopy } from '../../manage/useManageCopy'
 import { notifySiteConfigSaved } from '../../siteSync'
@@ -87,7 +88,7 @@ export function settingsFromView(view: SettingsView): SettingsInput {
   }
 }
 
-export function useSiteDraft(token: string, settings: SettingsView | null, onSaved?: () => void) {
+export function useSiteDraft(token: string, settings: SettingsView | null, onSaved?: () => void, onUnauthorized?: () => void) {
   const { t } = useManageCopy()
   const config = useSiteConfig()
   const [state, setState] = useState(() => draftFrom(config))
@@ -153,12 +154,13 @@ export function useSiteDraft(token: string, settings: SettingsView | null, onSav
     setSaving(true)
     setStatus(null)
     try {
-      const response = await fetch('/api/site-config', {
-        method,
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      const payload = (await response.json()) as SiteConfig & { error?: string; version?: number; i18n?: HomepageI18n }
+      const response = await fetch('/api/site-config', dashboardRequest(token, { method, body: JSON.stringify(body) }))
+      const payload = (await response.json().catch(() => ({}))) as SiteConfig & { error?: string; version?: number; i18n?: HomepageI18n }
+      if (response.status === 401) {
+        onUnauthorized?.()
+        setStatus(payload.error ?? String(t('manageNetwork')))
+        return
+      }
       if (!response.ok) {
         setStatus(payload.error ?? String(t('manageNetwork')))
         return
@@ -309,8 +311,10 @@ export function useSiteDraft(token: string, settings: SettingsView | null, onSav
     ready: settings != null,
     save,
     exportJson,
-    importSeed: () => void send('POST', { action: 'import' }),
-    resetSeed: () => void send('POST', { action: 'reset' }),
+    resetSeed: () => {
+      if (!window.confirm(String(t('manageResetConfirm')))) return
+      void send('POST', { action: 'reset', baseVersion })
+    },
   }
 }
 

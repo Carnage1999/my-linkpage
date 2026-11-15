@@ -99,9 +99,9 @@ export function ManagePage() {
   useNoIndex(String(t('manageTitle')))
   useThemeSync()
   const { loading: configLoading } = useSiteConfig()
-  const { token, loading, error, login, logout, isAuthenticated } = useStatsAuth()
+  const { token, checking, loading, error, login, logout, isAuthenticated } = useStatsAuth()
 
-  if (configLoading) {
+  if (configLoading || checking) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="size-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300" />

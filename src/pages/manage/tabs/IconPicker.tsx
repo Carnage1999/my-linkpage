@@ -89,26 +89,25 @@ export function IconPicker({
             placeholder={String(t('manageIconSearch'))}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <ul className="mt-3 max-h-80 space-y-1 overflow-y-auto" role="listbox" aria-labelledby={dialogId}>
+          <div className="mt-3 max-h-80 space-y-1 overflow-y-auto" role="listbox" aria-labelledby={dialogId}>
             {results.map((icon: IconRecord) => (
-              <li key={icon.slug}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={icon.slug === iconSlug}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-                  onClick={() => {
-                    onChange(icon.slug)
-                    setOpen(false)
-                  }}
-                >
-                  <SocialIcon path={icon.path} />
-                  <span>{icon.title}</span>
-                  <span className="text-xs text-slate-400">{icon.slug}</span>
-                </button>
-              </li>
+              <button
+                key={icon.slug}
+                type="button"
+                role="option"
+                aria-selected={icon.slug === iconSlug}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                onClick={() => {
+                  onChange(icon.slug)
+                  setOpen(false)
+                }}
+              >
+                <SocialIcon path={icon.path} />
+                <span>{icon.title}</span>
+                <span className="text-xs text-slate-400">{icon.slug}</span>
+              </button>
             ))}
-          </ul>
+          </div>
         </dialog>
       ) : null}
     </div>

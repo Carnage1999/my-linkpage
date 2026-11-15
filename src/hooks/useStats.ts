@@ -4,7 +4,16 @@ import type { StatsRange } from '../../api/stats/_dates'
 import type { VisitorProviderId, VisitorReport } from '../../api/stats/_providers/types'
 import type { SettingsView } from '../../api/stats/_settings'
 
-const TOKEN_KEY = 'stats-auth-token'
+/** Sentinel for an HttpOnly session. It is not a bearer token and is never sent. */
+export const SESSION_TOKEN = 'cookie'
+
+export function dashboardRequest(token: string, init: RequestInit = {}): RequestInit {
+  const headers = new Headers(init.headers)
+  if (token !== SESSION_TOKEN) headers.set('Authorization', `Bearer ${token}`)
+  headers.set('X-Site-Request', '1')
+  if (init.body != null && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  return { ...init, credentials: 'same-origin', headers }
+}
 
 /** Record a configured link click. Prefers sendBeacon so navigation can continue. */
 export function recordLinkClick(linkId: string): void {
@@ -57,15 +66,23 @@ export interface DashboardData extends ClickReport {
 }
 
 export function useStatsAuth() {
-  const [token, setToken] = useState<string | null>(() => {
-    try {
-      return sessionStorage.getItem(TOKEN_KEY)
-    } catch {
-      return null
-    }
-  })
+  const [token, setToken] = useState<string | null>(null)
+  const [checking, setChecking] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<AuthError>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch('/api/stats/session', { credentials: 'same-origin', signal: controller.signal })
+      .then((response) => {
+        if (response.ok) setToken(SESSION_TOKEN)
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!controller.signal.aborted) setChecking(false)
+      })
+    return () => controller.abort()
+  }, [])
 
   const login = useCallback(async (password: string) => {
     setLoading(true)
@@ -73,7 +90,8 @@ export function useStatsAuth() {
     try {
       const response = await fetch('/api/stats/auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-Site-Request': '1' },
         body: JSON.stringify({ password }),
       })
       if (!response.ok) {
@@ -83,13 +101,7 @@ export function useStatsAuth() {
         else setError('network')
         return false
       }
-      const data = (await response.json()) as { token: string }
-      setToken(data.token)
-      try {
-        sessionStorage.setItem(TOKEN_KEY, data.token)
-      } catch {
-        /* sessionStorage can be blocked; the in-memory token still works. */
-      }
+      setToken(SESSION_TOKEN)
       return true
     } catch {
       setError('network')
@@ -102,14 +114,12 @@ export function useStatsAuth() {
   const logout = useCallback(() => {
     setToken(null)
     setError(null)
-    try {
-      sessionStorage.removeItem(TOKEN_KEY)
-    } catch {
-      /* ignore */
-    }
+    void fetch('/api/stats/logout', { method: 'POST', credentials: 'same-origin', headers: { 'X-Site-Request': '1' } }).catch(
+      () => undefined,
+    )
   }, [])
 
-  return { token, loading, error, login, logout, isAuthenticated: Boolean(token) }
+  return { token, checking, loading, error, login, logout, isAuthenticated: Boolean(token) }
 }
 
 export function useDashboard(token: string | null, days: StatsRange) {
@@ -139,12 +149,10 @@ export function useDashboard(token: string | null, days: StatsRange) {
   useEffect(() => {
     if (!token) return
 
-    let cancelled = false
-    const headers = { Authorization: `Bearer ${token}` }
-
-    fetch(`/api/stats/data?days=${days}`, { headers })
+    const controller = new AbortController()
+    fetch(`/api/stats/data?days=${days}`, dashboardRequest(token, { signal: controller.signal }))
       .then(async (dataResponse) => {
-        if (cancelled) return
+        if (controller.signal.aborted) return
         if (dataResponse.status === 401) {
           setUnauthorized(true)
           return
@@ -155,16 +163,15 @@ export function useDashboard(token: string | null, days: StatsRange) {
         }
         setData((await dataResponse.json()) as DashboardData)
       })
-      .catch(() => {
-        if (!cancelled) setError('network')
+      .catch((error: unknown) => {
+        if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) return
+        setError('network')
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       })
 
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [token, days, requestKey])
 
   return { data, loading, error, unauthorized, refetch }
@@ -181,10 +188,10 @@ export function useVisitorSettings(token: string | null) {
 
   useEffect(() => {
     if (!token) return
-    let cancelled = false
-    fetch('/api/stats/settings', { headers: { Authorization: `Bearer ${token}` } })
+    const controller = new AbortController()
+    fetch('/api/stats/settings', dashboardRequest(token, { signal: controller.signal }))
       .then(async (response) => {
-        if (cancelled) return
+        if (controller.signal.aborted) return
         if (response.status === 401) {
           setUnauthorized(true)
           return
@@ -192,9 +199,7 @@ export function useVisitorSettings(token: string | null) {
         if (response.ok) setSettings((await response.json()) as SettingsView)
       })
       .catch(() => undefined)
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [token, requestKey])
 
   return { settings, unauthorized, reload }
@@ -208,13 +213,11 @@ export function useVisitorReport(token: string | null, days: StatsRange, provide
 
   useEffect(() => {
     if (!token || !provider) return
-    let cancelled = false
+    const controller = new AbortController()
     const requestKey = `${provider}:${days}`
-    fetch(`/api/stats/visitors?provider=${provider}&days=${days}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    fetch(`/api/stats/visitors?provider=${provider}&days=${days}`, dashboardRequest(token, { signal: controller.signal }))
       .then(async (response) => {
-        if (cancelled) return
+        if (controller.signal.aborted) return
         if (response.status === 401) {
           setUnauthorized(true)
           return
@@ -242,7 +245,7 @@ export function useVisitorReport(token: string | null, days: StatsRange, provide
         setEntry({ key: requestKey, report: (await response.json()) as VisitorReport })
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setEntry({
             key: requestKey,
             report: {
@@ -262,9 +265,7 @@ export function useVisitorReport(token: string | null, days: StatsRange, provide
           })
         }
       })
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [token, days, provider])
 
   return { report, unauthorized }
@@ -274,21 +275,19 @@ export function useStatsEnabled() {
   const [enabled, setEnabled] = useState<boolean | null>(null)
 
   useEffect(() => {
-    let cancelled = false
-    fetch('/api/stats/check')
+    const controller = new AbortController()
+    fetch('/api/stats/check', { signal: controller.signal })
       .then((response) => {
         if (!response.ok) throw new Error(String(response.status))
         return response.json() as Promise<{ enabled?: boolean }>
       })
       .then((body) => {
-        if (!cancelled) setEnabled(Boolean(body.enabled))
+        if (!controller.signal.aborted) setEnabled(Boolean(body.enabled))
       })
       .catch(() => {
-        if (!cancelled) setEnabled(false)
+        if (!controller.signal.aborted) setEnabled(false)
       })
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [])
 
   return enabled

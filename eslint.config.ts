@@ -23,6 +23,10 @@ export default defineConfig([
   reactHooks.configs.flat['recommended-latest'],
   reactRefresh.configs.vite,
   {
+    files: ['public/theme-init.js'],
+    languageOptions: { globals: globals.browser },
+  },
+  {
     files: ['src/**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
       ecmaVersion: 'latest',

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { dashboardRequest } from '../../hooks/useStats'
 import { useManageCopy } from '../../manage/useManageCopy'
 import type { SecretWrites, SettingsInput, SettingsView } from '../../../api/stats/_settings'
 import { VISITOR_PROVIDERS, type VisitorProviderId } from '../../../api/stats/_providers/types'
@@ -101,11 +102,15 @@ function ProviderForm({
   async function test(provider: VisitorProviderId) {
     setStatus(null)
     try {
-      const response = await fetch('/api/stats/provider-test', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, draft: documentSettings() }),
-      })
+      const response = await fetch(
+        '/api/stats/provider-test',
+        dashboardRequest(token, { method: 'POST', body: JSON.stringify({ provider, draft: documentSettings() }) }),
+      )
+      if (!response.ok && response.status !== 200) {
+        const failed = (await response.json().catch(() => ({}))) as { error?: string }
+        setStatus(`${String(t('manageTestFail'))}: ${failed.error ?? response.status}`)
+        return
+      }
       const body = (await response.json()) as { ok?: boolean; error?: string }
       setStatus(body.ok ? String(t('manageTestOk')) : `${String(t('manageTestFail'))}: ${body.error ?? ''}`)
     } catch {

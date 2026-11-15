@@ -9,6 +9,7 @@ export interface SiteSavedMessage {
 }
 
 let shared: BroadcastChannel | null | undefined
+const savedListeners = new Set<(message: SiteSavedMessage) => void>()
 
 function siteChannel(): BroadcastChannel | null {
   if (shared !== undefined) return shared
@@ -18,10 +19,21 @@ function siteChannel(): BroadcastChannel | null {
   }
   try {
     shared = new BroadcastChannel(SITE_CHANNEL)
+    shared.onmessage = (event: MessageEvent<SiteSavedMessage>) => {
+      if (event.data?.type !== 'saved') return
+      for (const listener of savedListeners) listener(event.data)
+    }
   } catch {
     shared = null
   }
   return shared
+}
+
+/** One channel for the tab. Closing it drops the message in Firefox. */
+export function subscribeSiteSaved(listener: (message: SiteSavedMessage) => void): () => void {
+  siteChannel()
+  savedListeners.add(listener)
+  return () => savedListeners.delete(listener)
 }
 
 export function notifySiteConfigSaved(bust = false) {

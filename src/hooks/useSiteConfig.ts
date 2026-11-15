@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import seedFile from '../../public/siteConfig.json'
 import { EMPTY_SCRIPTS, type ScriptBundle } from '../analytics/types'
 import { DEFAULT_HOMEPAGE_I18N, type HomepageI18n } from '../i18n/homepage'
 import { safeAvatarUrl } from '../lib/safeAvatarUrl'
 import { safeLinkUrl, safeScriptUrl, safeSvgPath, safeToken } from '../lib/safeUrl'
-import { SITE_CHANNEL, type SiteSavedMessage } from '../siteSync'
+import { subscribeSiteSaved } from '../siteSync'
 import type { AnalyticsConfig, SiteConfig, SiteMetadata, SocialLinkEntry } from '../siteConfig'
 import { DEFAULT_PROFILE, DEFAULT_SITE } from '../siteConfig'
 
@@ -95,7 +95,7 @@ function fromConfig(
 const seedScripts = scriptsFromAnalytics((seedFile as SiteConfig).analytics)
 let current: SiteConfigState = { ...fromConfig(seedFile as SiteConfig & { i18n?: HomepageI18n }, seedScripts, null), loading: true }
 const listeners = new Set<() => void>()
-let refresh: (bust?: boolean) => Promise<void> = async () => undefined
+let refresh: (signal?: AbortSignal) => Promise<void> = async () => undefined
 
 function publish(next: SiteConfigState) {
   current = next
@@ -111,12 +111,13 @@ export function replaceSiteConfig(data: SiteConfig & { scripts?: ScriptBundle; v
   publish(fromConfig(data, current.scripts, current.etag))
 }
 
-async function revalidate(bust = false, signal?: AbortSignal) {
+async function revalidate(signal?: AbortSignal) {
   try {
     const headers: Record<string, string> = { Accept: 'application/json' }
-    if (!bust && current.etag) headers['If-None-Match'] = current.etag
-    const url = bust ? `/api/site-config?v=${current.version}` : '/api/site-config'
-    const response = await fetch(url, { headers, cache: 'no-cache', signal })
+    if (current.etag) headers['If-None-Match'] = current.etag
+    // Always the bare path. A save purges that CDN entry, so the next read is fresh.
+    // `v` is not sent: an anonymous query would be a separate cache key.
+    const response = await fetch('/api/site-config', { headers, cache: 'no-cache', signal })
     if (signal?.aborted || response.status === 304 || !response.ok) return
     const data = (await response.json()) as SiteConfig & { scripts?: ScriptBundle; version?: number }
     const incoming = data.version ?? 0
@@ -131,42 +132,36 @@ async function revalidate(bust = false, signal?: AbortSignal) {
 
 refresh = revalidate
 
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
 export function useSiteConfig(): SiteConfigState {
-  const [state, setState] = useState(current)
+  const state = useSyncExternalStore(subscribe, () => current, () => current)
 
   useEffect(() => {
-    const sync = () => setState(current)
-    listeners.add(sync)
     const controller = new AbortController()
-    void revalidate(false, controller.signal).catch(() => undefined)
+    void revalidate(controller.signal).catch(() => undefined)
 
     const onFocus = () => {
-      if (!controller.signal.aborted) void revalidate(false, controller.signal).catch(() => undefined)
+      if (!controller.signal.aborted) void revalidate(controller.signal).catch(() => undefined)
     }
     const onVisible = () => {
       if (document.visibilityState === 'visible') onFocus()
     }
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onVisible)
-    let channel: BroadcastChannel | null = null
-    if (typeof BroadcastChannel !== 'undefined') {
-      try {
-        channel = new BroadcastChannel(SITE_CHANNEL)
-        channel.addEventListener('message', (event: MessageEvent<SiteSavedMessage>) => {
-          if (event.data?.type !== 'saved' || controller.signal.aborted) return
-          void revalidate(Boolean(event.data.bust), controller.signal).catch(() => undefined)
-        })
-      } catch {
-        channel = null
-      }
-    }
+    const unsubscribe = subscribeSiteSaved(() => {
+      if (controller.signal.aborted) return
+      void revalidate(controller.signal).catch(() => undefined)
+    })
 
     return () => {
       controller.abort()
-      listeners.delete(sync)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisible)
-      channel?.close()
+      unsubscribe()
     }
   }, [])
 

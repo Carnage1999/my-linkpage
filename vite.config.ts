@@ -12,6 +12,8 @@ export default defineConfig({
       'X-Frame-Options': 'DENY',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+      'Content-Security-Policy':
+        "default-src 'self'; script-src 'self' https://cloud.umami.is https://gc.zgo.at https://static.cloudflareinsights.com; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://cloud.umami.is https://api.umami.is https://*.goatcounter.com https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
     },
   },
   preview: {
@@ -21,6 +23,8 @@ export default defineConfig({
       'X-Frame-Options': 'DENY',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+      'Content-Security-Policy':
+        "default-src 'self'; script-src 'self' https://cloud.umami.is https://gc.zgo.at https://static.cloudflareinsights.com; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://cloud.umami.is https://api.umami.is https://*.goatcounter.com https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
     },
   },
   build: {
@@ -37,6 +41,8 @@ export default defineConfig({
           if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
             return 'react-vendor'
           }
+          // recharts and the homepage both use this React shim. It has to live
+          // with React, or the homepage statically imports the chart chunk.
           if (
             id.includes('/motion/') ||
             id.includes('framer-motion') ||
@@ -45,9 +51,10 @@ export default defineConfig({
           ) {
             return 'motion'
           }
-          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-')) {
-            return 'recharts'
-          }
+          const bundled = id.split('node_modules/').pop() ?? ''
+          const pkg = bundled.startsWith('@') ? bundled.split('/').slice(0, 2).join('/') : bundled.split('/')[0]
+          if (pkg === 'use-sync-external-store') return 'react-vendor'
+          if (pkg === 'recharts' || pkg.startsWith('d3-')) return 'recharts'
           if (id.includes('node_modules/react-router')) {
             return 'router'
           }

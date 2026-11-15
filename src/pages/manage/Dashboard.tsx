@@ -45,7 +45,7 @@ export function Dashboard({ token, logout }: { token: string; logout: () => void
   const { settings, unauthorized: settingsDenied, reload } = useVisitorSettings(token)
   const provider = chosen ?? preferredProvider(settings)
   const { report, unauthorized: visitorDenied } = useVisitorReport(token, days, provider)
-  const draft = useSiteDraft(token, settings, () => void reload())
+  const draft = useSiteDraft(token, settings, () => void reload(), logout)
   const analyticsDirty = useRef(false)
 
   useEffect(() => {

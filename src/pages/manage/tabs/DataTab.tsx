@@ -10,9 +10,6 @@ export function DataTab({ draft }: { draft: SiteDraft }) {
       <p className="text-sm text-slate-500 dark:text-slate-400">{String(t('manageRedeploy'))}</p>
       {draft.status ? <p className="text-sm text-slate-500">{draft.status}</p> : null}
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={draft.importSeed} className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm dark:border-slate-700">
-          {String(t('manageImport'))}
-        </button>
         <button type="button" onClick={draft.resetSeed} className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm dark:border-slate-700">
           {String(t('manageReset'))}
         </button>
