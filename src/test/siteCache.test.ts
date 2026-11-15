@@ -6,10 +6,14 @@ import { __resetSiteCache } from '../../api/stats/_site-store'
 import { __resetScriptCache } from '../../api/stats/scripts'
 import { installMemoryRedis } from './memoryRedis'
 
+const REQUEST_CONTEXT = Symbol.for('@vercel/request-context')
+
 describe('site config CDN cache', () => {
   afterEach(() => {
     delete process.env.UPSTASH_REDIS_REST_URL
     delete process.env.UPSTASH_REDIS_REST_TOKEN
+    delete process.env.REDIS_KEY_PREFIX
+    delete (globalThis as Record<symbol, unknown>)[REQUEST_CONTEXT]
     __resetSiteCache()
     __resetScriptCache()
   })
@@ -84,6 +88,33 @@ describe('site config CDN cache', () => {
     expect(junk.headers.get('Cache-Control')).toBe('private, no-store')
     expect(junk.headers.get('Location')).toBe('https://link.example/api/site-config')
     expect(redis.commands.filter((command) => command[0] === 'EVAL')).toHaveLength(1)
+    redis.restore()
+  })
+
+  it('purges preview:site-config when the Redis prefix is preview:', async () => {
+    process.env.REDIS_KEY_PREFIX = 'preview:'
+    expect(siteCacheTag()).toBe('preview:site-config')
+    expect(publicCdnHeaders()['Vercel-Cache-Tag']).toBe('preview:site-config')
+
+    const redis = installMemoryRedis()
+    const seed = JSON.parse(readFileSync('public/siteConfig.json', 'utf8')) as { version?: number }
+    redis.store.set('preview:site:config', JSON.stringify({ ...seed, version: 31 }))
+    const response = await handler(new Request('https://link.example/api/site-config'))
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Vercel-Cache-Tag')).toBe('preview:site-config')
+
+    const purged: Array<{ tag: string | string[]; options?: { revalidationDeadlineSeconds?: number } }> = []
+    ;(globalThis as Record<symbol, unknown>)[REQUEST_CONTEXT] = {
+      get: () => ({
+        purge: {
+          dangerouslyDeleteByTag: async (tag: string | string[], options?: { revalidationDeadlineSeconds?: number }) => {
+            purged.push({ tag, options })
+          },
+        },
+      }),
+    }
+    expect(await purgeSiteConfigCache()).toBe('ok')
+    expect(purged).toEqual([{ tag: 'preview:site-config', options: { revalidationDeadlineSeconds: 0 } }])
     redis.restore()
   })
 })
