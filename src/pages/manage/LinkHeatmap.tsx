@@ -1,4 +1,5 @@
-import { m, useReducedMotion } from 'motion/react'
+import { LazyMotion, domAnimation, useReducedMotion } from 'motion/react'
+import * as m from 'motion/react-m'
 import { useManageCopy } from '../../manage/useManageCopy'
 import {
   Area,
@@ -38,6 +39,7 @@ export function LinkHeatmap({
   }))
 
   return (
+    <LazyMotion features={domAnimation} strict>
     <div className="space-y-4 rounded-2xl border border-slate-200/60 bg-white p-4 dark:border-slate-800/60 dark:bg-slate-900/80">
       <div className="flex items-end justify-between gap-3">
         <p className="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400">
@@ -148,5 +150,6 @@ export function LinkHeatmap({
         </ResponsiveContainer>
       </div>
     </div>
+    </LazyMotion>
   )
 }

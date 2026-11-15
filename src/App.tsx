@@ -9,9 +9,9 @@ import {
   AnimatePresence,
   domAnimation,
   LazyMotion,
-  m,
   useReducedMotion,
 } from 'motion/react'
+import * as m from 'motion/react-m'
 import { useEffect, useRef, useState } from 'react'
 import { SocialIcon } from './SocialIcon'
 import { SEO } from './components/SEO'
@@ -275,7 +275,7 @@ export default function App() {
   if (loading && socials.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600 dark:border-slate-700 dark:border-t-slate-300" />
+        <div className="size-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-600 motion-reduce:animate-none dark:border-slate-700 dark:border-t-slate-300" />
       </div>
     )
   }

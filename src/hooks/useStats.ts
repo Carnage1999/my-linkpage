@@ -274,10 +274,18 @@ export function useStatsEnabled() {
   const [enabled, setEnabled] = useState<boolean | null>(null)
 
   useEffect(() => {
+    let cancelled = false
     fetch('/api/stats/check')
       .then((response) => response.json() as Promise<{ enabled?: boolean }>)
-      .then((body) => setEnabled(Boolean(body.enabled)))
-      .catch(() => setEnabled(false))
+      .then((body) => {
+        if (!cancelled) setEnabled(Boolean(body.enabled))
+      })
+      .catch(() => {
+        if (!cancelled) setEnabled(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return enabled

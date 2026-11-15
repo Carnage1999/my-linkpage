@@ -32,6 +32,15 @@ export function IconPicker({
     }
   }, [])
 
+  useEffect(() => {
+    if (!open) return undefined
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open])
+
   const manual = iconSlug.trim().length > 0
   const slug = catalog ? (manual ? catalog.canonicalSlug(iconSlug) : catalog.resolveIconSlug(url)) : null
   const path = (slug ? catalog?.iconBySlug(slug)?.path : undefined) ?? iconPath
@@ -70,6 +79,7 @@ export function IconPicker({
             </h3>
             <input
               autoFocus
+              aria-label={String(t('manageIconSearch'))}
               className="mt-3 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
               value={query}
               placeholder={String(t('manageIconSearch'))}
