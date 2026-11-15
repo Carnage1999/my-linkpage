@@ -11,7 +11,8 @@
 import { etagMatches, publicCdnHeaders, purgeSiteConfigCache } from './stats/_cache'
 import { json, requireStatsToken } from './stats/_http'
 import { bumpNamedLimit, hashClientIp, isRedisConfigured } from './stats/_redis'
-import { SiteValidationError, validateSiteConfig } from './stats/_site-schema'
+import { commitManagedConfig, publicScriptsFrom, SettingsError } from './stats/_settings'
+import { SiteConflictError, SiteValidationError } from './stats/_site-schema'
 import { readRuntimeSite, seedSiteConfig, writeRuntimeSite } from './stats/_site-store'
 import { isStatsEnabled } from './stats/_token'
 import { __resetScriptCache, scriptPayload } from './stats/scripts'
@@ -55,24 +56,25 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   try {
-    const current = await readRuntimeSite()
+    const current = await readRuntimeSite({ fresh: true })
+    let saved
     if (request.method === 'POST') {
       const body = (await request.json()) as { action?: string }
       if (body.action !== 'import' && body.action !== 'reset') return json({ error: 'Unknown action' }, 400)
-      const next = { ...seedSiteConfig(), version: current.version + 1 }
-      await writeRuntimeSite(next)
+      saved = { ...seedSiteConfig(), version: current.version + 1 }
+      await writeRuntimeSite(saved)
     } else if (request.method === 'PUT') {
-      const next = validateSiteConfig(await request.json(), current.version + 1)
-      await writeRuntimeSite(next)
+      const committed = await commitManagedConfig(await request.json())
+      saved = { ...committed.site, scripts: publicScriptsFrom(committed.effective) }
     } else {
       return json({ error: 'Method not allowed' }, 405)
     }
     __resetScriptCache()
     const purge = await purgeSiteConfigCache()
-    const saved = await readRuntimeSite({ fresh: true })
     return json(saved, 200, 'private, no-store', { 'x-site-purge': purge })
   } catch (error) {
-    if (error instanceof SiteValidationError) return json({ error: error.message }, 400)
+    if (error instanceof SiteConflictError) return json({ error: error.message, version: error.version }, 409)
+    if (error instanceof SiteValidationError || error instanceof SettingsError) return json({ error: error.message }, 400)
     console.error('Site config save error:', error)
     return json({ error: 'Internal error' }, 500)
   }

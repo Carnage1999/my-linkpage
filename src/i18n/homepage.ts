@@ -114,7 +114,7 @@ export function seedTextsFor(code: string): HomepageTexts {
 /**
  * Map a browser or stored tag onto an enabled homepage language.
  * Returns null when nothing enabled matches, so detection can try the next source.
- * Chinese defaults to zh-TW when that is the only Chinese language enabled.
+ * Every code uses the same two steps: the full tag, then the primary subtag.
  */
 export function matchEnabled(language: string | undefined, enabled: readonly string[]): string | null {
   if (!language) return null
@@ -122,27 +122,13 @@ export function matchEnabled(language: string | undefined, enabled: readonly str
   const exact = enabled.find((code) => code.toLowerCase() === lower)
   if (exact) return exact
   const primary = lower.split('-')[0] ?? ''
-  const chinese = primary === 'zh' || lower.includes('hans') || lower.includes('hant')
-  if (chinese) {
-    const traditional =
-      lower.includes('hant') || lower.startsWith('zh-tw') || lower.startsWith('zh-hk') || lower.startsWith('zh-mo')
-    const simplified = lower.includes('hans') || lower.startsWith('zh-cn') || lower.startsWith('zh-sg')
-    if (traditional) {
-      const traditionalCode = enabled.find((code) => code.toLowerCase() === 'zh-tw' || code.toLowerCase() === 'zh-hant')
-      if (traditionalCode) return traditionalCode
-    }
-    if (simplified || lower === 'zh') {
-      const simplifiedCode = enabled.find((code) => ['zh-cn', 'zh-hans', 'zh'].includes(code.toLowerCase()))
-      if (simplifiedCode) return simplifiedCode
-      const traditionalCode = enabled.find((code) => code.toLowerCase() === 'zh-tw')
-      if (traditionalCode) return traditionalCode
-    }
-  }
-  const byPrimary = enabled.find((code) => {
-    const candidate = code.toLowerCase()
-    return candidate === primary || candidate.startsWith(`${primary}-`)
-  })
-  return byPrimary ?? null
+  if (!primary) return null
+  return (
+    enabled.find((code) => {
+      const candidate = code.toLowerCase()
+      return candidate === primary || candidate.startsWith(`${primary}-`)
+    }) ?? null
+  )
 }
 
 export function mapDetected(language: string | undefined, enabled: readonly string[], fallback: string): string {
@@ -151,15 +137,22 @@ export function mapDetected(language: string | undefined, enabled: readonly stri
 
 export function fallbackCode(i18n: HomepageI18n): string {
   const codes = i18n.languages.map((language) => language.code)
-  return codes.includes(i18n.fallback) ? i18n.fallback : (codes[0] ?? 'en')
+  return codes.includes(i18n.fallback) ? i18n.fallback : (codes[0] ?? i18n.fallback)
 }
 
-/** The saved line, or the same line from the default language. */
+/** Saved line, then the configured default language, then that language's seed. The same steps for every code. */
 export function homepageText(i18n: HomepageI18n, code: string, key: PublicKey): string {
-  const direct = i18n.texts[code]?.[key]?.trim()
-  if (direct) return direct
   const fallback = fallbackCode(i18n)
-  return i18n.texts[fallback]?.[key]?.trim() || seedI18n.texts[fallback]?.[key] || seedI18n.texts.en?.[key] || ''
+  const saved = i18n.texts[code]?.[key]?.trim()
+  if (saved) return saved
+  if (code !== fallback) {
+    const fromDefault = i18n.texts[fallback]?.[key]?.trim()
+    if (fromDefault) return fromDefault
+  }
+  const seeded = seedTextsFor(code)[key]?.trim()
+  if (seeded) return seeded
+  if (code !== fallback) return seedTextsFor(fallback)[key]?.trim() || ''
+  return ''
 }
 
 /** Share-image line. It is the requested language's subtitle, then the default language. */

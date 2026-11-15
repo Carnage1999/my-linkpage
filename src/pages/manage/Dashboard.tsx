@@ -45,7 +45,7 @@ export function Dashboard({ token, logout }: { token: string; logout: () => void
   const { settings, unauthorized: settingsDenied, reload } = useVisitorSettings(token)
   const provider = chosen ?? preferredProvider(settings)
   const { report, unauthorized: visitorDenied } = useVisitorReport(token, days, provider)
-  const draft = useSiteDraft(token)
+  const draft = useSiteDraft(token, settings, () => void reload())
   const analyticsDirty = useRef(false)
 
   useEffect(() => {
@@ -253,7 +253,9 @@ export function Dashboard({ token, logout }: { token: string; logout: () => void
               settings={settings}
               provider={provider}
               dirtyRef={analyticsDirty}
-              onSaved={() => void reload()}
+              onCommit={draft.save}
+              saving={draft.saving}
+              notice={draft.status}
               onChoose={(id) => {
                 setChosen(id)
                 try {

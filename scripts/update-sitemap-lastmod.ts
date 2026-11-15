@@ -35,7 +35,7 @@ function writeSitemap(): void {
   const codes = (seed.i18n?.languages ?? [])
     .map((language) => language.code)
     .filter((code): code is string => Boolean(code))
-  const alternates = sitemapAlternates(domain, codes.length > 0 ? codes : ['en', 'ru', 'zh-TW'])
+  const alternates = sitemapAlternates(domain, codes)
   const withLanguages = xml.replace(/(?:\s*<xhtml:link rel="alternate"[\s\S]*?\/>)+/, `\n${alternates}`)
   const updated = withLanguages.replace(
     /<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/g,

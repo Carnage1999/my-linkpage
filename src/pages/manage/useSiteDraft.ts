@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { SecretWrites, SettingsInput, SettingsView } from '../../../api/stats/_settings'
 import { replaceSiteConfig, useSiteConfig } from '../../hooks/useSiteConfig'
-import { canonicalLocale, homepageText, PUBLIC_KEYS, type HomepageI18n, type HomepageTexts, type PublicKey } from '../../i18n/homepage'
+import { canonicalLocale, type HomepageI18n, type PublicKey } from '../../i18n/homepage'
 import { useManageCopy } from '../../manage/useManageCopy'
 import { notifySiteConfigSaved } from '../../siteSync'
 import type { SiteConfig } from '../../siteConfig'
@@ -40,14 +41,22 @@ interface DraftState {
   i18n: HomepageI18n
 }
 
-function copyTexts(i18n: HomepageI18n, from: string): HomepageTexts {
-  const texts: HomepageTexts = {}
-  for (const key of PUBLIC_KEYS) texts[key] = homepageText(i18n, from, key)
-  return texts
-}
-
 function snapshot(state: DraftState): string {
   return JSON.stringify(state)
+}
+
+function documentFrom(state: DraftState) {
+  return {
+    site: { name: state.name, domain: state.domain, twitterHandle: state.handle },
+    profile: { avatar: state.avatarUrl.trim() || state.avatarPath },
+    socials: state.rows.map((row) => ({
+      id: row.id.trim(),
+      label: row.label.trim(),
+      url: row.url.trim(),
+      ...(row.iconSlug.trim() && row.iconPath ? { iconSlug: row.iconSlug.trim(), iconPath: row.iconPath } : {}),
+    })),
+    i18n: structuredClone(state.i18n),
+  }
 }
 
 function draftFrom(config: ReturnType<typeof useSiteConfig>): DraftState {
@@ -63,7 +72,22 @@ function draftFrom(config: ReturnType<typeof useSiteConfig>): DraftState {
   }
 }
 
-export function useSiteDraft(token: string) {
+export function settingsFromView(view: SettingsView): SettingsInput {
+  return {
+    timezone: view.timezone.value,
+    defaultProvider: view.defaultProvider,
+    inject: view.inject,
+    umami: {
+      apiUrl: view.umami.apiUrl.value,
+      websiteId: view.umami.websiteId.value,
+      username: view.umami.username.value,
+    },
+    goatcounter: { site: view.goatcounter.site.value },
+    cloudflare: { accountId: view.cloudflare.accountId.value, siteTag: view.cloudflare.siteTag.value },
+  }
+}
+
+export function useSiteDraft(token: string, settings: SettingsView | null, onSaved?: () => void) {
   const { t } = useManageCopy()
   const config = useSiteConfig()
   const [state, setState] = useState(() => draftFrom(config))
@@ -71,11 +95,19 @@ export function useSiteDraft(token: string) {
   const [seenVersion, setSeenVersion] = useState(config.version)
   const [status, setStatus] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [baseVersion, setBaseVersion] = useState(config.version)
+  const savingRef = useRef(false)
+  const settingsRef = useRef<SettingsInput | null>(settings ? settingsFromView(settings) : null)
 
-  if (config.version !== seenVersion) {
+  useEffect(() => {
+    if (settings) settingsRef.current = settingsFromView(settings)
+  }, [settings])
+
+  if (config.version > seenVersion) {
     setSeenVersion(config.version)
     if (snapshot(state) === savedSnap) {
       const next = draftFrom(config)
+      setBaseVersion(config.version)
       setSavedSnap(snapshot(next))
       setState(next)
     }
@@ -105,7 +137,8 @@ export function useSiteDraft(token: string) {
     })
   }
 
-  async function send(method: 'PUT' | 'POST', body: unknown) {
+  async function send(method: 'PUT' | 'POST', body: unknown, sentSnap?: string) {
+    savingRef.current = true
     setSaving(true)
     setStatus(null)
     try {
@@ -121,11 +154,13 @@ export function useSiteDraft(token: string) {
       }
       replaceSiteConfig(payload)
       notifySiteConfigSaved(response.headers.get('x-site-purge') !== 'ok')
+      onSaved?.()
       const site = payload.site
       if (!site) {
         setStatus(String(t('manageSaved')))
         return
       }
+      setBaseVersion(payload.version ?? baseVersion)
       const next: DraftState = {
         name: site.name,
         domain: site.domain,
@@ -135,60 +170,66 @@ export function useSiteDraft(token: string) {
         rows: rowsFrom(payload.socials),
         i18n: payload.i18n ?? state.i18n,
       }
-      setSavedSnap(snapshot(next))
       if (payload.version != null) setSeenVersion(payload.version)
-      setState(next)
+      setSavedSnap(snapshot(next))
+      setState((current) => (sentSnap == null || snapshot(current) === sentSnap ? next : current))
       setStatus(String(t('manageSaved')))
     } catch {
       setStatus(String(t('manageNetwork')))
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
   }
 
-  async function socialsForSave() {
-    const { resolveStoredIcon } = await import('../../icons/catalog')
-    return state.rows.map((row) => {
-      const icon = resolveStoredIcon({ url: row.url.trim(), iconSlug: row.iconSlug.trim() || undefined })
-      return {
-        id: row.id.trim(),
-        label: row.label.trim(),
-        url: row.url.trim(),
-        ...icon,
-      }
-    })
-  }
-
-  function save() {
-    const renamed = state.rows.some((row) => row.originalId && row.originalId !== row.id.trim())
-    if (renamed && !window.confirm(String(t('manageIdWarn')))) return
+  function save(override?: { settings: SettingsInput; secrets?: SecretWrites }): boolean {
+    if (savingRef.current) return false
+    const loaded = override?.settings ?? settingsRef.current
+    if (!loaded) {
+      setStatus(String(t('manageNetwork')))
+      return false
+    }
+    settingsRef.current = loaded
+    const editing = state
+    const savedVersion = baseVersion
+    const renamed = editing.rows.some((row) => row.originalId && row.originalId !== row.id.trim())
+    if (renamed && !window.confirm(String(t('manageIdWarn')))) return false
+    savingRef.current = true
+    setSaving(true)
     void (async () => {
       try {
-        const socials = await socialsForSave()
-        await send('PUT', {
-          site: { name: state.name, domain: state.domain, twitterHandle: state.handle },
-          profile: { avatar: state.avatarUrl.trim() || state.avatarPath },
-          socials,
-          i18n: state.i18n,
+        const { resolveStoredIcon } = await import('../../icons/catalog')
+        const socials = editing.rows.map((row) => {
+          const icon = resolveStoredIcon({ url: row.url.trim(), iconSlug: row.iconSlug.trim() || undefined })
+          return {
+            id: row.id.trim(),
+            label: row.label.trim(),
+            url: row.url.trim(),
+            ...icon,
+          }
         })
+        await send(
+          'PUT',
+          {
+            ...documentFrom(editing),
+            socials,
+            settings: loaded,
+            ...(override?.secrets ? { secrets: override.secrets } : {}),
+            baseVersion: savedVersion,
+          },
+          snapshot(editing),
+        )
       } catch (error) {
+        savingRef.current = false
+        setSaving(false)
         setStatus(error instanceof Error ? error.message : String(t('manageNetwork')))
       }
     })()
+    return true
   }
 
   function exportJson() {
-    const body = {
-      site: { name: state.name, domain: state.domain, twitterHandle: state.handle },
-      profile: { avatar: state.avatarUrl.trim() || state.avatarPath },
-      socials: state.rows.map((row) => ({
-        id: row.id,
-        label: row.label,
-        url: row.url,
-        ...(row.iconSlug ? { iconSlug: row.iconSlug } : {}),
-      })),
-      i18n: state.i18n,
-    }
+    const body = documentFrom(state)
     const blob = new Blob([JSON.stringify(body, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
@@ -241,7 +282,7 @@ export function useSiteDraft(token: string) {
         i18n: {
           ...current.i18n,
           languages: [...current.i18n.languages, { code: canonical, label: label.trim(), shortLabel: shortLabel.trim() }],
-          texts: { ...current.i18n.texts, [canonical]: copyTexts(current.i18n, current.i18n.fallback) },
+          texts: { ...current.i18n.texts, [canonical]: {} },
         },
       }))
       return { ok: true as const, code: canonical }
@@ -249,6 +290,7 @@ export function useSiteDraft(token: string) {
     dirty,
     status,
     saving,
+    ready: settings != null,
     save,
     exportJson,
     importSeed: () => void send('POST', { action: 'import' }),

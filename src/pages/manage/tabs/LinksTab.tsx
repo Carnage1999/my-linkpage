@@ -49,7 +49,7 @@ export function LinksTab({ draft }: { draft: SiteDraft }) {
         </div>
       ))}
       {draft.status ? <p className="text-sm text-slate-500">{draft.status}</p> : null}
-      <button type="button" disabled={draft.saving} onClick={draft.save} className="rounded-xl bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900">
+      <button type="button" disabled={draft.saving || !draft.ready} onClick={() => draft.save()} className="rounded-xl bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900">
         {draft.saving ? String(t('manageSaving')) : String(t('manageSave'))}
       </button>
     </section>

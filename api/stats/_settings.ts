@@ -10,10 +10,11 @@ import { safeScriptUrl, safeToken } from '../../src/lib/safeUrl'
 import { decryptJson, encryptJson, secretKeyMaterial } from './_crypto'
 import { DEFAULT_STATS_TIMEZONE } from './_dates'
 import { isRedisConfigured, redisCommand } from './_redis'
+import { readManaged, siteCacheGeneration, writeManaged } from './_site-store'
+import { normalizeConfig, SiteConflictError, SiteValidationError, type PublicSiteConfig } from './_site-schema'
 import { isVisitorProvider, VISITOR_PROVIDERS, type VisitorProviderId } from './_providers/types'
 
 const KEY = 'stats:settings'
-const CACHE_MS = 60_000
 
 export interface SecretBag {
   goatcounterApiKey?: string
@@ -94,20 +95,23 @@ export interface PublicScripts {
   cloudflare: { token: string } | null
 }
 
-export interface SettingsPatch {
+export interface SettingsInput {
   timezone?: string
   defaultProvider?: VisitorProviderId | null
-  inject?: { umami?: boolean; goatcounter?: boolean; cloudflare?: boolean }
-  umami?: {
-    apiUrl?: string
-    websiteId?: string
-    username?: string
-    apiKey?: string | null
-    password?: string | null
-  }
-  goatcounter?: { site?: string; apiKey?: string | null }
-  cloudflare?: { accountId?: string; siteTag?: string; apiToken?: string | null }
+  inject: { umami: boolean; goatcounter: boolean; cloudflare: boolean }
+  umami: { apiUrl: string; websiteId: string; username: string }
+  goatcounter: { site: string }
+  cloudflare: { accountId: string; siteTag: string }
 }
+
+export type SecretWrites = Partial<Record<keyof SecretBag, string | null>>
+
+const SECRET_FIELDS: readonly { key: keyof SecretBag; env: string }[] = [
+  { key: 'umamiApiKey', env: 'UMAMI_API_KEY' },
+  { key: 'umamiPassword', env: 'UMAMI_PASSWORD' },
+  { key: 'goatcounterApiKey', env: 'GOATCOUNTER_API_KEY' },
+  { key: 'cloudflareApiToken', env: 'CLOUDFLARE_API_TOKEN' },
+]
 
 export class SettingsError extends Error {
   constructor(message: string) {
@@ -116,10 +120,10 @@ export class SettingsError extends Error {
   }
 }
 
-let cache: { at: number; stored: StoredSettings; secrets: SecretBag } | null = null
+let decoded: { generation: number; stored: StoredSettings; secrets: SecretBag } | null = null
 
 export function __resetSettingsCache(): void {
-  cache = null
+  decoded = null
 }
 
 function env(name: string): string {
@@ -318,93 +322,81 @@ export function buildEffective(stored: StoredSettings, secrets: SecretBag): Effe
   }
 }
 
-export function applyPatch(
-  stored: StoredSettings,
-  secrets: SecretBag,
-  patch: SettingsPatch,
-): { stored: StoredSettings; secrets: SecretBag } {
-  const nextStored: StoredSettings = {
-    v: 1,
-    timezone: stored.timezone,
-    defaultProvider: stored.defaultProvider,
-    inject: { ...stored.inject },
-    umami: { ...stored.umami },
-    goatcounter: { ...stored.goatcounter },
-    cloudflare: { ...stored.cloudflare },
-  }
-  const nextSecrets: SecretBag = { ...secrets }
-
-  if (patch.timezone !== undefined && !env('STATS_TIMEZONE')) {
-    nextStored.timezone = patch.timezone.trim() ? assertTimezone(patch.timezone) : undefined
-  }
-  if (patch.defaultProvider !== undefined) {
-    if (patch.defaultProvider === null) nextStored.defaultProvider = null
-    else if (!isVisitorProvider(patch.defaultProvider)) throw new SettingsError('Unknown provider')
-    else nextStored.defaultProvider = patch.defaultProvider
-  }
-  if (patch.inject) {
-    nextStored.inject = {
-      umami: patch.inject.umami ?? nextStored.inject?.umami,
-      goatcounter: patch.inject.goatcounter ?? nextStored.inject?.goatcounter,
-      cloudflare: patch.inject.cloudflare ?? nextStored.inject?.cloudflare,
-    }
-  }
-
-  if (patch.umami) {
-    if (patch.umami.apiUrl !== undefined && !env('UMAMI_API_URL')) {
-      nextStored.umami = { ...nextStored.umami, apiUrl: assertHttpsOrigin(patch.umami.apiUrl, 'Umami API URL') }
-    }
-    if (patch.umami.websiteId !== undefined && !env('UMAMI_WEBSITE_ID')) {
-      nextStored.umami = {
-        ...nextStored.umami,
-        websiteId: assertToken(patch.umami.websiteId, 'Umami website id', /^[A-Za-z0-9_-]{0,80}$/),
-      }
-    }
-    if (patch.umami.username !== undefined && !env('UMAMI_USERNAME')) {
-      nextStored.umami = {
-        ...nextStored.umami,
-        username: patch.umami.username.trim().slice(0, 80),
-      }
-    }
-    if (!env('UMAMI_API_KEY')) assignSecret(nextSecrets, 'umamiApiKey', patch.umami.apiKey)
-    if (!env('UMAMI_PASSWORD')) assignSecret(nextSecrets, 'umamiPassword', patch.umami.password)
-  }
-  if (patch.goatcounter) {
-    if (patch.goatcounter.site !== undefined && !env('GOATCOUNTER_SITE')) {
-      const site = normalizeGoatcounterSite(patch.goatcounter.site)
-      if (site && !/^[a-z0-9_-]{1,80}$/.test(site)) throw new SettingsError('GoatCounter site is invalid')
-      nextStored.goatcounter = { site }
-    }
-    if (!env('GOATCOUNTER_API_KEY')) assignSecret(nextSecrets, 'goatcounterApiKey', patch.goatcounter.apiKey)
-  }
-  if (patch.cloudflare) {
-    if (patch.cloudflare.accountId !== undefined && !env('CLOUDFLARE_ACCOUNT_ID')) {
-      nextStored.cloudflare = {
-        ...nextStored.cloudflare,
-        accountId: assertToken(patch.cloudflare.accountId, 'Cloudflare account id', /^[A-Za-z0-9]{0,64}$/),
-      }
-    }
-    if (patch.cloudflare.siteTag !== undefined && !env('CLOUDFLARE_WA_SITE_TAG')) {
-      nextStored.cloudflare = {
-        ...nextStored.cloudflare,
-        siteTag: assertToken(patch.cloudflare.siteTag, 'Cloudflare site tag', /^[A-Za-z0-9_-]{0,64}$/),
-      }
-    }
-    if (!env('CLOUDFLARE_API_TOKEN')) assignSecret(nextSecrets, 'cloudflareApiToken', patch.cloudflare.apiToken)
-  }
-
-  return { stored: nextStored, secrets: nextSecrets }
+function flag(value: unknown, field: string): boolean {
+  if (typeof value !== 'boolean') throw new SettingsError(`${field} must be true or false`)
+  return value
 }
 
-function assignSecret(bag: SecretBag, key: keyof SecretBag, value: string | null | undefined) {
-  if (value === undefined) return
-  if (value === null) {
-    delete bag[key]
-    return
+function section(value: unknown, field: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new SettingsError(`${field} must be an object`)
+  return value as Record<string, unknown>
+}
+
+/** Canonical public settings. The same function on the way in and, once stored, on the way out. */
+export function normalizeSettings(input: unknown): StoredSettings {
+  const body = section(input, 'Settings')
+  const timezone = typeof body.timezone === 'string' && body.timezone.trim() ? assertTimezone(body.timezone) : undefined
+  let defaultProvider: VisitorProviderId | null = null
+  if (body.defaultProvider != null && body.defaultProvider !== '') {
+    if (typeof body.defaultProvider !== 'string' || !isVisitorProvider(body.defaultProvider)) {
+      throw new SettingsError('Unknown provider')
+    }
+    defaultProvider = body.defaultProvider
   }
-  if (value.trim() === '') return
-  if (value.length > 500) throw new SettingsError('Secret is too long')
-  bag[key] = value.trim()
+  const inject = section(body.inject, 'Inject')
+  const umami = section(body.umami, 'Umami')
+  const goatcounter = section(body.goatcounter, 'GoatCounter')
+  const cloudflare = section(body.cloudflare, 'Cloudflare')
+  const site = normalizeGoatcounterSite(typeof goatcounter.site === 'string' ? goatcounter.site : '')
+  if (site && !/^[a-z0-9_-]{1,80}$/.test(site)) throw new SettingsError('GoatCounter site is invalid')
+  return {
+    v: 1,
+    ...(timezone ? { timezone } : {}),
+    defaultProvider,
+    inject: {
+      umami: flag(inject.umami, 'Umami inject'),
+      goatcounter: flag(inject.goatcounter, 'GoatCounter inject'),
+      cloudflare: flag(inject.cloudflare, 'Cloudflare inject'),
+    },
+    umami: {
+      apiUrl: assertHttpsOrigin(typeof umami.apiUrl === 'string' ? umami.apiUrl : '', 'Umami API URL'),
+      websiteId: assertToken(typeof umami.websiteId === 'string' ? umami.websiteId : '', 'Umami website id', /^[A-Za-z0-9_-]{0,80}$/),
+      username: (typeof umami.username === 'string' ? umami.username : '').trim().slice(0, 80),
+    },
+    goatcounter: { site },
+    cloudflare: {
+      accountId: assertToken(
+        typeof cloudflare.accountId === 'string' ? cloudflare.accountId : '',
+        'Cloudflare account id',
+        /^[A-Za-z0-9]{0,64}$/,
+      ),
+      siteTag: assertToken(
+        typeof cloudflare.siteTag === 'string' ? cloudflare.siteTag : '',
+        'Cloudflare site tag',
+        /^[A-Za-z0-9_-]{0,64}$/,
+      ),
+    },
+  }
+}
+
+/** One loop for every secret. Omitted keeps the ciphertext, null clears it, a string replaces it. */
+export function applySecretWrites(current: SecretBag, writes: unknown): SecretBag {
+  const next: SecretBag = { ...current }
+  if (writes == null) return next
+  const body = section(writes, 'Secrets')
+  for (const field of SECRET_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(body, field.key)) continue
+    if (env(field.env)) continue
+    const value = body[field.key]
+    if (value === null) {
+      delete next[field.key]
+      continue
+    }
+    if (typeof value !== 'string' || !value.trim()) continue
+    if (value.length > 500) throw new SettingsError('Secret is too long')
+    next[field.key] = value.trim()
+  }
+  return next
 }
 
 export function publicScriptsFrom(effective: EffectiveSettings): PublicScripts {
@@ -420,22 +412,39 @@ export function publicScriptsFrom(effective: EffectiveSettings): PublicScripts {
   }
 }
 
-async function readStored(options?: { fresh?: boolean }): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
-  if (!options?.fresh && cache && Date.now() - cache.at < CACHE_MS) return cache
+const LEGACY_KEY = KEY
+
+async function decodeSettings(raw: unknown): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
+  const record = raw as StoredSettings
+  const material = secretKeyMaterial()
+  const secrets = record.secrets && material ? ((await decryptJson<SecretBag>(material, record.secrets)) ?? {}) : {}
+  const stored = { ...record, v: 1 as const }
+  delete stored.secrets
+  try {
+    return { stored: normalizeSettings(stored), secrets }
+  } catch {
+    return { stored, secrets }
+  }
+}
+
+async function readLegacy(): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
   if (!isRedisConfigured()) return { stored: { v: 1 }, secrets: {} }
   try {
-    const response = await redisCommand(['GET', KEY])
+    const response = await redisCommand(['GET', LEGACY_KEY])
     if (typeof response.result !== 'string' || !response.result) return { stored: { v: 1 }, secrets: {} }
-    const parsed = JSON.parse(response.result) as StoredSettings
-    const material = secretKeyMaterial()
-    const secrets =
-      parsed.secrets && material ? ((await decryptJson<SecretBag>(material, parsed.secrets)) ?? {}) : {}
-    const value = { stored: { ...parsed, v: 1 as const }, secrets }
-    cache = { at: Date.now(), ...value }
-    return value
+    return decodeSettings(JSON.parse(response.result) as StoredSettings)
   } catch {
     return { stored: { v: 1 }, secrets: {} }
   }
+}
+
+async function readStored(options?: { fresh?: boolean }): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
+  if (options?.fresh) decoded = null
+  if (decoded && decoded.generation === siteCacheGeneration()) return decoded
+  const managed = await readManaged(options)
+  const value = managed.settings != null ? await decodeSettings(managed.settings) : await readLegacy()
+  decoded = { generation: siteCacheGeneration(), ...value }
+  return value
 }
 
 export async function loadEffective(options?: { fresh?: boolean }): Promise<EffectiveSettings> {
@@ -448,41 +457,37 @@ export async function resolveTimeZone(): Promise<string> {
   return (await loadEffective()).timezone
 }
 
-export async function saveSettings(patch: SettingsPatch): Promise<EffectiveSettings> {
+export interface ManagedSave {
+  site: PublicSiteConfig
+  effective: EffectiveSettings
+}
+
+/**
+ * The only write. The body is the whole config the editor had, plus the version
+ * it loaded. A mismatch is rejected. Nothing is merged field by field.
+ */
+export async function commitManagedConfig(input: unknown): Promise<ManagedSave> {
   if (!isRedisConfigured()) throw new SettingsError('Redis is not configured')
   const material = secretKeyMaterial()
   if (!material) throw new SettingsError('STATS_PASSWORD or STATS_SECRET is required')
-  const current = await readStored()
-  const next = applyPatch(current.stored, current.secrets, patch)
-  const payload: StoredSettings = {
-    ...next.stored,
-    secrets: await encryptJson(material, next.secrets),
-  }
-  await redisCommand(['SET', KEY, JSON.stringify(payload)])
-  cache = { at: Date.now(), stored: next.stored, secrets: next.secrets }
-  return buildEffective(next.stored, next.secrets)
+  if (!input || typeof input !== 'object') throw new SiteValidationError('Config must be an object')
+  const body = input as Record<string, unknown>
+  const currentSite = (await readManaged({ fresh: true })).site
+  if (typeof body.baseVersion !== 'number') throw new SiteValidationError('baseVersion is required')
+  if (body.baseVersion !== currentSite.version) throw new SiteConflictError(currentSite.version)
+  const current = await readStored({ fresh: true })
+  const site = normalizeConfig(body, currentSite.version + 1)
+  const settings = normalizeSettings(body.settings)
+  const secrets = applySecretWrites(current.secrets, body.secrets)
+  await writeManaged(site, { ...settings, secrets: await encryptJson(material, secrets) })
+  decoded = { generation: siteCacheGeneration(), stored: settings, secrets }
+  return { site, effective: buildEffective(settings, secrets) }
 }
 
-export function draftCredentials(effective: EffectiveSettings, patch: SettingsPatch | undefined) {
-  if (!patch) return effective
-  const secrets: SecretBag = {}
-  if (effective.umami?.apiKey) secrets.umamiApiKey = effective.umami.apiKey
-  if (effective.umami?.password) secrets.umamiPassword = effective.umami.password
-  if (effective.goatcounter?.apiKey) secrets.goatcounterApiKey = effective.goatcounter.apiKey
-  if (effective.cloudflare?.apiToken) secrets.cloudflareApiToken = effective.cloudflare.apiToken
-  const stored: StoredSettings = {
-    v: 1,
-    timezone: effective.timezone,
-    defaultProvider: effective.defaultProvider,
-    inject: effective.inject,
-    umami: effective.umami
-      ? { apiUrl: effective.view.umami.apiUrl.value, websiteId: effective.umami.websiteId, username: effective.umami.username }
-      : { apiUrl: effective.view.umami.apiUrl.value, websiteId: effective.view.umami.websiteId.value, username: effective.view.umami.username.value },
-    goatcounter: { site: effective.view.goatcounter.site.value },
-    cloudflare: { accountId: effective.view.cloudflare.accountId.value, siteTag: effective.view.cloudflare.siteTag.value },
-  }
-  const next = applyPatch(stored, secrets, patch)
-  return buildEffective(next.stored, next.secrets)
+export async function previewDraft(draft: { settings?: unknown; secrets?: unknown } | undefined): Promise<EffectiveSettings> {
+  const current = await readStored({ fresh: true })
+  if (!draft?.settings) return buildEffective(current.stored, current.secrets)
+  return buildEffective(normalizeSettings(draft.settings), applySecretWrites(current.secrets, draft.secrets))
 }
 
 export { VISITOR_PROVIDERS }

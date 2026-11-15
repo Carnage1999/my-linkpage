@@ -12,7 +12,7 @@ import { matchEnabled, type HomepageI18n } from './homepage'
 export const LANGUAGE_STORAGE_KEY = 'i18nextLng'
 
 const listeners = new Set<() => void>()
-let current = readStored() ?? 'en'
+let current = readStored() ?? ''
 
 function readStored(): string | null {
   if (typeof localStorage === 'undefined') return null
@@ -56,7 +56,7 @@ export function useUiLanguage(): readonly [string, (code: string) => void] {
 /** Pick the homepage language. A `?lng=` link wins over a saved choice. */
 export function detectHomepageLanguage(i18n: HomepageI18n): string {
   const enabled = i18n.languages.map((language) => language.code)
-  const fallback = enabled.includes(i18n.fallback) ? i18n.fallback : (enabled[0] ?? 'en')
+  const fallback = enabled.includes(i18n.fallback) ? i18n.fallback : (enabled[0] ?? i18n.fallback)
   const query = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('lng')
   const stored = readStored()
   const nav = typeof navigator === 'undefined' ? null : navigator.language

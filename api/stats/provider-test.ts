@@ -7,7 +7,7 @@ import { json, requireStatsToken } from './_http'
 import { testVisitorProvider } from './_providers'
 import { isVisitorProvider } from './_providers/types'
 import { bumpNamedLimit, hashClientIp } from './_redis'
-import { draftCredentials, loadEffective, SettingsError, type SettingsPatch } from './_settings'
+import { previewDraft, SettingsError } from './_settings'
 import { isStatsEnabled } from './_token'
 
 export const config = { runtime: 'edge' }
@@ -22,9 +22,9 @@ export default async function handler(request: Request): Promise<Response> {
   try {
     const attempts = await bumpNamedLimit('settings', await hashClientIp(request))
     if (attempts > 20) return json({ error: 'Too many attempts' }, 429)
-    const body = (await request.json()) as { provider?: string; draft?: SettingsPatch }
+    const body = (await request.json()) as { provider?: string; draft?: { settings?: unknown; secrets?: unknown } }
     if (!body.provider || !isVisitorProvider(body.provider)) return json({ error: 'Unknown provider' }, 400)
-    const effective = draftCredentials(await loadEffective(), body.draft)
+    const effective = await previewDraft(body.draft)
     const result = await testVisitorProvider(body.provider, effective)
     return json(result)
   } catch (error) {

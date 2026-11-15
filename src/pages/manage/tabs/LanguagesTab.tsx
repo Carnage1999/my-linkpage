@@ -125,17 +125,19 @@ export function LanguagesTab({ draft }: { draft: SiteDraft }) {
         {GROUPS.map((group) => {
           const keys = group.keys.filter((key) => {
             if (!needle) return true
-            const value = draft.i18n.texts[active]?.[key] ?? ''
-            return key.includes(needle) || t(LABELS[key]).toLowerCase().includes(needle) || value.toLowerCase().includes(needle)
+            const stored = draft.i18n.texts[active]?.[key]?.trim()
+            const shown = stored || homepageText(draft.i18n, active, key)
+            return key.includes(needle) || t(LABELS[key]).toLowerCase().includes(needle) || shown.toLowerCase().includes(needle)
           })
           if (keys.length === 0) return null
           return (
             <div key={group.title} className="space-y-3">
               <h3 className="text-xs font-semibold tracking-[0.16em] text-slate-500 uppercase">{t(group.title)}</h3>
               {keys.map((key) => {
-                const value = draft.i18n.texts[active]?.[key] ?? homepageText(draft.i18n, active, key)
+                const stored = draft.i18n.texts[active]?.[key]
+                const value = stored?.trim() ? stored : homepageText(draft.i18n, active, key)
                 const multiline = key === 'intro'
-                const seed = seedTextsFor(active)[key] || homepageText(draft.i18n, draft.i18n.fallback, key)
+                const seed = seedTextsFor(active)[key] ?? ''
                 return (
                   <div key={key} className="grid gap-1">
                     <div className="flex items-center justify-between gap-2">
@@ -175,7 +177,7 @@ export function LanguagesTab({ draft }: { draft: SiteDraft }) {
       </div>
 
       {draft.status ? <p className="text-sm text-slate-500">{draft.status}</p> : null}
-      <button type="button" disabled={draft.saving} onClick={draft.save} className="rounded-xl bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900">
+      <button type="button" disabled={draft.saving || !draft.ready} onClick={() => draft.save()} className="rounded-xl bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900">
         {draft.saving ? t('manageSaving') : t('manageSave')}
       </button>
     </section>

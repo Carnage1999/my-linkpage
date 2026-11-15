@@ -1,7 +1,7 @@
 import {
   canonicalLocale,
   DEFAULT_HOMEPAGE_I18N,
-  fallbackCode,
+  homepageText,
   isPublicKey,
   KEY_LIMIT,
   PUBLIC_KEYS,
@@ -42,6 +42,16 @@ export class SiteValidationError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'SiteValidationError'
+  }
+}
+
+export class SiteConflictError extends Error {
+  readonly version: number
+
+  constructor(version: number) {
+    super('The page changed. Reload and try again.')
+    this.name = 'SiteConflictError'
+    this.version = version
   }
 }
 
@@ -106,39 +116,24 @@ function readPack(raw: unknown, code: string): HomepageTexts | null {
 
 /**
  * Old documents stored `overrides` instead of full texts. Those overrides are
- * test edits and are dropped. A language with no texts is filled from the seed,
- * then from the default language.
+ * test edits and are dropped. Every enabled language is stored the same way:
+ * its own seed, then the keys this save sent. Missing keys are resolved when
+ * the page is read, not by copying another language into this one.
  */
-function textsFor(body: Record<string, unknown>, languages: readonly string[], fallback: string): Record<string, HomepageTexts> {
+function textsFor(body: Record<string, unknown>, languages: readonly string[]): Record<string, HomepageTexts> {
   const rawTexts = body.texts
   const stored = rawTexts == null ? {} : rawTexts
   if (typeof stored !== 'object' || Array.isArray(stored)) throw new SiteValidationError('Homepage text must be an object')
   const texts: Record<string, HomepageTexts> = {}
   for (const code of languages) {
     const saved = readPack((stored as Record<string, unknown>)[code], code)
-    const seed = seedTextsFor(code)
-    if (!saved) {
-      texts[code] = Object.keys(seed).length > 0 ? seed : {}
-      continue
-    }
-    const merged: HomepageTexts = { ...seed }
-    for (const key of PUBLIC_KEYS) {
-      if (saved[key]) merged[key] = saved[key]
+    const merged: HomepageTexts = { ...seedTextsFor(code) }
+    if (saved) {
+      for (const key of PUBLIC_KEYS) {
+        if (saved[key]) merged[key] = saved[key]
+      }
     }
     texts[code] = merged
-  }
-  const fallbackPack = texts[fallback] ?? {}
-  for (const key of PUBLIC_KEYS) {
-    if (!fallbackPack[key]) fallbackPack[key] = seedTextsFor(fallback)[key] || seedTextsFor('en')[key] || ''
-  }
-  texts[fallback] = fallbackPack
-  for (const code of languages) {
-    if (code === fallback) continue
-    const pack = texts[code] ?? {}
-    for (const key of PUBLIC_KEYS) {
-      if (!pack[key]) pack[key] = fallbackPack[key]
-    }
-    texts[code] = pack
   }
   return texts
 }
@@ -167,13 +162,17 @@ function validateI18n(value: unknown): HomepageI18n {
   const fallback = canonicalLocale(typeof body.fallback === 'string' ? body.fallback : '')
   if (!fallback || !seen.has(fallback)) throw new SiteValidationError('Default language must be one of the enabled languages')
   if (typeof body.detect !== 'boolean') throw new SiteValidationError('Browser detection must be true or false')
-  const draft = { languages, fallback, detect: body.detect, texts: {} }
-  const texts = textsFor(body, languages.map((language) => language.code), fallbackCode(draft))
+  const texts = textsFor(body, languages.map((language) => language.code))
+  const draft = { languages, fallback, detect: body.detect, texts }
   for (const key of PUBLIC_KEYS) {
-    const sample = texts[fallback]?.[key]
-    if (!sample) throw new SiteValidationError(`Missing ${key as PublicKey}`)
+    if (!homepageText(draft, fallback, key)) throw new SiteValidationError(`Missing ${key as PublicKey}`)
   }
-  return { languages, fallback, detect: body.detect, texts }
+  return draft
+}
+
+/** One normalizer for every reader and every writer. Idempotent for a document it produced. */
+export function normalizeConfig(input: unknown, version: number): PublicSiteConfig {
+  return validateSiteConfig(input, version)
 }
 
 export function validateSiteConfig(input: unknown, version: number): PublicSiteConfig {

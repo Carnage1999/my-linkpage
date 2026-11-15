@@ -1,6 +1,6 @@
 import { useManageCopy } from '../../../manage/useManageCopy'
 import type { VisitorProviderId } from '../../../../api/stats/_providers/types'
-import type { SettingsView } from '../../../../api/stats/_settings'
+import type { SecretWrites, SettingsInput, SettingsView } from '../../../../api/stats/_settings'
 import { ProviderSettings } from '../ProviderSettings'
 import { PROVIDER_ORDER, providerName } from '../providers'
 
@@ -9,14 +9,18 @@ export function AnalyticsTab({
   settings,
   provider,
   onChoose,
-  onSaved,
+  onCommit,
+  saving,
+  notice,
   dirtyRef,
 }: {
   token: string
   settings: SettingsView | null
   provider: VisitorProviderId | null
   onChoose: (id: VisitorProviderId) => void
-  onSaved: () => void
+  onCommit: (payload: { settings: SettingsInput; secrets?: SecretWrites }) => boolean
+  saving: boolean
+  notice?: string | null
   dirtyRef: { current: boolean }
 }) {
   const { t } = useManageCopy()
@@ -55,7 +59,7 @@ export function AnalyticsTab({
             .join(' · ')}
         </p>
       ) : null}
-      <ProviderSettings token={token} settings={settings} onSaved={onSaved} dirtyRef={dirtyRef} />
+      <ProviderSettings token={token} settings={settings} onCommit={onCommit} saving={saving} notice={notice} dirtyRef={dirtyRef} />
     </div>
   )
 }

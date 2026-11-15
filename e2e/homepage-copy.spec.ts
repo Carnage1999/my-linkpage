@@ -186,7 +186,7 @@ async function installSharedConfig(context: BrowserContext) {
     if (route.request().method() === 'PUT') {
       const body = route.request().postDataJSON() as SiteDocument
       etag = '"site-3"'
-      config = { ...config, ...body, version: 3, ogImagePath: '/api/og' }
+      config = { ...config, ...body, version: config.version + 1, ogImagePath: '/api/og' }
       await route.fulfill({ json: config, headers: { etag, 'x-site-purge': 'ok' } })
       return
     }

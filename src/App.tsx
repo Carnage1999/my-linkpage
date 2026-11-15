@@ -27,6 +27,15 @@ type ThemeMode = 'light' | 'dark'
 
 const THEME_STORAGE_KEY = 'theme'
 
+function keepCurrent(selector: string, attribute: string | null, expected: string) {
+  const nodes = [...document.querySelectorAll(selector)]
+  const valueOf = (node: Element) => (attribute ? node.getAttribute(attribute) : node.textContent)
+  const keeper = nodes.findLast((node) => valueOf(node) === expected) ?? nodes.at(-1)
+  for (const node of nodes) {
+    if (node !== keeper) node.remove()
+  }
+}
+
 function getSystemPrefersDark(): boolean {
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
@@ -143,7 +152,7 @@ export default function App() {
   const activeLanguage =
     languages.find((language) => language.code === uiLanguage) ??
     languages.find((language) => language.code === homepageI18n.fallback) ??
-    languages[0] ?? { code: 'en', label: 'English', shortLabel: 'EN' }
+    languages[0] ?? { code: homepageI18n.fallback, label: homepageI18n.fallback, shortLabel: homepageI18n.fallback }
   const t = (key: PublicKey) => homepageText(homepageI18n, activeLanguage.code, key)
 
   useEffect(() => {
@@ -191,18 +200,15 @@ export default function App() {
 
   useEffect(() => {
     try {
-      const pageTitle = homepageText(homepageI18n, activeLanguage.code, 'pageTitle') || 'Wang — Link Page'
+      const pageTitle = homepageText(homepageI18n, activeLanguage.code, 'pageTitle')
       const description = homepageText(homepageI18n, activeLanguage.code, 'intro')
       document.documentElement.lang = activeLanguage.code
       document.title = pageTitle
-      // index.html ships a static title and description for crawlers. React 19
-      // hoists its own tags beside those, so drop the ones that are now stale.
-      for (const node of document.querySelectorAll('title')) {
-        if (node.textContent !== pageTitle) node.remove()
-      }
-      for (const node of document.querySelectorAll('meta[name="description"]')) {
-        if (node.getAttribute('content') !== description) node.remove()
-      }
+      // index.html ships static tags for crawlers. React 19 hoists its own
+      // beside those, so keep one current tag for every language.
+      keepCurrent('title', null, pageTitle)
+      keepCurrent('meta[name="description"]', 'content', description)
+      keepCurrent('meta[property="og:locale"]', 'content', activeLanguage.code.replaceAll('-', '_'))
     } catch {
       return undefined
     }

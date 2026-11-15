@@ -93,7 +93,7 @@ function fromConfig(
 }
 
 const seedScripts = scriptsFromAnalytics((seedFile as SiteConfig).analytics)
-let current = fromConfig(seedFile as SiteConfig & { i18n?: HomepageI18n }, seedScripts, null)
+let current: SiteConfigState = { ...fromConfig(seedFile as SiteConfig & { i18n?: HomepageI18n }, seedScripts, null), loading: true }
 const listeners = new Set<() => void>()
 let refresh: (bust?: boolean) => Promise<void> = async () => undefined
 
@@ -112,14 +112,21 @@ export function replaceSiteConfig(data: SiteConfig & { scripts?: ScriptBundle; v
 }
 
 async function revalidate(bust = false) {
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  if (!bust && current.etag) headers['If-None-Match'] = current.etag
-  const url = bust ? `/api/site-config?v=${current.version}` : '/api/site-config'
-  const response = await fetch(url, { headers, cache: 'no-cache' })
-  if (response.status === 304) return
-  if (!response.ok) return
-  const data = (await response.json()) as SiteConfig & { scripts?: ScriptBundle; version?: number }
-  publish(fromConfig(data, seedScripts, response.headers.get('etag')))
+  try {
+    const headers: Record<string, string> = { Accept: 'application/json' }
+    if (!bust && current.etag) headers['If-None-Match'] = current.etag
+    const url = bust ? `/api/site-config?v=${current.version}` : '/api/site-config'
+    const response = await fetch(url, { headers, cache: 'no-cache' })
+    if (response.status === 304 || !response.ok) return
+    const data = (await response.json()) as SiteConfig & { scripts?: ScriptBundle; version?: number }
+    const incoming = data.version ?? 0
+    if (current.version > 0 && incoming < current.version) return
+    publish(fromConfig(data, seedScripts, response.headers.get('etag')))
+  } catch {
+    /* Keep the last good document when the network or the body is unusable. */
+  } finally {
+    if (current.loading) publish({ ...current, loading: false })
+  }
 }
 
 refresh = revalidate

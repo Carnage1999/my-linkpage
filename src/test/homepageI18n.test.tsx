@@ -27,12 +27,18 @@ describe('homepage languages', () => {
     expect(canonicalLocale('<script>')).toBeNull()
   })
 
-  it('keeps the old Chinese detection when only zh-TW is enabled', () => {
-    const enabled = ['en', 'ru', 'zh-TW']
-    expect(mapDetected('zh-CN', enabled, 'en')).toBe('zh-TW')
-    expect(mapDetected('ru-RU', enabled, 'en')).toBe('ru')
-    expect(mapDetected('fr', enabled, 'en')).toBe('en')
-    expect(mapDetected('zh-CN', ['en', 'zh-CN', 'zh-TW'], 'en')).toBe('zh-CN')
+  it.each([
+    ['zh-CN', ['en', 'ru', 'zh-TW'], 'en', 'zh-TW'],
+    ['zh-HK', ['en', 'ru', 'zh-TW'], 'en', 'zh-TW'],
+    ['ru-RU', ['en', 'ru', 'zh-TW'], 'en', 'ru'],
+    ['en-GB', ['en', 'ru', 'zh-TW'], 'en', 'en'],
+    ['ja-JP', ['en', 'ru', 'zh-TW', 'ja'], 'en', 'ja'],
+    ['fr', ['en', 'ru', 'zh-TW'], 'en', 'en'],
+    ['zh-CN', ['en', 'zh-CN', 'zh-TW'], 'en', 'zh-CN'],
+    ['zh-HK', ['zh-TW', 'zh-CN', 'en'], 'ru', 'zh-TW'],
+    ['pt-BR', ['en', 'pt-BR'], 'en', 'pt-BR'],
+  ])('maps %s the same way for every enabled code', (requested, enabled, fallback, expected) => {
+    expect(mapDetected(requested, enabled, fallback)).toBe(expected)
   })
 
   it('drops old overrides and fills every language from the seed', () => {
@@ -112,22 +118,59 @@ describe('homepage languages', () => {
     ).toThrow(/500/)
   })
 
-  it('copies the default language onto a new locale', () => {
+  it.each([
+    { code: 'en', title: 'Hello saved' },
+    { code: 'ru', title: 'Привет saved' },
+    { code: 'zh-TW', title: '標題 saved' },
+    { code: 'ja', title: 'こんにちは', label: '日本語', shortLabel: 'JA' },
+  ])('stores $code without copying another language', ({ code, title, label, shortLabel }) => {
+    const enabled = label
+      ? [...languages, { code, label, shortLabel: shortLabel ?? code }]
+      : languages
     const saved = validateSiteConfig(
       {
         ...baseSite,
         i18n: {
-          languages: [...languages, { code: 'fr', label: 'Français', shortLabel: 'FR' }],
+          languages: enabled,
           fallback: 'en',
           detect: true,
-          texts: { fr: { title: 'Bonjour' } },
+          texts: { [code]: { title } },
         },
       },
       4,
     )
-    expect(saved.i18n.texts.fr?.title).toBe('Bonjour')
-    expect(saved.i18n.texts.fr?.intro).toBe('I am Han-che Wang.')
-    expect(homepageText(saved.i18n, 'fr', 'pageTitle')).toBe('Wang — Link Page')
+    expect(saved.i18n.texts[code]?.title).toBe(title)
+    const seedVisit = (seedFile.i18n.texts as Record<string, { visit?: string } | undefined>)[code]?.visit
+    if (seedVisit) {
+      expect(saved.i18n.texts[code]?.visit).toBe(seedVisit)
+      expect(homepageText(saved.i18n, code, 'visit')).toBe(seedVisit)
+    } else {
+      expect(saved.i18n.texts[code]?.visit).toBeUndefined()
+      expect(homepageText(saved.i18n, code, 'visit')).toBe(homepageText(saved.i18n, 'en', 'visit'))
+    }
+    expect(homepageText(saved.i18n, code, 'title')).toBe(title)
+  })
+
+  it('resolves a missing line from the configured fallback language', () => {
+    const japanese = {
+      languages: [
+        { code: 'ja', label: '日本語', shortLabel: 'JA' },
+        { code: 'ru', label: 'Русский', shortLabel: 'РУ' },
+      ],
+      fallback: 'ru',
+      detect: false,
+      texts: { ja: { title: 'こんにちは' }, ru: { visit: 'Перейти', title: 'Привет' } },
+    }
+    expect(homepageText(japanese, 'ja', 'title')).toBe('こんにちは')
+    expect(homepageText(japanese, 'ja', 'visit')).toBe('Перейти')
+    expect(homepageText(japanese, 'ru', 'visit')).toBe('Перейти')
+    const onlyJapanese = {
+      languages: [{ code: 'ja', label: '日本語', shortLabel: 'JA' }],
+      fallback: 'ja',
+      detect: false,
+      texts: { ja: { title: 'こんにちは' } },
+    }
+    expect(homepageText(onlyJapanese, 'ja', 'visit')).toBe('')
   })
 
   it('drops a stored tagline and keeps the seed subtitles', () => {
@@ -192,6 +235,7 @@ describe('homepage languages', () => {
     const jsonLd = document.querySelector('script[type="application/ld+json"]')?.textContent ?? ''
     expect(jsonLd).toContain('"name":"Han-che Wang"')
     expect(jsonLd).not.toContain("Hi, I'm Wang")
+    expect(document.querySelector('meta[property="og:locale"]')?.getAttribute('content')).toBe('en')
     expect(view.container.ownerDocument.querySelectorAll('link[rel="alternate"]')).toHaveLength(3)
     const langs = [...document.querySelectorAll('link[hreflang]')].map((node) => node.getAttribute('hreflang'))
     expect(langs).toEqual(['en', 'ru', 'x-default'])

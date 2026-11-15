@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useManageCopy } from '../../manage/useManageCopy'
-import { notifySiteConfigSaved } from '../../siteSync'
-import type { SettingsPatch, SettingsView } from '../../../api/stats/_settings'
+import type { SecretWrites, SettingsInput, SettingsView } from '../../../api/stats/_settings'
 import { VISITOR_PROVIDERS, type VisitorProviderId } from '../../../api/stats/_providers/types'
 
 const inputClass =
@@ -16,27 +15,45 @@ function secretPlaceholder(field: { state: string; hint: string | null }, unset:
 export function ProviderSettings({
   token,
   settings,
-  onSaved,
+  onCommit,
+  saving,
+  notice,
   dirtyRef,
 }: {
   token: string
   settings: SettingsView | null
-  onSaved: () => void
+  onCommit: (payload: { settings: SettingsInput; secrets?: SecretWrites }) => boolean
+  saving: boolean
+  notice?: string | null
   dirtyRef?: { current: boolean }
 }) {
   if (!settings) return null
-  return <ProviderForm key={JSON.stringify(settings)} token={token} settings={settings} onSaved={onSaved} dirtyRef={dirtyRef} />
+  return (
+    <ProviderForm
+      key={JSON.stringify(settings)}
+      token={token}
+      settings={settings}
+      onCommit={onCommit}
+      saving={saving}
+      notice={notice}
+      dirtyRef={dirtyRef}
+    />
+  )
 }
 
 function ProviderForm({
   token,
   settings,
-  onSaved,
+  onCommit,
+  saving,
+  notice,
   dirtyRef,
 }: {
   token: string
   settings: SettingsView
-  onSaved: () => void
+  onCommit: (payload: { settings: SettingsInput; secrets?: SecretWrites }) => boolean
+  saving: boolean
+  notice?: string | null
   dirtyRef?: { current: boolean }
 }) {
   const { t } = useManageCopy()
@@ -52,55 +69,33 @@ function ProviderForm({
   const [secrets, setSecrets] = useState<Record<string, string>>({})
   const [cleared, setCleared] = useState<Record<string, boolean>>({})
   const [status, setStatus] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
 
-  function secretValue(key: string): string | null | undefined {
-    if (cleared[key]) return null
-    const value = secrets[key]?.trim()
-    return value ? value : undefined
-  }
-
-  function patch(): SettingsPatch {
+  function documentSettings(): { settings: SettingsInput; secrets?: SecretWrites } {
+    const writes: SecretWrites = {}
+    const assign = (key: keyof SecretWrites, formKey: string) => {
+      if (cleared[formKey]) writes[key] = null
+      else if (secrets[formKey]?.trim()) writes[key] = secrets[formKey].trim()
+    }
+    assign('goatcounterApiKey', 'goat')
+    assign('cloudflareApiToken', 'cf')
+    assign('umamiApiKey', 'umamiKey')
+    assign('umamiPassword', 'umamiPassword')
     return {
-      timezone,
-      defaultProvider: defaultProvider ? (defaultProvider as VisitorProviderId) : null,
-      inject,
-      goatcounter: { site: goatSite, apiKey: secretValue('goat') },
-      cloudflare: { accountId: cfAccount, siteTag: cfTag, apiToken: secretValue('cf') },
-      umami: {
-        apiUrl: umamiUrl,
-        websiteId: umamiId,
-        username: umamiUser,
-        apiKey: secretValue('umamiKey'),
-        password: secretValue('umamiPassword'),
+      settings: {
+        timezone,
+        defaultProvider: defaultProvider ? (defaultProvider as VisitorProviderId) : null,
+        inject,
+        umami: { apiUrl: umamiUrl, websiteId: umamiId, username: umamiUser },
+        goatcounter: { site: goatSite },
+        cloudflare: { accountId: cfAccount, siteTag: cfTag },
       },
+      ...(Object.keys(writes).length > 0 ? { secrets: writes } : {}),
     }
   }
 
-  async function save() {
-    setSaving(true)
+  function save() {
     setStatus(null)
-    try {
-      const response = await fetch('/api/stats/settings', {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch()),
-      })
-      const body = (await response.json()) as { error?: string }
-      if (!response.ok) {
-        setStatus(body.error ?? String(t('manageNetwork')))
-        return
-      }
-      setSecrets({})
-      setCleared({})
-      onSaved()
-      notifySiteConfigSaved(response.headers.get('x-site-purge') !== 'ok')
-      setStatus(String(t('manageSaved')))
-    } catch {
-      setStatus(String(t('manageNetwork')))
-    } finally {
-      setSaving(false)
-    }
+    onCommit(documentSettings())
   }
 
   async function test(provider: VisitorProviderId) {
@@ -109,7 +104,7 @@ function ProviderForm({
       const response = await fetch('/api/stats/provider-test', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, draft: patch() }),
+        body: JSON.stringify({ provider, draft: documentSettings() }),
       })
       const body = (await response.json()) as { ok?: boolean; error?: string }
       setStatus(body.ok ? String(t('manageTestOk')) : `${String(t('manageTestFail'))}: ${body.error ?? ''}`)
@@ -249,7 +244,7 @@ function ProviderForm({
         </label>
       </div>
 
-      {status ? <p className="text-sm text-slate-500">{status}</p> : null}
+      {status || notice ? <p className="text-sm text-slate-500">{status || notice}</p> : null}
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={saving} onClick={() => void save()} className="rounded-xl bg-slate-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900">
           {saving ? String(t('manageSaving')) : String(t('manageSave'))}

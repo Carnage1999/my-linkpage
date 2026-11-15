@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { encryptJson, decryptJson } from '../../api/stats/_crypto'
 import { countryFromRequest, referrerHostname } from '../../api/stats/_referrer'
 import { validateAvatar, validateSiteConfig } from '../../api/stats/_site-schema'
-import { applyPatch, buildEffective, publicScriptsFrom, type SecretBag, type StoredSettings } from '../../api/stats/_settings'
+import { applySecretWrites, buildEffective, normalizeSettings, publicScriptsFrom, type SecretBag, type StoredSettings } from '../../api/stats/_settings'
 import { parseUserAgent } from '../../api/stats/_ua'
 import { fetchCloudflareReport } from '../../api/stats/_providers/cloudflare'
 import { fetchGoatcounterReport } from '../../api/stats/_providers/goatcounter'
@@ -38,15 +38,22 @@ describe('settings precedence and redaction', () => {
   })
 
   it('keeps a blank secret and clears only an explicit null', () => {
-    const kept = applyPatch(stored, secrets, { goatcounter: { apiKey: '' } })
-    expect(kept.secrets.goatcounterApiKey).toBe('stored-key')
-    const cleared = applyPatch(stored, secrets, { goatcounter: { apiKey: null } })
-    expect(cleared.secrets.goatcounterApiKey).toBeUndefined()
-    const ignored = applyPatch(stored, secrets, { goatcounter: { site: 'other' } })
+    const kept = applySecretWrites(secrets, { goatcounterApiKey: '' })
+    expect(kept.goatcounterApiKey).toBe('stored-key')
+    const cleared = applySecretWrites(secrets, { goatcounterApiKey: null })
+    expect(cleared.goatcounterApiKey).toBeUndefined()
+    const saved = normalizeSettings({
+      timezone: 'Asia/Taipei',
+      defaultProvider: null,
+      inject: { umami: true, goatcounter: true, cloudflare: false },
+      umami: { apiUrl: '', websiteId: 'from-settings', username: '' },
+      goatcounter: { site: 'other' },
+      cloudflare: { accountId: '', siteTag: '' },
+    })
+    expect(saved.goatcounter?.site).toBe('other')
     process.env.GOATCOUNTER_SITE = 'from-env'
-    const locked = applyPatch(stored, secrets, { goatcounter: { site: 'other' } })
-    expect(ignored.stored.goatcounter?.site).toBe('other')
-    expect(locked.stored.goatcounter?.site).toBe('demo')
+    expect(buildEffective(saved, secrets).goatcounter?.site).toBe('from-env')
+    expect(normalizeSettings(saved)).toEqual(saved)
   })
 
   it('publishes a script id without the API key', () => {
