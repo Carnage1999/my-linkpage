@@ -8,14 +8,24 @@ export interface SiteSavedMessage {
   bust?: boolean
 }
 
-export function notifySiteConfigSaved(bust = false) {
-  if (typeof BroadcastChannel === 'undefined') return
-  try {
-    const channel = new BroadcastChannel(SITE_CHANNEL)
-    const message: SiteSavedMessage = { type: 'saved', ...(bust ? { bust: true } : {}) }
-    channel.postMessage(message)
-    channel.close()
-  } catch {
-    /* BroadcastChannel can be missing in a locked-down browser */
+let shared: BroadcastChannel | null | undefined
+
+function siteChannel(): BroadcastChannel | null {
+  if (shared !== undefined) return shared
+  if (typeof BroadcastChannel === 'undefined') {
+    shared = null
+    return null
   }
+  try {
+    shared = new BroadcastChannel(SITE_CHANNEL)
+  } catch {
+    shared = null
+  }
+  return shared
+}
+
+export function notifySiteConfigSaved(bust = false) {
+  const message: SiteSavedMessage = { type: 'saved', ...(bust ? { bust: true } : {}) }
+  // Leave the channel open. Firefox drops a message when the channel closes in the same turn.
+  siteChannel()?.postMessage(message)
 }
