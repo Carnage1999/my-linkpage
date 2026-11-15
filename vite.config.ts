@@ -24,6 +24,13 @@ export default defineConfig({
     },
   },
   build: {
+    modulePreload: {
+      resolveDependencies(_filename, deps, { hostType }) {
+        if (hostType !== 'html') return deps
+        // The chart and the manage route load when that route opens.
+        return deps.filter((dep) => !dep.includes('recharts') && !dep.includes('ManagePage'))
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {
