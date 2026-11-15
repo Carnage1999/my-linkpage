@@ -13,7 +13,7 @@ export default defineConfig({
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
       'Content-Security-Policy':
-        "default-src 'self'; script-src 'self' https://cloud.umami.is https://gc.zgo.at https://static.cloudflareinsights.com; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://cloud.umami.is https://api.umami.is https://*.goatcounter.com https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
+        "default-src 'self'; script-src 'self' https://cloud.umami.is https://gc.zgo.at https://static.cloudflareinsights.com; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://cloud.umami.is https://api.umami.is https://gateway.umami.is https://*.goatcounter.com https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
     },
   },
   preview: {
@@ -24,10 +24,12 @@ export default defineConfig({
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
       'Content-Security-Policy':
-        "default-src 'self'; script-src 'self' https://cloud.umami.is https://gc.zgo.at https://static.cloudflareinsights.com; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://cloud.umami.is https://api.umami.is https://*.goatcounter.com https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
+        "default-src 'self'; script-src 'self' https://cloud.umami.is https://gc.zgo.at https://static.cloudflareinsights.com; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://cloud.umami.is https://api.umami.is https://gateway.umami.is https://*.goatcounter.com https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
     },
   },
   build: {
+    // Font subsets start at 2.5 KB. Keep them as files so font-src can stay 'self'.
+    assetsInlineLimit: 2048,
     modulePreload: {
       resolveDependencies(_filename, deps, { hostType }) {
         if (hostType !== 'html') return deps
