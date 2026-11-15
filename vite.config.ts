@@ -40,29 +40,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
-            return 'react-vendor'
-          }
-          // recharts and the homepage both use this React shim. It has to live
-          // with React, or the homepage statically imports the chart chunk.
-          if (
-            id.includes('/motion/') ||
-            id.includes('framer-motion') ||
-            id.includes('motion-dom') ||
-            id.includes('motion-utils')
-          ) {
-            return 'motion'
-          }
           const bundled = id.split('node_modules/').pop() ?? ''
           const pkg = bundled.startsWith('@') ? bundled.split('/').slice(0, 2).join('/') : bundled.split('/')[0]
-          if (pkg === 'use-sync-external-store') return 'react-vendor'
-          if (pkg === 'recharts' || pkg.startsWith('d3-')) return 'recharts'
-          if (id.includes('node_modules/react-router')) {
-            return 'router'
-          }
-          if (id.includes('node_modules/simple-icons')) {
-            return 'simple-icons'
-          }
+          // Only the chart stays in its own chunk. Shared React shims stay out
+          // of it, so the homepage does not import this file.
+          if (pkg === 'recharts' || pkg === 'd3' || pkg.startsWith('d3-')) return 'recharts'
         },
       },
     },
