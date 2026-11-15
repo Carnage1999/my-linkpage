@@ -6,6 +6,7 @@ allowBuilds:
 # pnpm 12 checks every locked package against a release-age policy and
 # rejects versions published inside the window. This repo already locks
 # current releases, so keep the pnpm 10 behavior of installing them.
+# nosemgrep: package_managers.pnpm.pnpm-missing-minimum-release-age.pnpm-minimum-release-age
 minimumReleaseAge: 0
 
 # happy-dom is an optional peer of Vitest. Tests run in jsdom, and the

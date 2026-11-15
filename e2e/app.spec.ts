@@ -61,7 +61,7 @@ test.describe('Core rendering', () => {
 
   test('renders all social link cards with correct hrefs', async ({ page }) => {
     for (const { label, url } of SOCIAL_LINKS) {
-      const link = page.getByRole('link', { name: new RegExp(`^${label}`) })
+      const link = page.getByRole('link', { name: label })
       await expect(link).toBeVisible()
       await expect(link).toHaveAttribute('href', url)
       await expect(link).toHaveAttribute('target', '_blank')

@@ -316,7 +316,14 @@ async function expectPersisted(
     language.code.replaceAll('-', '_'),
   )
   await expect(homePage.getByText(language.visit, { exact: true }).first()).toBeVisible()
-  await expect(homePage.locator('#social-links > li')).toHaveText(SAVED_ORDER.map((label) => new RegExp(label)))
+  await expect(homePage.locator('#social-links > li')).toHaveText([
+    /GitHub/,
+    /X/,
+    /Telegram/,
+    /Bluesky/,
+    /Line/,
+    /LinkedIn/,
+  ])
   await home.close()
 
   const again = await browser.newContext()
