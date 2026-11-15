@@ -7,6 +7,8 @@
 import { createServer, type IncomingHttpHeaders, type IncomingMessage } from 'node:http'
 import handler from '../api/site-config'
 import authHandler from '../api/stats/auth'
+import logoutHandler from '../api/stats/logout'
+import sessionHandler from '../api/stats/session'
 import settingsHandler from '../api/stats/settings'
 import { __resetSettingsCache } from '../api/stats/_settings'
 import { validateSiteConfig, type PublicSiteConfig } from '../api/stats/_site-schema'
@@ -125,6 +127,10 @@ const server = createServer(async (incoming, outgoing) => {
     response = await authHandler(
       new Request(url, { method, headers: headersFrom(incoming.headers), body }),
     )
+  } else if (url.pathname === '/api/stats/session') {
+    response = await sessionHandler(new Request(url, { method, headers: headersFrom(incoming.headers) }))
+  } else if (url.pathname === '/api/stats/logout') {
+    response = await logoutHandler(new Request(url, { method, headers: headersFrom(incoming.headers) }))
   } else if (url.pathname === '/api/stats/data') {
     response = Response.json(DATA)
   } else if (url.pathname === '/api/stats/visitors') {

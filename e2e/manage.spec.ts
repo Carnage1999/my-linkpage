@@ -42,31 +42,55 @@ const SETTINGS = {
   ],
 }
 
+function hasSession(cookie: string | undefined): boolean {
+  return (cookie ?? '').includes('stats_session=test-token')
+}
+
 async function installApi(page: Page, dataStatus = 200) {
+  await page.route('**/api/stats/session', async (route) => {
+    if (!hasSession(route.request().headers().cookie)) {
+      await route.fulfill({ status: 401, json: { error: 'Missing token' } })
+      return
+    }
+    await route.fulfill({ json: { ok: true } })
+  })
+  await page.route('**/api/stats/logout', async (route) => {
+    await page.context().clearCookies()
+    await route.fulfill({ json: { ok: true } })
+  })
   await page.route('**/api/stats/auth', async (route) => {
     const body = route.request().postDataJSON() as { password?: string }
     if (body.password === 'correct') {
-      await route.fulfill({ json: { token: 'test-token' } })
+      await page.context().addCookies([
+        {
+          name: 'stats_session',
+          value: 'test-token',
+          url: 'http://localhost:4173/api',
+          httpOnly: true,
+          sameSite: 'Strict',
+        },
+      ])
+      await route.fulfill({ json: { ok: true } })
       return
     }
     await route.fulfill({ status: 401, json: { error: 'Invalid password' } })
   })
   await page.route('**/api/stats/data**', async (route) => {
-    if (route.request().headers().authorization !== 'Bearer test-token') {
+    if (!hasSession(route.request().headers().cookie)) {
       await route.fulfill({ status: 401, json: { error: 'Invalid or expired token' } })
       return
     }
     await route.fulfill({ status: dataStatus, json: dataStatus === 200 ? DATA : { error: 'Invalid or expired token' } })
   })
   await page.route('**/api/stats/visitors**', async (route) => {
-    if (route.request().headers().authorization !== 'Bearer test-token') {
+    if (!hasSession(route.request().headers().cookie)) {
       await route.fulfill({ status: 401, json: { error: 'Invalid or expired token' } })
       return
     }
     await route.fulfill({ json: VISITORS })
   })
   await page.route('**/api/stats/settings**', async (route) => {
-    if (route.request().headers().authorization !== 'Bearer test-token') {
+    if (!hasSession(route.request().headers().cookie)) {
       await route.fulfill({ status: 401, json: { error: 'Invalid or expired token' } })
       return
     }
@@ -145,7 +169,8 @@ test('opens each section from the tab bar and keeps unsaved edits', async ({ pag
 
   await page.goto('/manage?tab=data')
   await expect(page.getByRole('button', { name: 'Export JSON' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Import seed' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Reset to seed' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Import seed' })).toHaveCount(0)
 })
 
 test('returns to the login form when the session is rejected', async ({ page }) => {
