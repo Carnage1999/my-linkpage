@@ -38,7 +38,9 @@ export default defineConfig({
       },
     },
     rolldownOptions: {
+      preserveEntrySignatures: 'allow-extension',
       output: {
+        strictExecutionOrder: true,
         codeSplitting: {
           groups: [
             {
