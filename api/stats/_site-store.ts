@@ -4,10 +4,13 @@
  */
 
 import seedFile from '../../public/siteConfig.json'
+import { redisKey } from './_keys'
 import { isRedisConfigured, redisCommand } from './_redis'
 import { normalizeConfig, SiteValidationError, type PublicSiteConfig } from './_site-schema'
 
-const KEY = 'site:config'
+function siteKey(): string {
+  return redisKey('site:config')
+}
 const CACHE_MS = 60_000
 
 interface ManagedCache {
@@ -35,7 +38,7 @@ export function seedSiteConfig(): PublicSiteConfig {
 async function load(): Promise<ManagedCache> {
   if (!isRedisConfigured()) return { at: Date.now(), site: seedSiteConfig(), settings: null }
   try {
-    const response = await redisCommand(['GET', KEY])
+    const response = await redisCommand(['GET', siteKey()])
     if (typeof response.result !== 'string' || !response.result) {
       return { at: Date.now(), site: seedSiteConfig(), settings: null }
     }
@@ -76,7 +79,7 @@ export interface ManagedDocument {
  */
 export async function readManagedStrict(): Promise<ManagedDocument> {
   if (!isRedisConfigured()) throw new Error('Redis is not configured')
-  const response = await redisCommand(['GET', KEY])
+  const response = await redisCommand(['GET', siteKey()])
   if (typeof response.result !== 'string' || !response.result) {
     return { raw: null, site: seedSiteConfig(), settings: null }
   }
@@ -122,7 +125,7 @@ export async function compareAndSetManaged(
     'EVAL',
     COMPARE_AND_SET,
     '1',
-    KEY,
+    siteKey(),
     expectedRaw ?? '',
     JSON.stringify(payload),
   ])

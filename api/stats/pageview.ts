@@ -7,7 +7,8 @@
  */
 
 import { dateKeyInTimeZone } from './_dates'
-import { json } from './_http'
+import { blockedWriteResponse, json } from './_http'
+import { previewWritesBlocked } from './_keys'
 import { countryFromRequest, referrerHostname } from './_referrer'
 import { hashClientIp, isRedisConfigured, recordPageview } from './_redis'
 import { readRuntimeSite } from './_site-store'
@@ -23,6 +24,7 @@ export default async function handler(request: Request): Promise<Response> {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   if (!isStatsEnabled() || !isRedisConfigured()) return json({ error: 'Stats not enabled' }, 501)
+  if (previewWritesBlocked()) return json({ error: 'Preview writes require REDIS_KEY_PREFIX' }, 503, 'private, no-store')
 
   let referrer = ''
   try {
@@ -51,6 +53,8 @@ export default async function handler(request: Request): Promise<Response> {
     if (outcome === 'limited') return json({ ok: false }, 202)
     return json({ ok: true })
   } catch (error) {
+    const blocked = blockedWriteResponse(error)
+    if (blocked) return blocked
     console.error('Pageview error:', error)
     return json({ error: 'Internal error' }, 500)
   }

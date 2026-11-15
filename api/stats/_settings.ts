@@ -9,12 +9,15 @@
 import { safeScriptUrl, safeToken } from '../../src/lib/safeUrl'
 import { decryptJson, encryptJson, secretKeyMaterial } from './_crypto'
 import { DEFAULT_STATS_TIMEZONE } from './_dates'
+import { redisKey } from './_keys'
 import { isRedisConfigured, redisCommand } from './_redis'
 import { compareAndSetManaged, readManaged, readManagedStrict, siteCacheGeneration } from './_site-store'
 import { normalizeConfig, SiteConflictError, SiteValidationError, type PublicSiteConfig } from './_site-schema'
 import { isVisitorProvider, VISITOR_PROVIDERS, type VisitorProviderId } from './_providers/types'
 
-const KEY = 'stats:settings'
+function legacyKey(): string {
+  return redisKey('stats:settings')
+}
 
 export interface SecretBag {
   goatcounterApiKey?: string
@@ -412,8 +415,6 @@ export function publicScriptsFrom(effective: EffectiveSettings): PublicScripts {
   }
 }
 
-const LEGACY_KEY = KEY
-
 async function decodeSettings(raw: unknown): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
   const record = raw as StoredSettings
   const material = secretKeyMaterial()
@@ -430,7 +431,7 @@ async function decodeSettings(raw: unknown): Promise<{ stored: StoredSettings; s
 async function readLegacy(): Promise<{ stored: StoredSettings; secrets: SecretBag }> {
   if (!isRedisConfigured()) return { stored: { v: 1 }, secrets: {} }
   try {
-    const response = await redisCommand(['GET', LEGACY_KEY])
+    const response = await redisCommand(['GET', legacyKey()])
     if (typeof response.result !== 'string' || !response.result) return { stored: { v: 1 }, secrets: {} }
     return decodeSettings(JSON.parse(response.result) as StoredSettings)
   } catch {

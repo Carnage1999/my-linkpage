@@ -17,6 +17,8 @@
  *   UPSTASH_REDIS_REST_TOKEN
  */
 
+import { assertWritesAllowed, redisKey } from './_keys'
+
 function getUrl(): string | undefined {
   return process.env.UPSTASH_REDIS_REST_URL
 }
@@ -48,12 +50,14 @@ async function redisFetch(path: string, body: unknown): Promise<unknown> {
 }
 
 export async function redisCommand(command: string[]): Promise<{ result: unknown }> {
+  assertWritesAllowed([command])
   return redisFetch('', command) as Promise<{ result: unknown }>
 }
 
 export async function redisPipeline(
   commands: string[][],
 ): Promise<Array<{ result: unknown }>> {
+  assertWritesAllowed(commands)
   return redisFetch('/pipeline', commands) as Promise<Array<{ result: unknown }>>
 }
 
@@ -95,11 +99,11 @@ export async function recordClick(input: {
     'EVAL',
     RECORD_SCRIPT,
     '5',
-    `rl:rec:${input.ipHash}:${input.linkId}`,
-    `rl:win:${input.ipHash}`,
-    'clicks:total',
-    'clicks:day',
-    'clicks:prune',
+    redisKey(`rl:rec:${input.ipHash}:${input.linkId}`),
+    redisKey(`rl:win:${input.ipHash}`),
+    redisKey('clicks:total'),
+    redisKey('clicks:day'),
+    redisKey('clicks:prune'),
     '2',
     '600',
     '30',
@@ -112,9 +116,10 @@ export async function recordClick(input: {
 }
 
 export async function bumpAuthLimit(ipHash: string): Promise<number> {
+  const key = redisKey(`rl:auth:${ipHash}`)
   const results = await redisPipeline([
-    ['INCR', `rl:auth:${ipHash}`],
-    ['EXPIRE', `rl:auth:${ipHash}`, '900'],
+    ['INCR', key],
+    ['EXPIRE', key, '900'],
   ])
   return Number(results[0]?.result ?? 0)
 }
@@ -124,8 +129,8 @@ export async function readClickHashes(): Promise<{
   days: unknown
 }> {
   const results = await redisPipeline([
-    ['HGETALL', 'clicks:total'],
-    ['HGETALL', 'clicks:day'],
+    ['HGETALL', redisKey('clicks:total')],
+    ['HGETALL', redisKey('clicks:day')],
   ])
   return { totals: results[0]?.result, days: results[1]?.result }
 }
@@ -155,8 +160,8 @@ export async function recordPageview(input: {
     'EVAL',
     PAGEVIEW_SCRIPT,
     '2',
-    `rl:pv:${input.ipHash}`,
-    `pv:${input.today}`,
+    redisKey(`rl:pv:${input.ipHash}`),
+    redisKey(`pv:${input.today}`),
     '30',
     '15552000',
     ...input.fields,
@@ -166,14 +171,15 @@ export async function recordPageview(input: {
 
 export async function readPageviewDays(dates: readonly string[]): Promise<unknown[]> {
   if (dates.length === 0) return []
-  const results = await redisPipeline(dates.map((date) => ['HGETALL', `pv:${date}`]))
+  const results = await redisPipeline(dates.map((date) => ['HGETALL', redisKey(`pv:${date}`)]))
   return results.map((entry) => entry?.result)
 }
 
 export async function bumpNamedLimit(name: string, ipHash: string, ttlSeconds = 900): Promise<number> {
+  const key = redisKey(`rl:${name}:${ipHash}`)
   const results = await redisPipeline([
-    ['INCR', `rl:${name}:${ipHash}`],
-    ['EXPIRE', `rl:${name}:${ipHash}`, String(ttlSeconds)],
+    ['INCR', key],
+    ['EXPIRE', key, String(ttlSeconds)],
   ])
   return Number(results[0]?.result ?? 0)
 }

@@ -1,4 +1,10 @@
+import { PreviewWriteBlocked } from './_keys'
 import { verifyToken } from './_token'
+
+export function blockedWriteResponse(error: unknown): Response | null {
+  if (!(error instanceof PreviewWriteBlocked)) return null
+  return json({ error: error.message }, 503, 'private, no-store')
+}
 
 export function json(data: unknown, status = 200, cacheControl?: string, extra?: Record<string, string>): Response {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...extra }

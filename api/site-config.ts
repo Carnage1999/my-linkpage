@@ -9,7 +9,8 @@
  */
 
 import { etagMatches, publicCdnHeaders, purgeSiteConfigCache } from './stats/_cache'
-import { json, requireStatsToken } from './stats/_http'
+import { blockedWriteResponse, json, requireStatsToken } from './stats/_http'
+import { previewWritesBlocked } from './stats/_keys'
 import { bumpNamedLimit, hashClientIp, isRedisConfigured } from './stats/_redis'
 import { commitManagedConfig, publicScriptsFrom, SettingsError } from './stats/_settings'
 import { SiteConflictError, SiteValidationError } from './stats/_site-schema'
@@ -45,6 +46,7 @@ export default async function handler(request: Request): Promise<Response> {
   if (!isStatsEnabled()) return json({ error: 'Stats not enabled' }, 501)
   const denied = await requireStatsToken(request)
   if (denied) return denied
+  if (previewWritesBlocked()) return json({ error: 'Preview writes require REDIS_KEY_PREFIX' }, 503, 'private, no-store')
   if (!isRedisConfigured()) return json({ error: 'Redis is not configured' }, 501)
 
   try {
@@ -77,6 +79,8 @@ export default async function handler(request: Request): Promise<Response> {
     const purge = await purgeSiteConfigCache()
     return json(saved, 200, 'private, no-store', { 'x-site-purge': purge })
   } catch (error) {
+    const blocked = blockedWriteResponse(error)
+    if (blocked) return blocked
     if (error instanceof SiteConflictError) return json({ error: error.message, version: error.version }, 409)
     if (error instanceof SiteValidationError || error instanceof SettingsError) return json({ error: error.message }, 400)
     console.error('Site config save error:', error)

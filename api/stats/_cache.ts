@@ -17,7 +17,15 @@
  * https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package
  */
 
+import { redisKeyPrefix } from './_keys'
+
 export const SITE_CACHE_TAG = 'site-config'
+
+/** Purge tag for this deployment. Preview's prefix never matches production's tag. */
+export function siteCacheTag(): string {
+  const prefix = redisKeyPrefix()
+  return prefix ? `${prefix}${SITE_CACHE_TAG}` : SITE_CACHE_TAG
+}
 export const SITE_BROWSER_CACHE = 'public, max-age=0, must-revalidate'
 export const SITE_CDN_CACHE = 'public, s-maxage=300'
 
@@ -30,7 +38,7 @@ export function publicCdnHeaders(etag?: string): Record<string, string> {
     'Cache-Control': SITE_BROWSER_CACHE,
     'CDN-Cache-Control': SITE_CDN_CACHE,
     'Vercel-CDN-Cache-Control': SITE_CDN_CACHE,
-    'Vercel-Cache-Tag': SITE_CACHE_TAG,
+    'Vercel-Cache-Tag': siteCacheTag(),
     ...(etag ? { ETag: etag } : {}),
   }
 }
@@ -54,7 +62,7 @@ export async function purgeSiteConfigCache(): Promise<PurgeResult> {
   const api = requestPurgeApi()
   if (!api?.dangerouslyDeleteByTag) return 'unavailable'
   try {
-    await api.dangerouslyDeleteByTag(SITE_CACHE_TAG, { revalidationDeadlineSeconds: 0 })
+    await api.dangerouslyDeleteByTag(siteCacheTag(), { revalidationDeadlineSeconds: 0 })
     return 'ok'
   } catch (error) {
     console.error('CDN purge failed:', error)

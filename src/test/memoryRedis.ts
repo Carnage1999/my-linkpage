@@ -9,12 +9,14 @@ type FetchInit = Parameters<typeof fetch>[1]
 export function installMemoryRedis() {
   const store = new Map<string, string>()
   const writes: string[] = []
+  const commands: string[][] = []
   const original = globalThis.fetch
   const base = 'http://127.0.0.1:9'
   process.env.UPSTASH_REDIS_REST_URL = base
   process.env.UPSTASH_REDIS_REST_TOKEN = 'memory'
 
   function run(command: string[]) {
+    commands.push(command)
     const [op, key = '', value = ''] = command
     if (op === 'GET') return { result: store.get(key) ?? null }
     if (op === 'SET') {
@@ -64,6 +66,7 @@ export function installMemoryRedis() {
   return {
     store,
     writes,
+    commands,
     restore() {
       globalThis.fetch = original
       delete process.env.UPSTASH_REDIS_REST_URL
