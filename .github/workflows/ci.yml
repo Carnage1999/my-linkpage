@@ -31,6 +31,8 @@ jobs:
 
       - run: pnpm typecheck
       - run: pnpm lint
+      - name: Install Redis for the Lua tests
+        run: sudo apt-get update && sudo apt-get install -y redis-server
       - run: pnpm test
       - run: pnpm build
 

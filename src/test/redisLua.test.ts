@@ -72,6 +72,9 @@ describe('redis Lua scripts', () => {
       { stdio: 'ignore' },
     )
     let lastError: unknown
+    server.on('error', (error) => {
+      lastError = error
+    })
     for (let attempt = 0; attempt < 50; attempt += 1) {
       try {
         socket = await new Promise<Socket>((resolve, reject) => {
@@ -92,8 +95,8 @@ describe('redis Lua scripts', () => {
   })
 
   afterAll(async () => {
-    socket.end()
-    server.kill('SIGTERM')
+    socket?.end()
+    server?.kill('SIGTERM')
   })
 
   async function call(...command: string[]): Promise<unknown> {
