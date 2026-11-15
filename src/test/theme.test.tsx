@@ -2,8 +2,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import App from '../App'
-import '../i18n'
-
 describe('Theme toggle', () => {
   it('defaults to light mode (no stored preference, no system dark)', async () => {
     render(<App />)

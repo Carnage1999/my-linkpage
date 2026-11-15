@@ -1,19 +1,15 @@
 /**
  * Site-wide configuration types and build-time fallbacks.
  *
- * Runtime data is loaded from /siteConfig.json via the useSiteConfig hook.
- * Edit public/siteConfig.json to update links without redeploying.
+ * The homepage renders this file immediately, then hydrates from /api/site-config.
+ * Edit the live site at /manage. This file remains the seed when Redis is empty.
  */
 
 // ─── Analytics (privacy-friendly) ────────────────────────
 
 export interface AnalyticsConfig {
-  /** Which analytics provider to use */
-  readonly provider: 'plausible' | 'umami'
-  /** Plausible: your domain (e.g. "link.w1999.me") */
-  readonly plausibleDomain?: string
-  /** Plausible: self-hosted URL (omit for plausible.io cloud) */
-  readonly plausibleHost?: string
+  /** Seed-file fallback only. Live scripts are chosen on /manage. */
+  readonly provider: 'umami'
   /** Umami: the website-id shown in Umami dashboard */
   readonly umamiWebsiteId?: string
   /** Umami: self-hosted URL (omit for cloud.umami.is) */
@@ -23,25 +19,25 @@ export interface AnalyticsConfig {
 // ─── Social links ────────────────────────────────────────
 
 export interface SocialLinkEntry {
-  /** Unique identifier — also used as the simple-icons slug */
+  /** Stable id for click stats. Renaming it starts a new series. */
   readonly id: string
   /** Display label shown in the UI */
   readonly label: string
   /** Full URL to your profile */
   readonly url: string
   /**
-   * Icon slug from simple-icons (https://simpleicons.org).
-   * Optional — auto-detected from URL when omitted.
-   * Must match the exported name: e.g. "siGithub", "siX", "siLinkedin".
+   * simple-icons slug such as "github", or "linkedin" for the custom mark.
+   * Present together with iconPath. This is not the link id.
    */
   readonly iconSlug?: string
+  /** SVG path from the installed simple-icons package, or the custom LinkedIn mark. */
+  readonly iconPath?: string
 }
 
 // ─── Site metadata ───────────────────────────────────────
 
 export interface SiteMetadata {
   readonly name: string
-  readonly tagline: string
   readonly domain: string
   readonly twitterHandle?: string
 }
@@ -61,7 +57,6 @@ export interface SiteConfig {
 
 export const DEFAULT_SITE: SiteMetadata = {
   name: 'Han-che Wang',
-  tagline: 'Links & Socials',
   domain: 'link.w1999.me',
 } as const
 

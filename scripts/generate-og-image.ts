@@ -14,9 +14,13 @@ import satori from 'satori'
 // ─── Config (read from siteConfig.json at build time) ────
 const ROOT = join(import.meta.dirname, '..')
 const configRaw = readFileSync(join(ROOT, 'public/siteConfig.json'), 'utf-8')
-const config = JSON.parse(configRaw) as { site?: { name: string; tagline: string; domain: string }; socials: { label: string }[] }
+const config = JSON.parse(configRaw) as {
+  site?: { name: string; domain: string }
+  i18n?: { texts?: { en?: { subtitle?: string } } }
+  socials: { label: string }[]
+}
 const NAME = config.site?.name ?? 'Han-che Wang'
-const TAGLINE = config.site?.tagline ?? 'Links & Socials'
+const TAGLINE = config.i18n?.texts?.en?.subtitle ?? 'Links & socials'
 const DOMAIN = config.site?.domain ?? 'link.w1999.me'
 const SOCIALS = config.socials.map((s) => s.label)
 

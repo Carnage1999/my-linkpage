@@ -8,15 +8,14 @@
 
 ## 功能特色
 
-- **零部署更新** — 編輯 `public/siteConfig.json` 即可新增、移除或調整社群連結、個人資料或分析工具，無需重新建置
-- **自動偵測圖示** — 透過 [simple-icons](https://simpleicons.org) 根據連結網址自動匹配圖示（支援 48 平台）；需要時可用 `iconSlug` 手動覆寫
+- **從 /manage 更新** — 個人資料、連結與分析設定存在 Redis。`public/siteConfig.json` 是 Redis 沒有資料時的種子。`index.html` 與建置的 OG 圖片要等下次部署才會變
+- **自動偵測圖示** — 用連結網址對完整的 [simple-icons](https://simpleicons.org) 圖示庫匹配。`/manage` 可以改選。首頁只存 SVG path，不會把整個圖示套件打進首頁。LinkedIn 是自訂圖示，因為 simple-icons 已移除它
 - **動態 OG 圖片** — Serverless 端點（`/api/og`）使用 Web Standard API 依請求即時產生 1200×630 社群預覽圖，始終反映最新設定
 - **多語系** — EN / RU / ZH-TW，自動偵測瀏覽器語言（簡體中文 → 正體中文）
 - **深色 / 淺色模式** — 跟隨系統偏好；使用者的切換選擇透過 `localStorage` 保存
 - **動畫效果** — Motion 進場過渡動畫，支援 `prefers-reduced-motion`
 - **自託管字型** — 透過 `@fontsource-variable` 提供 Manrope 與 Space Grotesk 可變字型
-- **分析與點擊熱力圖** — 可設定 Plausible / Umami 分析工具；本機端逐連結點擊熱力圖含每日/每週趨勢圖 — 全部使用 `localStorage`，無 Cookie
-- **統計儀表板** — 選擇性啟用的密碼保護 `/stats` 頁面，透過 Upstash Redis 實現伺服器端點擊追蹤；30 天趨勢圖、逐連結統計、Umami/Plausible 嵌入 — 完全透過環境變數選擇性啟用
+- **分析** — `/manage` 可選 Upstash、GoatCounter、Cloudflare Web Analytics 或 Umami。點擊紀錄寫入 Upstash Redis，不依賴分析腳本。
 - **SEO** — 動態 meta/OG/Twitter 標籤、JSON-LD Person schema、hreflang、canonical 連結
 - **無障礙** — skip link、語意化 HTML、ARIA 標籤、`aria-live` 回饋、WCAG 對比度；E2E 中包含 axe-core 無障礙稽核
 - **錯誤邊界** — 頂層崩潰備援 UI，附重新載入按鈕
@@ -35,9 +34,9 @@
 | 建置 | Vite 8 |
 | 樣式 | Tailwind CSS 4（`@tailwindcss/vite`）、Headless UI |
 | 動畫 | Motion |
-| 國際化 | i18next 27、react-i18next 18 |
+| 國際化 | 首頁文案在網站設定；後台文字在 `src/manage/copy.ts` |
 | 圖表 | Recharts |
-| 圖示 | simple-icons（48 平台） |
+| 圖示 | simple-icons（完整圖庫，儲存時寫入 path） |
 | OG 圖片 | satori、@resvg/resvg-js（建置時期 + serverless） |
 | 統計後端 | Upstash Redis（REST API，無需 SDK） |
 | 字型 | @fontsource-variable（Manrope、Space Grotesk） |
@@ -84,36 +83,44 @@ src/
   siteConfig.ts            型別定義與建置時期預設值
   App.tsx                  主頁面 UI
   main.tsx                 進入點（包裹於 ErrorBoundary）
-  router.tsx               客戶端路由（/、/stats）
+  router.tsx               客戶端路由（/、/manage）
   SocialIcon.tsx           品牌圖示元件（simple-icons + 自動偵測）
-  iconRegistry.ts          48 平台圖示註冊表，URL → 圖示自動匹配
+  icons/                   simple-icons 圖庫（只給 /manage 與 API）與 LinkedIn 備用圖
   i18n.ts                  語言偵測與 i18n 設定
   index.css                全域樣式與 Tailwind 進入點
   components/
     ErrorBoundary.tsx      崩潰備援 UI
     SEO.tsx                Meta 標籤、OG 圖片、JSON-LD
-    LinkHeatmap.tsx        點擊熱力圖與趨勢圖表
   hooks/
     useSiteConfig.ts       執行階段 JSON 設定載入器（擷取 siteConfig.json）
     useAnalytics.ts        分析腳本載入器與事件追蹤
-    useLinkClickStats.ts   localStorage 點擊計數器與時間軸
-    useStats.ts            伺服器端統計認證與資料 hook
+    useStats.ts            後台登入、Redis 與 Umami 報表、點擊紀錄
   pages/
-    StatsPage.tsx          密碼保護的統計儀表板
-  locales/                 翻譯檔案（en / ru / zh-TW）
+    manage/                /manage 密碼保護的管理後台
+      ManagePage.tsx       登入
+      Dashboard.tsx        Redis 與 Umami 圖表
+      LinkHeatmap.tsx      逐連結點擊對照
+      clickCsv.ts          匯出 CSV
+  manage/copy.ts           後台文案（en / ru / zh-TW）
   test/                    Vitest 單元與元件測試
 api/
   og.ts                    Serverless Function — 動態產生 OG 圖片（Web Standard API）
   stats/
-    _handlers.ts           跨平台請求處理器
+    _handlers.ts           auth、record、data 與 Umami 處理器
     _redis.ts              Upstash Redis REST 輔助函式
+    _providers/            Upstash、GoatCounter、Cloudflare、Umami
+    _dates.ts              時區日界
+    _aggregate.ts          所選期間的點擊合計
+    _links.ts              siteConfig 中允許的連結 id
     _token.ts              HMAC 權杖認證（Web Crypto API）
     auth.ts                登入端點
     check.ts               功能偵測端點
-    data.ts                統計資料端點
+    data.ts                Redis 點擊報表
+    umami.ts               Umami 報表
     record.ts              點擊紀錄端點
 e2e/
   app.spec.ts              Playwright E2E 測試
+  manage.spec.ts           管理後台登入與儀表板
   a11y.spec.ts             axe-core 無障礙稽核
 scripts/
   generate-og-image.ts     建置時期 OG 圖片產生器（靜態備援）
@@ -124,13 +131,14 @@ scripts/
 
 ### 社群連結、個人資料與網站中繼資料
 
-編輯 `public/siteConfig.json` — 這是**唯一需要修改的檔案**。無需重新建置或部署。
+線上內容在 `/manage` 修改。`public/siteConfig.json` 是 Redis 沒有資料時的種子，也是 `index.html` 與建置的 `og-image.png` 的來源，這兩者要等下次部署。React 頁面、它的 meta 與 `/api/og` 會立刻採用新設定。
+
+「網站」分頁的顯示名稱用在分享圖與作者 metadata。首頁句子（含標題與副標）在「語言」分頁按語言修改，並存在網站設定裡。缺的句子使用預設語言。後台自己的文字在 `src/manage/copy.ts`。由右至左的語言仍以由左至右顯示。
 
 ```jsonc
 {
   "site": {
     "name": "你的名字",
-    "tagline": "社群與連結",
     "domain": "your-domain.com",
     "twitterHandle": "@your_handle"    // 選填
   },
@@ -138,53 +146,48 @@ scripts/
     "avatar": "/avatar.jpg"
   },
   "analytics": {                        // 選填 — 移除以停用
-    "provider": "umami",                // "umami" 或 "plausible"
+    "provider": "umami",
     "umamiWebsiteId": "xxxxxxxx-..."
   },
   "socials": [
-    { "id": "github", "label": "GitHub", "url": "https://github.com/you" },
-    { "id": "x", "label": "X", "url": "https://x.com/you" }
-    // 圖示會自動依 URL 偵測 — 不需要 iconSlug
-    // 手動覆寫請加入："iconSlug": "siGithub"
+    { "id": "github", "label": "GitHub", "url": "https://github.com/you", "iconSlug": "github", "iconPath": "M12 ..." },
+    { "id": "x", "label": "X", "url": "https://x.com/you", "iconSlug": "x", "iconPath": "M14 ..." }
+    // iconSlug 是 simple-icons 的 slug，iconPath 來自該套件。
+    // LinkedIn 使用自訂的 "linkedin" 圖示。連結 id 不是圖示。
   ]
 }
 ```
 
 ### 翻譯
 
-編輯或新增 `src/locales/` 中的 JSON 檔案。
+首頁文案在「語言」分頁修改。後台文字在 `src/manage/copy.ts`。
 
 ### 分析工具
 
-在 `public/siteConfig.json` 中設定：
-
-```jsonc
-// Plausible
-"analytics": { "provider": "plausible", "plausibleDomain": "link.example.com" }
-
-// Umami
-"analytics": { "provider": "umami", "umamiWebsiteId": "xxxxxxxx-…" }
-
-// 停用（移除 "analytics" 鍵 — 本機熱力圖仍可運作）
-```
+訪客來源在 `/manage` 設定，或用下方的環境變數。環境變數會覆寫已儲存的值。頭像從 `public/` 的圖片挑選（預設 `/avatar.jpg`），或填一個 https 網址。沒有檔案上傳。
 
 ### OG 圖片
 
 OG 圖片透過 `/api/og` **動態產生**，每次請求時讀取 `siteConfig.json`，無需手動重新產生。靜態備援圖片也會在 `pnpm build` 時產生。
 
-### 統計儀表板（選擇性啟用）
+### 管理後台（選擇性啟用）
 
-`/stats` 統計儀表板為**完全選擇性啟用**。設定以下環境變數即可啟用：
+後台位於 `/manage`，公開頁面沒有連到它。頁面送出 `noindex`，並在 `robots.txt` 禁止索引。環境變數見 `.env.example`：
 
 | 變數 | 說明 |
 |---|---|
-| `STATS_PASSWORD` | 存取統計儀表板的密碼 |
-| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST 端點 URL |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST 認證權杖 |
+| `STATS_PASSWORD` | `/manage` 的密碼 |
+| `STATS_TIMEZONE` | 日界使用的 IANA 時區，預設 `Asia/Taipei`。 |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL（[主控台](https://console.upstash.com) → 資料庫 → REST API） |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST 權杖 |
+| `UMAMI_WEBSITE_ID` | Umami 網站 id。會覆寫 `/manage` 裡儲存的值。 |
+| `UMAMI_API_URL` | Umami 來源位址。留空則使用雲端 `https://api.umami.is`。 |
+| `UMAMI_API_KEY` | 雲端或自架的 API 金鑰。雲端：Settings → API keys。 |
+| `UMAMI_USERNAME` / `UMAMI_PASSWORD` | 沒有 API 金鑰時的自架登入。工作階段權杖只留在伺服器。 |
 
-三個變數皆設定時，所有連結將自動啟用點擊追蹤，頁尾也會出現「統計」連結。任一變數缺少時，此功能完全隱藏 — 不會有額外請求或 UI 變動。
+同時設定 `STATS_PASSWORD` 與兩個 Upstash 變數後才會紀錄點擊。首頁以 `navigator.sendBeacon`（或 `keepalive` 的 `fetch`）送出 `POST /api/stats/record`。只有在有網站 id，且有 API 金鑰或帳號密碼時，才會顯示 Umami 區塊。Redis 點擊與 Umami 的 Link Click 並排：Redis 含被廣告阻擋程式擋下 Umami 的訪客。
 
-統計 API 使用 Web Standard `Request`/`Response` 與 Web Crypto API，可在 **Vercel Edge、Cloudflare Workers、Netlify Edge Functions** 及其他支援 Web Platform API 的平台上運行。
+API 使用 Web `Request` / `Response` 與 Web Crypto，可在 Vercel Edge 執行。Upstash 免費方案（256 MB、每月 500,000 個指令）足夠：一次成功的點擊約 5 個指令，載入後台讀取兩個 hash。
 
 ## 部署
 

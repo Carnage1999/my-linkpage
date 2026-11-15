@@ -15,10 +15,12 @@
   },
   "include": [
     "src",
+    "api",
     "scripts",
     "vite.config.ts",
     "eslint.config.ts",
     "prettier.config.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "middleware.ts"
   ]
 }

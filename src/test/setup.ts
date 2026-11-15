@@ -1,25 +1,22 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, vi } from 'vitest'
+import seedFile from '../../public/siteConfig.json'
 import { invalidateSiteConfig } from '../hooks/useSiteConfig'
+
+const seed = seedFile as {
+  socials: Array<{ id: string; label: string; url: string; iconSlug: string; iconPath: string }>
+}
 
 const TEST_SITE_CONFIG = {
   site: {
     name: 'Han-che Wang',
-    tagline: 'Links & Socials',
     domain: 'link.w1999.me',
     twitterHandle: '@wang_hanzhe',
   },
   profile: { avatar: '/avatar.jpg' },
   analytics: null,
-  socials: [
-    { id: 'github', label: 'GitHub', url: 'https://github.com/Carnage1999' },
-    { id: 'bluesky', label: 'Bluesky', url: 'https://bsky.app/profile/w1999.me' },
-    { id: 'x', label: 'X', url: 'https://x.com/wang_hanzhe' },
-    { id: 'line', label: 'Line', url: 'https://line.me/ti/p/Oc10OLyIM0' },
-    { id: 'telegram', label: 'Telegram', url: 'https://t.me/WHZ1999' },
-    { id: 'linkedin', label: 'LinkedIn', url: 'https://www.linkedin.com/in/hanzhe-wang/' },
-  ],
+  socials: seed.socials,
 }
 
 // jsdom doesn't provide localStorage without a valid --localstorage-file
