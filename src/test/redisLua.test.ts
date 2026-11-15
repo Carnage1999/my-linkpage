@@ -70,12 +70,12 @@ async function openRedis(): Promise<{ server: ChildProcess; socket: Socket } | n
     { stdio: 'ignore' },
   )
   let lastError: unknown
-  let missing: Error | null = null
+  let missingMessage: string | null = null
   server.on('error', (error) => {
     lastError = error
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') missing = error
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') missingMessage = error.message
   })
-  for (let attempt = 0; attempt < 50 && !missing; attempt += 1) {
+  for (let attempt = 0; attempt < 50 && missingMessage === null; attempt += 1) {
     try {
       const socket = await new Promise<Socket>((resolve, reject) => {
         const next = createConnection({ host: '127.0.0.1', port: PORT })
@@ -92,7 +92,7 @@ async function openRedis(): Promise<{ server: ChildProcess; socket: Socket } | n
     }
   }
   server.kill('SIGTERM')
-  const reason = missing?.message ?? (lastError instanceof Error ? lastError.message : 'redis-server did not start')
+  const reason = missingMessage ?? (lastError instanceof Error ? lastError.message : 'redis-server did not start')
   if (process.env.CI) throw new Error(`redis-server is required in CI (${reason})`)
   process.stderr.write(`${SKIP}\n`)
   return null
