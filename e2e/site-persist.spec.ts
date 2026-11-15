@@ -1,7 +1,6 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import { spawn, type ChildProcess } from 'node:child_process'
 
-const SAVED_ORDER = ['GitHub', 'X', 'Telegram', 'Bluesky', 'Line', 'LinkedIn']
 const SAVED_IDS = ['github', 'x', 'telegram', 'bluesky', 'line', 'linkedin']
 const putOrders: string[][] = []
 
