@@ -1,7 +1,7 @@
 /**
  * GET /api/site-config — public site content plus non-secret script ids.
  * PUT /api/site-config — authenticated replace.
- * POST /api/site-config — { action: "import" | "reset" } writes the repo seed.
+ * POST /api/site-config — { action: "import" | "reset", confirm: true, baseVersion } writes the repo seed.
  *
  * Stays on the Edge runtime. The full simple-icons package is over the 1 MB
  * Edge limit, so this function only stores the SVG path that /manage resolved
@@ -93,6 +93,11 @@ export default async function handler(request: Request): Promise<Response> {
     const body = await readJsonObject(request)
     if (request.method === 'POST') {
       if (body.action !== 'import' && body.action !== 'reset') return json({ error: 'Unknown action' }, 400)
+      if (body.confirm !== true) throw new SiteValidationError('confirm is required')
+      if (typeof body.baseVersion !== 'number' || !Number.isInteger(body.baseVersion)) {
+        throw new SiteValidationError('baseVersion is required')
+      }
+      const baseVersion = body.baseVersion
       const raw = await readManagedRaw()
       let version = 0
       let settings: unknown = null
@@ -107,13 +112,8 @@ export default async function handler(request: Request): Promise<Response> {
           readable = false
         }
       }
-      if (readable) {
-        if (typeof body.baseVersion !== 'number' || !Number.isInteger(body.baseVersion)) {
-          throw new SiteValidationError('baseVersion is required')
-        }
-        if (body.baseVersion !== version) throw new SiteConflictError(version)
-      }
-      const nextVersion = (readable ? version : typeof body.baseVersion === 'number' && Number.isInteger(body.baseVersion) ? body.baseVersion : 0) + 1
+      if (readable && baseVersion !== version) throw new SiteConflictError(version)
+      const nextVersion = (readable ? version : baseVersion) + 1
       const seeded = { ...seedSiteConfig(), version: nextVersion }
       const next = readable && settings && typeof settings === 'object' ? { ...seeded, settings } : seeded
       const wrote = await replaceManagedRaw(raw, JSON.stringify(next))

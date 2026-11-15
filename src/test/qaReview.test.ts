@@ -86,7 +86,7 @@ describe('public reads and recovery', () => {
       new Request('https://link.example/api/site-config', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Site-Request': '1' },
-        body: JSON.stringify({ action: 'reset', baseVersion: 0 }),
+        body: JSON.stringify({ action: 'reset', confirm: true, baseVersion: 0 }),
       }),
     )
     expect(recovered.status).toBe(200)
@@ -100,10 +100,36 @@ describe('public reads and recovery', () => {
       new Request('https://link.example/api/site-config', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reset', baseVersion: 3 }),
+        body: JSON.stringify({ action: 'reset', confirm: true, baseVersion: 3 }),
       }),
     )
     expect(conflict.status).toBe(409)
+    expect(redis.store.get('site:config')).toBe(before)
+
+    const unconfirmed = await handler(
+      new Request('https://link.example/api/site-config', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset', baseVersion: 8 }),
+      }),
+    )
+    expect(unconfirmed.status).toBe(400)
+    const unconfirmedImport = await handler(
+      new Request('https://link.example/api/site-config', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'import', baseVersion: 8 }),
+      }),
+    )
+    expect(unconfirmedImport.status).toBe(400)
+    const missingVersion = await handler(
+      new Request('https://link.example/api/site-config', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset', confirm: true }),
+      }),
+    )
+    expect(missingVersion.status).toBe(400)
     expect(redis.store.get('site:config')).toBe(before)
 
     const bad = await handler(
@@ -201,7 +227,7 @@ describe('public reads and recovery', () => {
       new Request('https://link.example/api/site-config', {
         method: 'POST',
         headers: { Cookie: `stats_session=${encodeURIComponent(token)}`, 'Content-Type': 'application/json', Origin: 'https://evil.example' },
-        body: JSON.stringify({ action: 'reset', baseVersion: 0 }),
+        body: JSON.stringify({ action: 'reset', confirm: true, baseVersion: 0 }),
       }),
     )
     expect(blocked.status).toBe(403)

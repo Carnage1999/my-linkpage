@@ -313,7 +313,7 @@ export function useSiteDraft(token: string, settings: SettingsView | null, onSav
     exportJson,
     resetSeed: () => {
       if (!window.confirm(String(t('manageResetConfirm')))) return
-      void send('POST', { action: 'reset', baseVersion })
+      void send('POST', { action: 'reset', confirm: true, baseVersion })
     },
   }
 }
