@@ -61,83 +61,103 @@ function parse(input: string): [unknown, string | null] {
   throw new Error(`Unknown Redis reply ${type}`)
 }
 
+const SKIP = 'redis-server is not reachable. These Lua tests are skipped locally and required in CI.'
+
+async function openRedis(): Promise<{ server: ChildProcess; socket: Socket } | null> {
+  const server = spawn(
+    'redis-server',
+    ['--port', String(PORT), '--save', '', '--appendonly', 'no', '--bind', '127.0.0.1', '--protected-mode', 'no'],
+    { stdio: 'ignore' },
+  )
+  let lastError: unknown
+  let missing = false
+  server.on('error', (error) => {
+    lastError = error
+    missing = (error as NodeJS.ErrnoException).code === 'ENOENT'
+  })
+  for (let attempt = 0; attempt < 50 && !missing; attempt += 1) {
+    try {
+      const socket = await new Promise<Socket>((resolve, reject) => {
+        const next = createConnection({ host: '127.0.0.1', port: PORT })
+        next.once('connect', () => resolve(next))
+        next.once('error', (error) => {
+          next.destroy()
+          reject(error)
+        })
+      })
+      return { server, socket }
+    } catch (error) {
+      lastError = error
+      await new Promise((resolve) => setTimeout(resolve, 40))
+    }
+  }
+  server.kill('SIGTERM')
+  const reason = lastError instanceof Error ? lastError.message : 'redis-server did not start'
+  if (process.env.CI) throw new Error(`redis-server is required in CI (${reason})`)
+  console.warn(SKIP)
+  return null
+}
+
 describe('redis Lua scripts', () => {
-  let server: ChildProcess
-  let socket: Socket
+  let redis: { server: ChildProcess; socket: Socket } | null = null
 
   beforeAll(async () => {
-    server = spawn(
-      'redis-server',
-      ['--port', String(PORT), '--save', '', '--appendonly', 'no', '--bind', '127.0.0.1', '--protected-mode', 'no'],
-      { stdio: 'ignore' },
-    )
-    let lastError: unknown
-    server.on('error', (error) => {
-      lastError = error
-    })
-    for (let attempt = 0; attempt < 50; attempt += 1) {
-      try {
-        socket = await new Promise<Socket>((resolve, reject) => {
-          const next = createConnection({ host: '127.0.0.1', port: PORT })
-          next.once('connect', () => resolve(next))
-          next.once('error', (error) => {
-            next.destroy()
-            reject(error)
-          })
-        })
-        return
-      } catch (error) {
-        lastError = error
-        await new Promise((resolve) => setTimeout(resolve, 40))
-      }
-    }
-    throw lastError instanceof Error ? lastError : new Error('redis did not start')
+    redis = await openRedis()
   })
 
   afterAll(async () => {
-    socket?.end()
-    server?.kill('SIGTERM')
+    redis?.socket.end()
+    redis?.server.kill('SIGTERM')
   })
 
-  async function call(...command: string[]): Promise<unknown> {
+  function live(context: { skip: (note?: string) => void }): { server: ChildProcess; socket: Socket } {
+    if (!redis) {
+      context.skip(SKIP)
+      throw new Error(SKIP)
+    }
+    return redis
+  }
+
+  async function call(context: { skip: (note?: string) => void }, ...command: string[]): Promise<unknown> {
+    const { socket } = live(context)
     const pending = readReply(socket)
     socket.write(resp(command))
     return pending
   }
 
-  it('compare-and-set writes only when the raw bytes match', async () => {
-    expect(await call('SET', 'site:config', 'before')).toBe('OK')
-    expect(await call('EVAL', COMPARE_AND_SET, '1', 'site:config', 'before', 'after')).toBe(1)
-    expect(await call('GET', 'site:config')).toBe('after')
-    expect(await call('EVAL', COMPARE_AND_SET, '1', 'site:config', 'before', 'nope')).toBe(0)
-    expect(await call('GET', 'site:config')).toBe('after')
-    expect(await call('EVAL', COMPARE_AND_SET, '1', 'site:config', '{', '{"version":1}')).toBe(0)
-    await call('SET', 'site:config', '{')
-    expect(await call('EVAL', COMPARE_AND_SET, '1', 'site:config', '{', '{"version":1}')).toBe(1)
-    expect(await call('GET', 'site:config')).toBe('{"version":1}')
+  it('compare-and-set writes only when the raw bytes match', async (context) => {
+    expect(await call(context, 'SET', 'site:config', 'before')).toBe('OK')
+    expect(await call(context, 'EVAL', COMPARE_AND_SET, '1', 'site:config', 'before', 'after')).toBe(1)
+    expect(await call(context, 'GET', 'site:config')).toBe('after')
+    expect(await call(context, 'EVAL', COMPARE_AND_SET, '1', 'site:config', 'before', 'nope')).toBe(0)
+    expect(await call(context, 'GET', 'site:config')).toBe('after')
+    expect(await call(context, 'EVAL', COMPARE_AND_SET, '1', 'site:config', '{', '{"version":1}')).toBe(0)
+    await call(context, 'SET', 'site:config', '{')
+    expect(await call(context, 'EVAL', COMPARE_AND_SET, '1', 'site:config', '{', '{"version":1}')).toBe(1)
+    expect(await call(context, 'GET', 'site:config')).toBe('{"version":1}')
   })
 
-  it('reads the document once and stops when the public limit is passed', async () => {
-    await call('SET', 'preview:site:config', '{"ok":true}')
-    const first = (await call('EVAL', PUBLIC_READ, '2', 'preview:rl:pub:ip', 'preview:site:config', '60', '1')) as number[]
+  it('reads the document once and stops when the public limit is passed', async (context) => {
+    await call(context, 'SET', 'preview:site:config', '{"ok":true}')
+    const first = (await call(context, 'EVAL', PUBLIC_READ, '2', 'preview:rl:pub:ip', 'preview:site:config', '60', '1')) as number[]
     expect(first).toEqual([1, '{"ok":true}'])
-    const second = (await call('EVAL', PUBLIC_READ, '2', 'preview:rl:pub:ip', 'preview:site:config', '60', '1')) as number[]
+    const second = (await call(context, 'EVAL', PUBLIC_READ, '2', 'preview:rl:pub:ip', 'preview:site:config', '60', '1')) as number[]
     expect(second[0]).toBe(0)
-    expect(await call('GET', 'preview:rl:pub:ip')).toBe('2')
+    expect(await call(context, 'GET', 'preview:rl:pub:ip')).toBe('2')
   })
 
-  it('does not add referrer fields once the pageview hash reaches the cap', async () => {
+  it('does not add referrer fields once the pageview hash reaches the cap', async (context) => {
     const fields = ['views', 'dev:desktop']
     for (let index = 0; index < 198; index += 1) fields.push(`ref:known-${index}.example`)
     fields.push('ref:one-more.example')
     const args = ['EVAL', PAGEVIEW_SCRIPT, '2', 'rl:pv:ip', 'pv:2026-11-15', '30', '15552000', '200', ...fields]
-    expect(await call(...args)).toBe(1)
-    expect(await call('HLEN', 'pv:2026-11-15')).toBe(200)
-    expect(await call('HGET', 'pv:2026-11-15', 'views')).toBe('1')
-    expect(await call('EVAL', PAGEVIEW_SCRIPT, '2', 'rl:pv:other', 'pv:2026-11-15', '30', '15552000', '200', 'views', 'ref:known-0.example', 'ref:new.example')).toBe(1)
-    expect(await call('HGET', 'pv:2026-11-15', 'views')).toBe('2')
-    expect(await call('HGET', 'pv:2026-11-15', 'ref:known-0.example')).toBe('2')
-    expect(await call('HGET', 'pv:2026-11-15', 'ref:new.example')).toBeNull()
-    expect(await call('HLEN', 'pv:2026-11-15')).toBe(200)
+    expect(await call(context, ...args)).toBe(1)
+    expect(await call(context, 'HLEN', 'pv:2026-11-15')).toBe(200)
+    expect(await call(context, 'HGET', 'pv:2026-11-15', 'views')).toBe('1')
+    expect(await call(context, 'EVAL', PAGEVIEW_SCRIPT, '2', 'rl:pv:other', 'pv:2026-11-15', '30', '15552000', '200', 'views', 'ref:known-0.example', 'ref:new.example')).toBe(1)
+    expect(await call(context, 'HGET', 'pv:2026-11-15', 'views')).toBe('2')
+    expect(await call(context, 'HGET', 'pv:2026-11-15', 'ref:known-0.example')).toBe('2')
+    expect(await call(context, 'HGET', 'pv:2026-11-15', 'ref:new.example')).toBeNull()
+    expect(await call(context, 'HLEN', 'pv:2026-11-15')).toBe(200)
   })
 })
