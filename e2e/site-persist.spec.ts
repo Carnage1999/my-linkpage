@@ -2,6 +2,8 @@ import { expect, test, type Browser, type BrowserContext, type Page } from '@pla
 import { spawn, type ChildProcess } from 'node:child_process'
 
 const SAVED_ORDER = ['GitHub', 'X', 'Telegram', 'Bluesky', 'Line', 'LinkedIn']
+const SAVED_IDS = ['github', 'x', 'telegram', 'bluesky', 'line', 'linkedin']
+const putOrders: string[][] = []
 
 let server: ChildProcess | null = null
 let port = 0
@@ -32,6 +34,10 @@ async function installApi(context: BrowserContext) {
     const request = route.request()
     const url = new URL(request.url())
     const method = request.method()
+    if (method === 'PUT' && url.pathname === '/api/site-config') {
+      const body = request.postDataJSON() as { socials?: { id: string }[] }
+      putOrders.push((body.socials ?? []).map((link) => link.id))
+    }
     const headers = request.headers()
     delete headers['if-none-match']
     delete headers['if-modified-since']
@@ -93,6 +99,7 @@ test.describe('site persistence', () => {
   test.beforeEach(async ({ page }) => {
     const reset = await fetch(`http://127.0.0.1:${port}/__test/reset`, { method: 'POST' })
     expect(reset.status).toBe(204)
+    putOrders.length = 0
     await page.addInitScript(() => {
       localStorage.setItem('i18nextLng', 'en')
       localStorage.setItem('theme', 'light')
@@ -115,9 +122,55 @@ test.describe('site persistence', () => {
       await expect(page.getByRole('button', { name: 'Save' })).toBeEnabled()
       await page.getByRole('button', { name: 'Save' }).click()
       await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+      expect(putOrders.at(-1)).toEqual(SAVED_IDS)
       await expectPersisted(browser, language)
     })
   }
+
+  test('persists up and down moves and sends that order', async ({ page, browser }) => {
+    test.setTimeout(90_000)
+    await signIn(page)
+    await page.getByRole('tab', { name: 'Links' }).click()
+    await expect(page.getByLabel('id').first()).toHaveValue('x')
+    await page.getByRole('button', { name: 'down' }).nth(0).click()
+    await expect(page.getByLabel('id').nth(0)).toHaveValue('github')
+    await expect(page.getByLabel('id').nth(1)).toHaveValue('x')
+    await page.getByRole('button', { name: 'down' }).nth(1).click()
+    await expect(page.getByLabel('id').nth(2)).toHaveValue('x')
+    await page.getByRole('button', { name: 'up' }).last().click()
+    const ids = ['github', 'telegram', 'x', 'bluesky', 'linkedin', 'line']
+    await expect(page.getByLabel('id')).toHaveValues(ids)
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+    expect(putOrders.at(-1)).toEqual(ids)
+
+    const home = await browser.newContext()
+    await home.addInitScript(() => localStorage.setItem('theme', 'light'))
+    await installApi(home)
+    const homePage = await home.newPage()
+    await homePage.goto('/')
+    await expect(homePage.locator('#social-links > li')).toHaveText([
+      /GitHub/,
+      /Telegram/,
+      /X/,
+      /Bluesky/,
+      /LinkedIn/,
+      /Line/,
+    ])
+    await home.close()
+
+    const again = await browser.newContext()
+    await again.addInitScript(() => {
+      localStorage.setItem('i18nextLng', 'en')
+      localStorage.setItem('theme', 'light')
+    })
+    await installApi(again)
+    const manage = await again.newPage()
+    await signIn(manage)
+    await manage.getByRole('tab', { name: 'Links' }).click()
+    await expect(manage.getByLabel('id')).toHaveValues(ids)
+    await again.close()
+  })
 
   test('persists the site name and avatar', async ({ page, browser }) => {
     test.setTimeout(90_000)
@@ -217,6 +270,7 @@ test.describe('site persistence', () => {
     await expect(page.getByRole('button', { name: 'Save' })).toBeEnabled()
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+    expect(putOrders.at(-1)).toEqual(SAVED_IDS)
     await expectPersisted(browser, {
       code: 'ja',
       tab: 'JA · 日本語',

@@ -213,6 +213,28 @@ describe('site config save', () => {
     expect(redis.writes.filter((key) => key === 'site:config')).toEqual([])
   })
 
+  it('keeps social and language array order through normalize and a save', async () => {
+    stage()
+    const socials = [...seed.socials].reverse()
+    const languages = [...seed.i18n.languages].reverse()
+    const proposed = {
+      site: seed.site,
+      profile: seed.profile,
+      socials,
+      i18n: { ...seed.i18n, languages, fallback: 'en' },
+    }
+    const normalized = normalizeConfig(proposed, 26)
+    expect(normalized.socials.map((link) => link.id)).toEqual(socials.map((link) => link.id))
+    expect(normalized.i18n.languages.map((language) => language.code)).toEqual(languages.map((language) => language.code))
+    expect(normalizeConfig(normalized, 26)).toEqual(normalized)
+
+    const response = await put({ ...proposed, settings: SETTINGS, baseVersion: 25 })
+    expect(response.status).toBe(200)
+    const body = await get()
+    expect(body.socials.map((link) => link.id)).toEqual(socials.map((link) => link.id))
+    expect(body.i18n.languages.map((language) => language.code)).toEqual(['zh-TW', 'ru', 'en'])
+  })
+
   it('round-trips the site name, handle, and avatar with the same pipeline', async () => {
     stage()
     const proposed = normalizeConfig(

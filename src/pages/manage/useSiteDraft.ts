@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { SecretWrites, SettingsInput, SettingsView } from '../../../api/stats/_settings'
 import { replaceSiteConfig, useSiteConfig } from '../../hooks/useSiteConfig'
 import { canonicalLocale, type HomepageI18n, type PublicKey } from '../../i18n/homepage'
@@ -91,13 +91,24 @@ export function useSiteDraft(token: string, settings: SettingsView | null, onSav
   const { t } = useManageCopy()
   const config = useSiteConfig()
   const [state, setState] = useState(() => draftFrom(config))
-  const [savedSnap, setSavedSnap] = useState(() => snapshot(draftFrom(config)))
+  const [savedSnap, setSavedSnap] = useState(() => snapshot(state))
   const [seenVersion, setSeenVersion] = useState(config.version)
   const [status, setStatus] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [baseVersion, setBaseVersion] = useState(config.version)
   const savingRef = useRef(false)
+  const stateRef = useRef(state)
   const settingsRef = useRef<SettingsInput | null>(settings ? settingsFromView(settings) : null)
+
+  function update(recipe: (current: DraftState) => DraftState) {
+    const next = recipe(stateRef.current)
+    stateRef.current = next
+    setState(next)
+  }
+
+  useLayoutEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   useEffect(() => {
     if (settings) settingsRef.current = settingsFromView(settings)
@@ -116,18 +127,18 @@ export function useSiteDraft(token: string, settings: SettingsView | null, onSav
   const dirty = snapshot(state) !== savedSnap
 
   function patch(partial: Partial<DraftState>) {
-    setState((current) => ({ ...current, ...partial }))
+    update((current) => ({ ...current, ...partial }))
   }
 
   function updateRow(key: string, rowPatch: Partial<LinkRow>) {
-    setState((current) => ({
+    update((current) => ({
       ...current,
       rows: current.rows.map((row) => (row.key === key ? { ...row, ...rowPatch } : row)),
     }))
   }
 
   function move(index: number, direction: -1 | 1) {
-    setState((current) => {
+    update((current) => {
       const next = [...current.rows]
       const target = index + direction
       if (target < 0 || target >= next.length) return current
@@ -171,9 +182,12 @@ export function useSiteDraft(token: string, settings: SettingsView | null, onSav
         i18n: payload.i18n ?? state.i18n,
       }
       if (payload.version != null) setSeenVersion(payload.version)
-      setSavedSnap(snapshot(next))
-      setState((current) => (sentSnap == null || snapshot(current) === sentSnap ? next : current))
-      setStatus(String(t('manageSaved')))
+      const unchanged = sentSnap == null || snapshot(stateRef.current) === sentSnap
+      if (unchanged) {
+        setSavedSnap(snapshot(next))
+        update(() => next)
+        setStatus(String(t('manageSaved')))
+      }
     } catch {
       setStatus(String(t('manageNetwork')))
     } finally {
@@ -190,15 +204,17 @@ export function useSiteDraft(token: string, settings: SettingsView | null, onSav
       return false
     }
     settingsRef.current = loaded
-    const editing = state
     const savedVersion = baseVersion
-    const renamed = editing.rows.some((row) => row.originalId && row.originalId !== row.id.trim())
+    const renamed = stateRef.current.rows.some((row) => row.originalId && row.originalId !== row.id.trim())
     if (renamed && !window.confirm(String(t('manageIdWarn')))) return false
     savingRef.current = true
     setSaving(true)
     void (async () => {
       try {
         const { resolveStoredIcon } = await import('../../icons/catalog')
+        // The catalog chunk is loaded on the first save. Read the draft after that
+        // await so a reorder or text edit made while it loads is the one we store.
+        const editing = stateRef.current
         const socials = editing.rows.map((row) => {
           const icon = resolveStoredIcon({ url: row.url.trim(), iconSlug: row.iconSlug.trim() || undefined })
           return {
@@ -245,16 +261,16 @@ export function useSiteDraft(token: string, settings: SettingsView | null, onSav
     updateRow,
     move,
     setRows: (rows: LinkRow[]) => patch({ rows }),
-    setDetect: (detect: boolean) => setState((current) => ({ ...current, i18n: { ...current.i18n, detect } })),
-    setFallback: (fallback: string) => setState((current) => ({ ...current, i18n: { ...current.i18n, fallback } })),
+    setDetect: (detect: boolean) => update((current) => ({ ...current, i18n: { ...current.i18n, detect } })),
+    setFallback: (fallback: string) => update((current) => ({ ...current, i18n: { ...current.i18n, fallback } })),
     setText: (code: string, key: PublicKey, value: string) =>
-      setState((current) => {
+      update((current) => {
         const texts = { ...current.i18n.texts }
         texts[code] = { ...(texts[code] ?? {}), [key]: value }
         return { ...current, i18n: { ...current.i18n, texts } }
       }),
     moveLanguage: (index: number, direction: -1 | 1) =>
-      setState((current) => {
+      update((current) => {
         const languages = [...current.i18n.languages]
         const target = index + direction
         if (target < 0 || target >= languages.length) return current
@@ -264,7 +280,7 @@ export function useSiteDraft(token: string, settings: SettingsView | null, onSav
         return { ...current, i18n: { ...current.i18n, languages } }
       }),
     removeLanguage: (code: string) =>
-      setState((current) => {
+      update((current) => {
         if (current.i18n.languages.length <= 1) return current
         const languages = current.i18n.languages.filter((language) => language.code !== code)
         const fallback = current.i18n.fallback === code ? languages[0]?.code ?? current.i18n.fallback : current.i18n.fallback
@@ -277,7 +293,7 @@ export function useSiteDraft(token: string, settings: SettingsView | null, onSav
       if (!canonical || !label.trim() || !shortLabel.trim()) return { ok: false as const, error: 'invalid' as const }
       if (label.trim().length > 40 || shortLabel.trim().length > 12) return { ok: false as const, error: 'invalid' as const }
       if (state.i18n.languages.some((language) => language.code === canonical)) return { ok: false as const, error: 'duplicate' as const }
-      setState((current) => ({
+      update((current) => ({
         ...current,
         i18n: {
           ...current.i18n,
